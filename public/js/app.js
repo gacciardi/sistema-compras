@@ -1,7 +1,10 @@
-// Cargar datos iniciales al abrir la aplicación
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarTodoDesdeServidor();
-    cargarConfiguracionLocal();
+    
+    // Sincronización automática de fondo cada 5 segundos entre computadoras
+    setInterval(async () => {
+        await cargarTodoDesdeServidor(false);
+    }, 5000);
 });
 
 // Navegación entre pestañas
@@ -38,16 +41,17 @@ function showTab(tabId) {
     }
 }
 
-// Cargar todo desde la API
-async function cargarTodoDesdeServidor() {
+// Cargar todo desde el Servidor / Base de Datos
+async function cargarTodoDesdeServidor(renderCompleto = true) {
     try {
-        const [resReq, resProv, resStat, resComp, resRec, resUsr] = await Promise.all([
+        const [resReq, resProv, resStat, resComp, resRec, resUsr, resConfig] = await Promise.all([
             fetch('/api/requisitos'),
             fetch('/api/proveedores'),
             fetch('/api/estadisticas'),
             fetch('/api/compras'),
             fetch('/api/recepciones'),
-            fetch('/api/usuarios')
+            fetch('/api/usuarios'),
+            fetch('/api/configuraciones')
         ]);
 
         requisitos = await resReq.json();
@@ -57,14 +61,29 @@ async function cargarTodoDesdeServidor() {
         recepciones = await resRec.json();
         usuarios = await resUsr.json();
 
-        renderizarTablaRequisitos();
-        renderizarTablaProveedores();
-        renderizarTablaEstadisticas();
-        renderizarTablaCompras();
-        renderizarTablaRecepciones();
-        renderizarTablaUsuarios();
+        const config = await resConfig.json();
+        if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) {
+            nombresCriteriosProveedores = config.crit_prov_labels;
+        }
+        if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) {
+            nombresCriteriosEstadisticas = config.crit_stat_labels;
+        }
+        if (config.sys_bg_color) cambiarColorBg(config.sys_bg_color, false);
+        if (config.sys_logo) cambiarLogo(config.sys_logo, false);
+
+        if (renderCompleto) {
+            cargarNombresCriteriosProveedores();
+            cargarNombresCriteriosEstadisticas();
+
+            renderizarTablaRequisitos();
+            renderizarTablaProveedores();
+            renderizarTablaEstadisticas();
+            renderizarTablaCompras();
+            renderizarTablaRecepciones();
+            renderizarTablaUsuarios();
+        }
     } catch (e) {
-        console.error("Error al cargar datos desde el servidor:", e);
+        console.error("Error al cargar datos:", e);
     }
 }
 
@@ -73,21 +92,18 @@ let requisitos = [];
 
 async function guardarRequisito(e) {
     e.preventDefault();
-    
     const num = document.getElementById('num-requisito').value.trim();
     const nombre = document.getElementById('nombre-requisito').value.trim();
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
-    const nuevoReq = { num, nombre, detalle };
-
     await fetch('/api/requisitos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoReq)
+        body: JSON.stringify({ num, nombre, detalle })
     });
 
     document.getElementById('form-requisito').reset();
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
 }
 
 function renderizarTablaRequisitos() {
@@ -111,13 +127,13 @@ function renderizarTablaRequisitos() {
 
 async function eliminarRequisito(num) {
     await fetch(`/api/requisitos/${num}`, { method: 'DELETE' });
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
 }
 
 
 // --- PESTAÑA 2: EVALUACIÓN DE PROVEEDORES ---
 let proveedores = [];
-let nombresCriteriosProveedores = JSON.parse(localStorage.getItem('crit_prov_labels')) || [
+let nombresCriteriosProveedores = [
     "Calidad de Entrega",
     "Tiempo de Respuesta",
     "Precios y Pagos",
@@ -126,20 +142,24 @@ let nombresCriteriosProveedores = JSON.parse(localStorage.getItem('crit_prov_lab
     "Cumplimiento Normativo"
 ];
 
-function guardarNombresCriteriosProveedores() {
+async function guardarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
-        const val = document.getElementById(`crit-nombre-${i}`).value.trim();
-        if (val) {
-            nombresCriteriosProveedores[i - 1] = val;
+        const el = document.getElementById(`crit-nombre-${i}`);
+        if (el && el.value.trim()) {
+            nombresCriteriosProveedores[i - 1] = el.value.trim();
         }
     }
-    localStorage.setItem('crit_prov_labels', JSON.stringify(nombresCriteriosProveedores));
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'crit_prov_labels', valor: nombresCriteriosProveedores })
+    });
 }
 
 function cargarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`crit-nombre-${i}`);
-        if (el) el.value = nombresCriteriosProveedores[i - 1];
+        if (el) el.value = nombresCriteriosProveedores[i - 1] || `Criterio ${i}`;
     }
 }
 
@@ -165,7 +185,7 @@ function calcularDiasDiferencia() {
 async function guardarProveedor(e) {
     e.preventDefault();
 
-    guardarNombresCriteriosProveedores();
+    await guardarNombresCriteriosProveedores();
 
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
@@ -176,23 +196,21 @@ async function guardarProveedor(e) {
     const criterios = [];
     for (let i = 1; i <= 6; i++) {
         criterios.push({
-            nombre: document.getElementById(`crit-nombre-${i}`).value.trim(),
-            cantidad: parseFloat(document.getElementById(`crit-cant-${i}`).value) || 0
+            nombre: document.getElementById(`crit-nombre-${i}`)?.value.trim() || `Criterio ${i}`,
+            cantidad: parseFloat(document.getElementById(`crit-cant-${i}`)?.value) || 0
         });
     }
-
-    const nuevoProv = { num, nombre, fechaEval, fechaProx, diasRestantes, criterios };
 
     await fetch('/api/proveedores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoProv)
+        body: JSON.stringify({ num, nombre, fechaEval, fechaProx, diasRestantes, criterios })
     });
 
     document.getElementById('form-proveedor').reset();
     cargarNombresCriteriosProveedores();
     document.getElementById('caja-dias-restantes').innerText = '0';
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
 }
 
 function renderizarTablaProveedores() {
@@ -246,13 +264,13 @@ function editarProveedor(num) {
 
 async function eliminarProveedor(num) {
     await fetch(`/api/proveedores/${num}`, { method: 'DELETE' });
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
 }
 
 
 // --- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN MULTIANUAL ---
 let estadisticas = [];
-let nombresCriteriosEstadisticas = JSON.parse(localStorage.getItem('crit_stat_labels')) || [
+let nombresCriteriosEstadisticas = [
     "Calidad General",
     "Tiempos de Entrega",
     "Precios competitivos",
@@ -262,20 +280,24 @@ let nombresCriteriosEstadisticas = JSON.parse(localStorage.getItem('crit_stat_la
 ];
 let chartEvolucionInstance = null;
 
-function guardarNombresCriteriosEstadisticas() {
+async function guardarNombresCriteriosEstadisticas() {
     for (let i = 1; i <= 6; i++) {
-        const val = document.getElementById(`lbl-stat-${i}`).value.trim();
-        if (val) {
-            nombresCriteriosEstadisticas[i - 1] = val;
+        const el = document.getElementById(`lbl-stat-${i}`);
+        if (el && el.value.trim()) {
+            nombresCriteriosEstadisticas[i - 1] = el.value.trim();
         }
     }
-    localStorage.setItem('crit_stat_labels', JSON.stringify(nombresCriteriosEstadisticas));
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'crit_stat_labels', valor: nombresCriteriosEstadisticas })
+    });
 }
 
 function cargarNombresCriteriosEstadisticas() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`lbl-stat-${i}`);
-        if (el) el.value = nombresCriteriosEstadisticas[i - 1];
+        if (el) el.value = nombresCriteriosEstadisticas[i - 1] || `Criterio ${i}`;
     }
 }
 
@@ -359,7 +381,7 @@ async function calcularEstadistica(e) {
     const anio = document.getElementById('select-anio-estadistica').value;
     if (!provNum || !anio) return;
 
-    guardarNombresCriteriosEstadisticas();
+    await guardarNombresCriteriosEstadisticas();
 
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
@@ -392,7 +414,7 @@ async function calcularEstadistica(e) {
     document.getElementById('stat-clase').innerText = 'Clase D';
     document.getElementById('stat-clase').className = 'clase-badge badge-d';
 
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
 }
 
 function renderizarTablaEstadisticas() {
@@ -582,7 +604,7 @@ async function iniciarCompra(e) {
 
     generarPDFOrden(nuevaOrden);
     document.getElementById('form-compras').reset();
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
 }
 
 function renderizarTablaCompras() {
@@ -711,7 +733,7 @@ async function guardarRecepcion(e) {
     });
 
     document.getElementById('form-recepcion').reset();
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
     actualizarSelectOrdenesPendientes();
 }
 
@@ -747,16 +769,14 @@ async function guardarUsuario(e) {
     const sector = document.getElementById('usr-sector').value;
     const estado = document.getElementById('usr-estado').value;
 
-    const nuevoUsr = { nombre, pass, sector, estado };
-
     await fetch('/api/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoUsr)
+        body: JSON.stringify({ nombre, pass, sector, estado })
     });
 
     document.getElementById('form-usuarios').reset();
-    await cargarTodoDesdeServidor();
+    await cargarTodoDesdeServidor(true);
     renderizarTablaMasterUsuarios();
 }
 
@@ -780,7 +800,7 @@ function renderizarTablaUsuarios() {
 }
 
 
-// --- MODAL Y CONFIGURACIÓN PERSISTENTE ---
+// --- MODAL Y CONFIGURACIÓN PERSISTENTE EN BASE DE DATOS ---
 function abrirModalMaster() {
     document.getElementById('modal-master').style.display = 'flex';
 }
@@ -837,39 +857,31 @@ async function alternarEstadoUsuario(nombre) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(u)
         });
-        await cargarTodoDesdeServidor();
+        await cargarTodoDesdeServidor(true);
         renderizarTablaMasterUsuarios();
     }
 }
 
-function cambiarColorBg(color) {
+async function cambiarColorBg(color, guardar = true) {
     document.documentElement.style.setProperty('--bg-primary', color);
-    localStorage.setItem('sys_bg_color', color);
+    if (guardar) {
+        await fetch('/api/configuraciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clave: 'sys_bg_color', valor: color })
+        });
+    }
 }
 
-function cambiarLogo(nombreArchivo) {
+async function cambiarLogo(nombreArchivo, guardar = true) {
     if (nombreArchivo) {
         document.getElementById('app-logo').src = nombreArchivo;
-        localStorage.setItem('sys_logo', nombreArchivo);
+        if (guardar) {
+            await fetch('/api/configuraciones', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clave: 'sys_logo', valor: nombreArchivo })
+            });
+        }
     }
-}
-
-function cargarConfiguracionLocal() {
-    const colorBg = localStorage.getItem('sys_bg_color');
-    const logo = localStorage.getItem('sys_logo');
-
-    if (colorBg) {
-        document.documentElement.style.setProperty('--bg-primary', colorBg);
-        const inputColor = document.getElementById('master-color-bg');
-        if (inputColor) inputColor.value = colorBg;
-    }
-
-    if (logo) {
-        document.getElementById('app-logo').src = logo;
-        const inputLogo = document.getElementById('master-logo-url');
-        if (inputLogo) inputLogo.value = logo;
-    }
-
-    cargarNombresCriteriosProveedores();
-    cargarNombresCriteriosEstadisticas();
 }
