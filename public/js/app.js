@@ -18,12 +18,14 @@ function showTab(tabId) {
         activeButton.classList.add('active');
     }
 
-    // Cargar selectores dinámicos al cambiar a las pestañas 3 y 4
     if (tabId === 'tab-estadisticas') {
         actualizarSelectProveedoresEstadisticas();
     }
     if (tabId === 'tab-compras') {
         actualizarSelectsCompras();
+    }
+    if (tabId === 'tab-recepcion') {
+        actualizarSelectOrdenesPendientes();
     }
 }
 
@@ -262,7 +264,6 @@ let ordenesCompra = [];
 let contadorOrdenes = 1001;
 
 function actualizarSelectsCompras() {
-    // Cargar Proveedores desde la Pestaña 2
     const selectProv = document.getElementById('select-compra-prov');
     selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
     proveedores.forEach(p => {
@@ -272,7 +273,6 @@ function actualizarSelectsCompras() {
         selectProv.appendChild(opt);
     });
 
-    // Cargar Requisitos desde la Pestaña 1
     const selectReq = document.getElementById('select-compra-req');
     selectReq.innerHTML = '<option value="">-- Seleccione Requisito --</option>';
     requisitos.forEach(r => {
@@ -321,13 +321,14 @@ function renderizarTablaCompras() {
 
     ordenesCompra.forEach(oc => {
         const tr = document.createElement('tr');
+        const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
         tr.innerHTML = `
             <td><strong>${oc.idOrden}</strong></td>
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
             <td>${oc.cantidad}</td>
             <td>${oc.fechaReq}</td>
-            <td><span class="status-badge-pending">${oc.estado}</span></td>
+            <td><span class="${badgeClass}">${oc.estado}</span></td>
         `;
         tbody.appendChild(tr);
     });
@@ -374,4 +375,85 @@ function generarPDFOrden(orden) {
     doc.text("Favor de confirmar la recepción de la presente orden de compra.", 105, 150, null, null, "center");
 
     doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
+}
+
+
+// --- PESTAÑA 5: RECEPCIÓN DE MERCADERÍA ---
+let recepciones = [];
+
+function actualizarSelectOrdenesPendientes() {
+    const select = document.getElementById('select-recepcion-orden');
+    select.innerHTML = '<option value="">-- Seleccione Orden Pendiente --</option>';
+
+    const pendientes = ordenesCompra.filter(oc => oc.estado === 'Pendiente');
+    pendientes.forEach(oc => {
+        const opt = document.createElement('option');
+        opt.value = oc.idOrden;
+        opt.innerText = `${oc.idOrden} - ${oc.provNombre} (${oc.reqNombre})`;
+        select.appendChild(opt);
+    });
+}
+
+function cargarDetalleOrdenPendiente() {
+    const idOrden = document.getElementById('select-recepcion-orden').value;
+    const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
+
+    if (orden) {
+        document.getElementById('rec-campo-2').value = orden.cantidad;
+    }
+}
+
+function guardarRecepcion(e) {
+    e.preventDefault();
+
+    const idOrden = document.getElementById('select-recepcion-orden').value;
+    if (!idOrden) return;
+
+    const remito = document.getElementById('rec-campo-1').value.trim();
+    const cantRecibida = document.getElementById('rec-campo-2').value;
+    const empaque = document.getElementById('rec-campo-3').value;
+    const tiempo = document.getElementById('rec-campo-4').value;
+    const calidad = document.getElementById('rec-campo-5').value;
+    const obs = document.getElementById('rec-campo-6').value.trim();
+
+    const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
+    if (orden) {
+        orden.estado = 'Recibido';
+    }
+
+    recepciones.push({
+        idOrden,
+        provNombre: orden ? orden.provNombre : '',
+        remito,
+        cantRecibida,
+        empaque,
+        tiempo,
+        calidad,
+        obs,
+        fechaRecepcion: new Date().toLocaleDateString()
+    });
+
+    document.getElementById('form-recepcion').reset();
+    renderizarTablaCompras();
+    renderizarTablaRecepciones();
+    actualizarSelectOrdenesPendientes();
+}
+
+function renderizarTablaRecepciones() {
+    const tbody = document.getElementById('tabla-recepcion-body');
+    tbody.innerHTML = '';
+
+    recepciones.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${r.idOrden}</strong></td>
+            <td>${r.provNombre}</td>
+            <td>${r.remito}</td>
+            <td>${r.cantRecibida}</td>
+            <td>${r.calidad}</td>
+            <td>${r.fechaRecepcion}</td>
+            <td><span class="status-badge-received">Recibido</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
 }

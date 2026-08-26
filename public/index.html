@@ -326,13 +326,95 @@
             </div>
         </section>
 
-        <!-- Pestaña 5 -->
+        <!-- Pestaña 5: Recepción de Mercadería -->
         <section id="tab-recepcion" class="tab-content">
             <div class="version-box">
                 <label>Versión:</label>
                 <input type="text" class="version-input" placeholder="v1.0">
             </div>
             <h2>5. Recepción de Mercadería</h2>
+
+            <div class="card-form">
+                <h3>Registrar Ingreso de Mercadería</h3>
+                <form id="form-recepcion" onsubmit="guardarRecepcion(event)">
+                    <div class="form-group">
+                        <label for="select-recepcion-orden">Seleccionar Orden Pendiente:</label>
+                        <select id="select-recepcion-orden" required class="form-select" onchange="cargarDetalleOrdenPendiente()">
+                            <option value="">-- Seleccione Orden Pendiente --</option>
+                        </select>
+                    </div>
+
+                    <!-- 6 Campos editables de control de calidad/recepción -->
+                    <h4 style="color: #880e4f; margin-top: 15px;">Detalles y Control de Recepción (6 Campos)</h4>
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="rec-campo-1">N° Remito Proveedor:</label>
+                            <input type="text" id="rec-campo-1" required placeholder="Ej: REM-00458">
+                        </div>
+                        <div class="form-group">
+                            <label for="rec-campo-2">Cantidad Recibida Real:</label>
+                            <input type="number" id="rec-campo-2" required placeholder="Ej: 500">
+                        </div>
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="rec-campo-3">Estado del Empaque / Embalaje:</label>
+                            <select id="rec-campo-3" class="form-select">
+                                <option value="Excelente">Excelente</option>
+                                <option value="Bueno">Bueno</option>
+                                <option value="Dañado Parcial">Dañado Parcial</option>
+                                <option value="Defectuoso">Defectuoso</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="rec-campo-4">Cumplimiento de Tiempo de Entrega:</label>
+                            <select id="rec-campo-4" class="form-select">
+                                <option value="A tiempo">A tiempo</option>
+                                <option value="Con Retraso">Con Retraso</option>
+                                <option value="Adelantado">Adelantado</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="rec-campo-5">Calidad / Conformidad Visual:</label>
+                            <select id="rec-campo-5" class="form-select">
+                                <option value="Conforme">Conforme</option>
+                                <option value="Aprobado con Concesión">Aprobado con Concesión</option>
+                                <option value="Rechazado">Rechazado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="rec-campo-6">Observaciones de Recepción:</label>
+                            <input type="text" id="rec-campo-6" placeholder="Notas de inspección o desviaciones">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Confirmar Recepción</button>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3>Historial de Mercadería Recibida</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N° Orden</th>
+                            <th>Proveedor</th>
+                            <th>N° Remito</th>
+                            <th>Cant. Recibida</th>
+                            <th>Calidad</th>
+                            <th>Fecha Recepción</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-recepcion-body">
+                        <!-- Se poblará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Pestaña 6 -->
