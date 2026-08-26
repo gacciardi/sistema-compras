@@ -293,8 +293,6 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor en puerto ${PORT}`);
 });
-2. Actualizar public/js/app.js
-Reemplaza todo el contenido de public/js/app.js:
 
 JavaScript
 document.addEventListener('DOMContentLoaded', async () => {
