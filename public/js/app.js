@@ -1,3 +1,9 @@
+// Cargar datos iniciales al abrir la aplicación
+document.addEventListener('DOMContentLoaded', async () => {
+    await cargarTodoDesdeServidor();
+    cargarConfiguracionLocal();
+});
+
 // Navegación entre pestañas
 function showTab(tabId) {
     const sections = document.querySelectorAll('.tab-content');
@@ -32,29 +38,61 @@ function showTab(tabId) {
     }
 }
 
+// Cargar todo desde la API
+async function cargarTodoDesdeServidor() {
+    try {
+        const [resReq, resProv, resStat, resComp, resRec, resUsr] = await Promise.all([
+            fetch('/api/requisitos'),
+            fetch('/api/proveedores'),
+            fetch('/api/estadisticas'),
+            fetch('/api/compras'),
+            fetch('/api/recepciones'),
+            fetch('/api/usuarios')
+        ]);
+
+        requisitos = await resReq.json();
+        proveedores = await resProv.json();
+        estadisticas = await resStat.json();
+        ordenesCompra = await resComp.json();
+        recepciones = await resRec.json();
+        usuarios = await resUsr.json();
+
+        renderizarTablaRequisitos();
+        renderizarTablaProveedores();
+        renderizarTablaEstadisticas();
+        renderizarTablaCompras();
+        renderizarTablaRecepciones();
+        renderizarTablaUsuarios();
+    } catch (e) {
+        console.error("Error al cargar datos desde el servidor:", e);
+    }
+}
+
 // --- PESTAÑA 1: REQUISITOS TÉCNICOS ---
 let requisitos = [];
 
-function guardarRequisito(e) {
+async function guardarRequisito(e) {
     e.preventDefault();
     
     const num = document.getElementById('num-requisito').value.trim();
     const nombre = document.getElementById('nombre-requisito').value.trim();
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
-    const index = requisitos.findIndex(r => r.num === num);
-    if (index !== -1) {
-        requisitos[index] = { num, nombre, detalle };
-    } else {
-        requisitos.push({ num, nombre, detalle });
-    }
+    const nuevoReq = { num, nombre, detalle };
+
+    await fetch('/api/requisitos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoReq)
+    });
 
     document.getElementById('form-requisito').reset();
-    renderizarTablaRequisitos();
+    await cargarTodoDesdeServidor();
 }
 
 function renderizarTablaRequisitos() {
     const tbody = document.getElementById('tabla-requisitos-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     requisitos.forEach((req) => {
@@ -62,7 +100,7 @@ function renderizarTablaRequisitos() {
         tr.innerHTML = `
             <td><strong>${req.num}</strong></td>
             <td>${req.nombre}</td>
-            <td>${req.detalle}</td>
+            <td>${req.detalle || ''}</td>
             <td>
                 <button class="btn-danger" onclick="eliminarRequisito('${req.num}')">Eliminar</button>
             </td>
@@ -71,15 +109,15 @@ function renderizarTablaRequisitos() {
     });
 }
 
-function eliminarRequisito(num) {
-    requisitos = requisitos.filter(r => r.num !== num);
-    renderizarTablaRequisitos();
+async function eliminarRequisito(num) {
+    await fetch(`/api/requisitos/${num}`, { method: 'DELETE' });
+    await cargarTodoDesdeServidor();
 }
 
 
 // --- PESTAÑA 2: EVALUACIÓN DE PROVEEDORES ---
 let proveedores = [];
-let nombresCriteriosProveedores = [
+let nombresCriteriosProveedores = JSON.parse(localStorage.getItem('crit_prov_labels')) || [
     "Calidad de Entrega",
     "Tiempo de Respuesta",
     "Precios y Pagos",
@@ -95,11 +133,13 @@ function guardarNombresCriteriosProveedores() {
             nombresCriteriosProveedores[i - 1] = val;
         }
     }
+    localStorage.setItem('crit_prov_labels', JSON.stringify(nombresCriteriosProveedores));
 }
 
 function cargarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
-        document.getElementById(`crit-nombre-${i}`).value = nombresCriteriosProveedores[i - 1];
+        const el = document.getElementById(`crit-nombre-${i}`);
+        if (el) el.value = nombresCriteriosProveedores[i - 1];
     }
 }
 
@@ -122,7 +162,7 @@ function calcularDiasDiferencia() {
     return 0;
 }
 
-function guardarProveedor(e) {
+async function guardarProveedor(e) {
     e.preventDefault();
 
     guardarNombresCriteriosProveedores();
@@ -141,31 +181,37 @@ function guardarProveedor(e) {
         });
     }
 
-    const index = proveedores.findIndex(p => p.num === num);
-    if (index !== -1) {
-        proveedores[index] = { num, nombre, fechaEval, fechaProx, diasRestantes, criterios };
-    } else {
-        proveedores.push({ num, nombre, fechaEval, fechaProx, diasRestantes, criterios });
-    }
+    const nuevoProv = { num, nombre, fechaEval, fechaProx, diasRestantes, criterios };
+
+    await fetch('/api/proveedores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoProv)
+    });
 
     document.getElementById('form-proveedor').reset();
     cargarNombresCriteriosProveedores();
     document.getElementById('caja-dias-restantes').innerText = '0';
-    renderizarTablaProveedores();
+    await cargarTodoDesdeServidor();
 }
 
 function renderizarTablaProveedores() {
     const tbody = document.getElementById('tabla-proveedores-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     proveedores.forEach((p) => {
         const tr = document.createElement('tr');
+        const fEval = p.fecha_eval ? p.fecha_eval.split('T')[0] : p.fechaEval;
+        const fProx = p.fecha_prox ? p.fecha_prox.split('T')[0] : p.fechaProx;
+        const dRest = p.dias_restantes !== undefined ? p.dias_restantes : p.diasRestantes;
+
         tr.innerHTML = `
             <td><strong>${p.num}</strong></td>
             <td>${p.nombre}</td>
-            <td>${p.fechaEval}</td>
-            <td>${p.fechaProx}</td>
-            <td><strong>${p.diasRestantes} días</strong></td>
+            <td>${fEval || ''}</td>
+            <td>${fProx || ''}</td>
+            <td><strong>${dRest || 0} días</strong></td>
             <td>
                 <button class="btn-warning" onclick="editarProveedor('${p.num}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarProveedor('${p.num}')">Eliminar</button>
@@ -181,28 +227,32 @@ function editarProveedor(num) {
 
     document.getElementById('num-proveedor').value = p.num;
     document.getElementById('nombre-proveedor').value = p.nombre;
-    document.getElementById('fecha-evaluacion').value = p.fechaEval;
-    document.getElementById('proxima-evaluacion').value = p.fechaProx;
+    document.getElementById('fecha-evaluacion').value = p.fecha_eval ? p.fecha_eval.split('T')[0] : p.fechaEval;
+    document.getElementById('proxima-evaluacion').value = p.fecha_prox ? p.fecha_prox.split('T')[0] : p.fechaProx;
 
-    p.criterios.forEach((crit, index) => {
-        const i = index + 1;
-        document.getElementById(`crit-nombre-${i}`).value = crit.nombre;
-        document.getElementById(`crit-cant-${i}`).value = crit.cantidad;
-    });
+    if (p.criterios && Array.isArray(p.criterios)) {
+        p.criterios.forEach((crit, index) => {
+            const i = index + 1;
+            const lbl = document.getElementById(`crit-nombre-${i}`);
+            const val = document.getElementById(`crit-cant-${i}`);
+            if (lbl) lbl.value = crit.nombre;
+            if (val) val.value = crit.cantidad;
+        });
+    }
 
     calcularDiasDiferencia();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function eliminarProveedor(num) {
-    proveedores = proveedores.filter(p => p.num !== num);
-    renderizarTablaProveedores();
+async function eliminarProveedor(num) {
+    await fetch(`/api/proveedores/${num}`, { method: 'DELETE' });
+    await cargarTodoDesdeServidor();
 }
 
 
 // --- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN MULTIANUAL ---
 let estadisticas = [];
-let nombresCriteriosEstadisticas = [
+let nombresCriteriosEstadisticas = JSON.parse(localStorage.getItem('crit_stat_labels')) || [
     "Calidad General",
     "Tiempos de Entrega",
     "Precios competitivos",
@@ -219,16 +269,19 @@ function guardarNombresCriteriosEstadisticas() {
             nombresCriteriosEstadisticas[i - 1] = val;
         }
     }
+    localStorage.setItem('crit_stat_labels', JSON.stringify(nombresCriteriosEstadisticas));
 }
 
 function cargarNombresCriteriosEstadisticas() {
     for (let i = 1; i <= 6; i++) {
-        document.getElementById(`lbl-stat-${i}`).value = nombresCriteriosEstadisticas[i - 1];
+        const el = document.getElementById(`lbl-stat-${i}`);
+        if (el) el.value = nombresCriteriosEstadisticas[i - 1];
     }
 }
 
 function actualizarSelectProveedoresEstadisticas() {
     const select = document.getElementById('select-prov-estadistica');
+    if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione un Proveedor --</option>';
 
     proveedores.forEach(p => {
@@ -299,7 +352,7 @@ function calcularPuntajeClase() {
     return { promedio, clase, claseCSS };
 }
 
-function calcularEstadistica(e) {
+async function calcularEstadistica(e) {
     e.preventDefault();
 
     const provNum = document.getElementById('select-prov-estadistica').value;
@@ -316,7 +369,6 @@ function calcularEstadistica(e) {
         puntajes.push(parseFloat(document.getElementById(`stat-val-${i}`).value) || 0);
     }
 
-    const index = estadisticas.findIndex(e => e.provNum === provNum && e.anio === anio);
     const registro = {
         provNum,
         provNombre: proveedor ? proveedor.nombre : 'Desconocido',
@@ -327,11 +379,11 @@ function calcularEstadistica(e) {
         puntajes
     };
 
-    if (index !== -1) {
-        estadisticas[index] = registro;
-    } else {
-        estadisticas.push(registro);
-    }
+    await fetch('/api/estadisticas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(registro)
+    });
 
     document.getElementById('form-estadisticas').reset();
     document.getElementById('select-anio-estadistica').value = "2026";
@@ -340,12 +392,13 @@ function calcularEstadistica(e) {
     document.getElementById('stat-clase').innerText = 'Clase D';
     document.getElementById('stat-clase').className = 'clase-badge badge-d';
 
-    renderizarTablaEstadisticas();
+    await cargarTodoDesdeServidor();
 }
 
 function renderizarTablaEstadisticas() {
     const tbody = document.getElementById('tabla-estadisticas-body');
-    const filtroAnio = document.getElementById('filtro-tabla-anio').value;
+    const filtroAnio = document.getElementById('filtro-tabla-anio')?.value || 'TODOS';
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     let lista = estadisticas;
@@ -365,7 +418,6 @@ function renderizarTablaEstadisticas() {
             <td><span class="clase-badge ${s.claseCSS}">${s.clase}</span></td>
             <td>
                 <button class="btn-warning" onclick="editarEstadistica('${s.provNum}', '${s.anio}')">Editar</button>
-                <button class="btn-danger" onclick="eliminarEstadistica('${s.provNum}', '${s.anio}')">Eliminar</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -379,12 +431,8 @@ function editarEstadistica(provNum, anio) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function eliminarEstadistica(provNum, anio) {
-    estadisticas = estadisticas.filter(s => !(s.provNum === provNum && s.anio === anio));
-    renderizarTablaEstadisticas();
-}
 
-// --- MODAL DE ÍNDICE DE PERFORMANCE Y GRÁFICO DE EVOLUCIÓN ---
+// --- MODAL DE ÍNDICE DE PERFORMANCE ---
 function abrirModalPerformance() {
     const provNum = document.getElementById('select-prov-estadistica').value;
     if (!provNum) {
@@ -403,12 +451,10 @@ function abrirModalPerformance() {
     document.getElementById('modal-performance').style.display = 'flex';
     document.getElementById('perf-prov-nombre').innerText = `${proveedor ? proveedor.nombre : provNum} (${provNum})`;
 
-    // Calcular promedio acumulado (Índice de Performance)
     const sumaTotal = registros.reduce((acc, curr) => acc + curr.promedio, 0);
     const promedioPerformance = Math.round(sumaTotal / registros.length);
     document.getElementById('perf-indice-valor').innerText = `${promedioPerformance} pts`;
 
-    // Tendencia
     const badgeTend = document.getElementById('perf-tendencia-badge');
     if (registros.length >= 2) {
         const ult = registros[registros.length - 1].promedio;
@@ -428,7 +474,6 @@ function abrirModalPerformance() {
         badgeTend.className = "clase-badge badge-b";
     }
 
-    // Llenar tabla histórica
     const tbody = document.getElementById('tabla-perf-historico-body');
     tbody.innerHTML = '';
     registros.forEach(r => {
@@ -442,7 +487,6 @@ function abrirModalPerformance() {
         tbody.appendChild(tr);
     });
 
-    // Renderizar gráfico de Chart.js
     const ctx = document.getElementById('chartEvolucion').getContext('2d');
     if (chartEvolucionInstance) {
         chartEvolucionInstance.destroy();
@@ -468,11 +512,7 @@ function abrirModalPerformance() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: {
-                    min: 0,
-                    max: 100,
-                    ticks: { stepSize: 20 }
-                }
+                y: { min: 0, max: 100, ticks: { stepSize: 20 } }
             }
         }
     });
@@ -489,6 +529,7 @@ let contadorOrdenes = 1001;
 
 function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
+    if (!selectProv) return;
     selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
     proveedores.forEach(p => {
         const opt = document.createElement('option');
@@ -498,6 +539,7 @@ function actualizarSelectsCompras() {
     });
 
     const selectReq = document.getElementById('select-compra-req');
+    if (!selectReq) return;
     selectReq.innerHTML = '<option value="">-- Seleccione Requisito --</option>';
     requisitos.forEach(r => {
         const opt = document.createElement('option');
@@ -507,7 +549,7 @@ function actualizarSelectsCompras() {
     });
 }
 
-function iniciarCompra(e) {
+async function iniciarCompra(e) {
     e.preventDefault();
 
     const provNum = document.getElementById('select-compra-prov').value;
@@ -532,26 +574,33 @@ function iniciarCompra(e) {
         estado: 'Pendiente'
     };
 
-    ordenesCompra.push(nuevaOrden);
-    renderizarTablaCompras();
-    generarPDFOrden(nuevaOrden);
+    await fetch('/api/compras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevaOrden)
+    });
 
+    generarPDFOrden(nuevaOrden);
     document.getElementById('form-compras').reset();
+    await cargarTodoDesdeServidor();
 }
 
 function renderizarTablaCompras() {
     const tbody = document.getElementById('tabla-compras-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     ordenesCompra.forEach(oc => {
         const tr = document.createElement('tr');
         const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
+        const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
+
         tr.innerHTML = `
             <td><strong>${oc.idOrden}</strong></td>
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
             <td>${oc.cantidad}</td>
-            <td>${oc.fechaReq}</td>
+            <td>${fReq}</td>
             <td><span class="${badgeClass}">${oc.estado}</span></td>
         `;
         tbody.appendChild(tr);
@@ -607,6 +656,7 @@ let recepciones = [];
 
 function actualizarSelectOrdenesPendientes() {
     const select = document.getElementById('select-recepcion-orden');
+    if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione Orden Pendiente --</option>';
 
     const pendientes = ordenesCompra.filter(oc => oc.estado === 'Pendiente');
@@ -627,7 +677,7 @@ function cargarDetalleOrdenPendiente() {
     }
 }
 
-function guardarRecepcion(e) {
+async function guardarRecepcion(e) {
     e.preventDefault();
 
     const idOrden = document.getElementById('select-recepcion-orden').value;
@@ -641,11 +691,8 @@ function guardarRecepcion(e) {
     const obs = document.getElementById('rec-campo-6').value.trim();
 
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
-    if (orden) {
-        orden.estado = 'Recibido';
-    }
 
-    recepciones.push({
+    const nuevaRec = {
         idOrden,
         provNombre: orden ? orden.provNombre : '',
         remito,
@@ -655,16 +702,22 @@ function guardarRecepcion(e) {
         calidad,
         obs,
         fechaRecepcion: new Date().toLocaleDateString()
+    };
+
+    await fetch('/api/recepciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevaRec)
     });
 
     document.getElementById('form-recepcion').reset();
-    renderizarTablaCompras();
-    renderizarTablaRecepciones();
+    await cargarTodoDesdeServidor();
     actualizarSelectOrdenesPendientes();
 }
 
 function renderizarTablaRecepciones() {
     const tbody = document.getElementById('tabla-recepcion-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     recepciones.forEach(r => {
@@ -686,7 +739,7 @@ function renderizarTablaRecepciones() {
 // --- PESTAÑA 6: GESTIÓN DE USUARIOS ---
 let usuarios = [];
 
-function guardarUsuario(e) {
+async function guardarUsuario(e) {
     e.preventDefault();
 
     const nombre = document.getElementById('usr-nombre').value.trim();
@@ -694,20 +747,22 @@ function guardarUsuario(e) {
     const sector = document.getElementById('usr-sector').value;
     const estado = document.getElementById('usr-estado').value;
 
-    const index = usuarios.findIndex(u => u.nombre === nombre);
-    if (index !== -1) {
-        usuarios[index] = { nombre, pass, sector, estado };
-    } else {
-        usuarios.push({ nombre, pass, sector, estado });
-    }
+    const nuevoUsr = { nombre, pass, sector, estado };
+
+    await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoUsr)
+    });
 
     document.getElementById('form-usuarios').reset();
-    renderizarTablaUsuarios();
+    await cargarTodoDesdeServidor();
     renderizarTablaMasterUsuarios();
 }
 
 function renderizarTablaUsuarios() {
     const tbody = document.getElementById('tabla-usuarios-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     usuarios.forEach(u => {
@@ -724,14 +779,8 @@ function renderizarTablaUsuarios() {
     });
 }
 
-function eliminarUsuario(nombre) {
-    usuarios = usuarios.filter(u => u.nombre !== nombre);
-    renderizarTablaUsuarios();
-    renderizarTablaMasterUsuarios();
-}
 
-
-// --- MODAL DE ADMINISTRADOR MASTER Y CONTROL DE USUARIOS ---
+// --- MODAL Y CONFIGURACIÓN PERSISTENTE ---
 function abrirModalMaster() {
     document.getElementById('modal-master').style.display = 'flex';
 }
@@ -779,21 +828,48 @@ function renderizarTablaMasterUsuarios() {
     });
 }
 
-function alternarEstadoUsuario(nombre) {
-    const usuario = usuarios.find(u => u.nombre === nombre);
-    if (usuario) {
-        usuario.estado = usuario.estado === 'Activo' ? 'Inactivo' : 'Activo';
-        renderizarTablaUsuarios();
+async function alternarEstadoUsuario(nombre) {
+    const u = usuarios.find(usr => usr.nombre === nombre);
+    if (u) {
+        u.estado = u.estado === 'Activo' ? 'Inactivo' : 'Activo';
+        await fetch('/api/usuarios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(u)
+        });
+        await cargarTodoDesdeServidor();
         renderizarTablaMasterUsuarios();
     }
 }
 
 function cambiarColorBg(color) {
     document.documentElement.style.setProperty('--bg-primary', color);
+    localStorage.setItem('sys_bg_color', color);
 }
 
 function cambiarLogo(nombreArchivo) {
     if (nombreArchivo) {
         document.getElementById('app-logo').src = nombreArchivo;
+        localStorage.setItem('sys_logo', nombreArchivo);
     }
+}
+
+function cargarConfiguracionLocal() {
+    const colorBg = localStorage.getItem('sys_bg_color');
+    const logo = localStorage.getItem('sys_logo');
+
+    if (colorBg) {
+        document.documentElement.style.setProperty('--bg-primary', colorBg);
+        const inputColor = document.getElementById('master-color-bg');
+        if (inputColor) inputColor.value = colorBg;
+    }
+
+    if (logo) {
+        document.getElementById('app-logo').src = logo;
+        const inputLogo = document.getElementById('master-logo-url');
+        if (inputLogo) inputLogo.value = logo;
+    }
+
+    cargarNombresCriteriosProveedores();
+    cargarNombresCriteriosEstadisticas();
 }
