@@ -294,7 +294,6 @@ app.listen(PORT, () => {
     console.log(`Servidor en puerto ${PORT}`);
 });
 
-JavaScript
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarTodoDesdeServidor();
 });
