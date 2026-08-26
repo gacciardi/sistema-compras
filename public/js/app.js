@@ -153,6 +153,29 @@ function eliminarProveedor(num) {
 
 // --- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN ---
 let estadisticas = [];
+let nombresCriteriosEstadisticas = [
+    "Calidad General",
+    "Tiempos de Entrega",
+    "Precios competitivos",
+    "Atención al Cliente",
+    "Garantías y Cambios",
+    "Condiciones de Pago"
+];
+
+function guardarNombresCriteriosEstadisticas() {
+    for (let i = 1; i <= 6; i++) {
+        const val = document.getElementById(`lbl-stat-${i}`).value.trim();
+        if (val) {
+            nombresCriteriosEstadisticas[i - 1] = val;
+        }
+    }
+}
+
+function cargarNombresCriteriosEstadisticas() {
+    for (let i = 1; i <= 6; i++) {
+        document.getElementById(`lbl-stat-${i}`).value = nombresCriteriosEstadisticas[i - 1];
+    }
+}
 
 function actualizarSelectProveedoresEstadisticas() {
     const select = document.getElementById('select-prov-estadistica');
@@ -164,6 +187,27 @@ function actualizarSelectProveedoresEstadisticas() {
         opt.innerText = `${p.num} - ${p.nombre}`;
         select.appendChild(opt);
     });
+
+    cargarNombresCriteriosEstadisticas();
+}
+
+function cargarCalificacionExistente() {
+    const provNum = document.getElementById('select-prov-estadistica').value;
+    const registro = estadisticas.find(e => e.provNum === provNum);
+
+    if (registro && registro.puntajes) {
+        for (let i = 1; i <= 6; i++) {
+            document.getElementById(`stat-val-${i}`).value = registro.puntajes[i - 1] || '';
+        }
+        calcularPuntajeClase();
+    } else {
+        for (let i = 1; i <= 6; i++) {
+            document.getElementById(`stat-val-${i}`).value = '';
+        }
+        document.getElementById('stat-promedio').innerText = '0 pts';
+        document.getElementById('stat-clase').innerText = 'Clase D';
+        document.getElementById('stat-clase').className = 'clase-badge badge-d';
+    }
 }
 
 function calcularPuntajeClase() {
@@ -208,8 +252,15 @@ function calcularEstadistica(e) {
     const provNum = document.getElementById('select-prov-estadistica').value;
     if (!provNum) return;
 
+    guardarNombresCriteriosEstadisticas();
+
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
+
+    const puntajes = [];
+    for (let i = 1; i <= 6; i++) {
+        puntajes.push(parseFloat(document.getElementById(`stat-val-${i}`).value) || 0);
+    }
 
     const index = estadisticas.findIndex(e => e.provNum === provNum);
     const registro = {
@@ -217,7 +268,8 @@ function calcularEstadistica(e) {
         provNombre: proveedor ? proveedor.nombre : 'Desconocido',
         promedio,
         clase,
-        claseCSS
+        claseCSS,
+        puntajes
     };
 
     if (index !== -1) {
@@ -227,6 +279,7 @@ function calcularEstadistica(e) {
     }
 
     document.getElementById('form-estadisticas').reset();
+    cargarNombresCriteriosEstadisticas();
     document.getElementById('stat-promedio').innerText = '0 pts';
     document.getElementById('stat-clase').innerText = 'Clase D';
     document.getElementById('stat-clase').className = 'clase-badge badge-d';
@@ -246,11 +299,18 @@ function renderizarTablaEstadisticas() {
             <td>${s.promedio} pts</td>
             <td><span class="clase-badge ${s.claseCSS}">${s.clase}</span></td>
             <td>
+                <button class="btn-warning" onclick="editarEstadistica('${s.provNum}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarEstadistica('${s.provNum}')">Eliminar</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function editarEstadistica(provNum) {
+    document.getElementById('select-prov-estadistica').value = provNum;
+    cargarCalificacionExistente();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function eliminarEstadistica(provNum) {

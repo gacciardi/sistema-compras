@@ -1,14 +1,3 @@
-¡Buen punto! Esos dos ajustes le darán mucha más flexibilidad al sistema.
-
-Para implementarlo:
-
-Acceso Master: Agregaremos un panel en el modal para gestionar el estado (Activo / Inactivo) de todos los usuarios registrados en la Pestaña 6.
-
-Pestaña 3 (Estadísticas): Haremos editables los nombres de los 6 campos para que puedan renombrar "Campo 1", "Campo 2", etc. según las métricas que necesiten medir.
-
-Código Completo para Reemplazar
-1. public/index.html
-HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -22,9 +11,9 @@ HTML
 <body>
     <header class="top-bar">
         <div class="logo-container">
-    <img src="logo.jpg" alt="Logo Empresa" id="app-logo">
-    <h1 id="app-title">Sistema de Compras</h1>
-</div>
+            <img src="logo.jpg" alt="Logo Empresa" id="app-logo">
+            <h1 id="app-title">Sistema de Compras</h1>
+        </div>
         <button id="btn-master-login" class="btn-master" onclick="abrirModalMaster()">Acceso Master</button>
     </header>
 
@@ -194,11 +183,11 @@ HTML
             <h2>3. Estadísticas y Calificación</h2>
 
             <div class="card-form">
-                <h3>Calcular Clasificación de Proveedor</h3>
+                <h3>Calcular / Editar Clasificación de Proveedor</h3>
                 <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
                     <div class="form-group">
                         <label for="select-prov-estadistica">Seleccionar Proveedor:</label>
-                        <select id="select-prov-estadistica" required class="form-select">
+                        <select id="select-prov-estadistica" required class="form-select" onchange="cargarCalificacionExistente()">
                             <option value="">-- Seleccione un Proveedor --</option>
                         </select>
                     </div>
@@ -207,29 +196,29 @@ HTML
                     <div class="criterios-grid">
                         <div class="form-group-row">
                             <div class="form-group">
-                                <input type="text" id="lbl-stat-1" value="Calidad General" placeholder="Nombre Criterio 1" class="input-label-edit">
+                                <input type="text" id="lbl-stat-1" value="Calidad General" placeholder="Nombre Criterio 1" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
                                 <input type="number" id="stat-val-1" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <input type="text" id="lbl-stat-2" value="Tiempos de Entrega" placeholder="Nombre Criterio 2" class="input-label-edit">
+                                <input type="text" id="lbl-stat-2" value="Tiempos de Entrega" placeholder="Nombre Criterio 2" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
                                 <input type="number" id="stat-val-2" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <input type="text" id="lbl-stat-3" value="Precios competitivos" placeholder="Nombre Criterio 3" class="input-label-edit">
+                                <input type="text" id="lbl-stat-3" value="Precios competitivos" placeholder="Nombre Criterio 3" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
                                 <input type="number" id="stat-val-3" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                         </div>
                         <div class="form-group-row">
                             <div class="form-group">
-                                <input type="text" id="lbl-stat-4" value="Atención al Cliente" placeholder="Nombre Criterio 4" class="input-label-edit">
+                                <input type="text" id="lbl-stat-4" value="Atención al Cliente" placeholder="Nombre Criterio 4" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
                                 <input type="number" id="stat-val-4" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <input type="text" id="lbl-stat-5" value="Garantías y Cambios" placeholder="Nombre Criterio 5" class="input-label-edit">
+                                <input type="text" id="lbl-stat-5" value="Garantías y Cambios" placeholder="Nombre Criterio 5" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
                                 <input type="number" id="stat-val-5" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <input type="text" id="lbl-stat-6" value="Condiciones de Pago" placeholder="Nombre Criterio 6" class="input-label-edit">
+                                <input type="text" id="lbl-stat-6" value="Condiciones de Pago" placeholder="Nombre Criterio 6" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
                                 <input type="number" id="stat-val-6" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                         </div>
@@ -496,9 +485,9 @@ HTML
             
             <div id="master-auth">
                 <div class="form-group">
-    <label>Nombre de archivo de Logo JPG (en carpeta public):</label>
-    <input type="text" id="master-logo-url" value="logo.jpg" placeholder="logo.jpg" onchange="cambiarLogo(this.value)">
-</div>
+                    <label>Usuario Master:</label>
+                    <input type="text" id="master-user" placeholder="admin">
+                </div>
                 <div class="form-group">
                     <label>Contraseña Master:</label>
                     <input type="password" id="master-pass" placeholder="1234">
@@ -533,8 +522,8 @@ HTML
                     <input type="color" id="master-color-bg" value="#fce4ec" onchange="cambiarColorBg(this.value)">
                 </div>
                 <div class="form-group">
-                    <label>URL / Archivo de Logo:</label>
-                    <input type="text" id="master-logo-url" placeholder="logo.png" onchange="cambiarLogo(this.value)">
+                    <label>Archivo JPG de Logo (en carpeta public):</label>
+                    <input type="text" id="master-logo-url" value="logo.jpg" placeholder="logo.jpg" onchange="cambiarLogo(this.value)">
                 </div>
                 <button class="btn-primary" onclick="cerrarModalMaster()" style="margin-top: 10px;">Guardar y Salir</button>
             </div>
