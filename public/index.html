@@ -25,13 +25,53 @@
     </nav>
 
     <main class="content-container">
-        <!-- Pestaña 1 -->
+        <!-- Pestaña 1: Requisitos Técnicos -->
         <section id="tab-requisitos" class="tab-content active">
             <div class="version-box">
                 <label>Versión:</label>
                 <input type="text" class="version-input" placeholder="v1.0">
             </div>
             <h2>1. Requisitos Técnicos</h2>
+            
+            <div class="card-form">
+                <h3>Agregar / Editar Requisito Técnico</h3>
+                <form id="form-requisito" onsubmit="guardarRequisito(event)">
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="num-requisito">N° de Requisito:</label>
+                            <input type="text" id="num-requisito" required placeholder="Ej: REQ-001">
+                        </div>
+                        <div class="form-group">
+                            <label for="nombre-requisito">Nombre del Requisito / Producto:</label>
+                            <input type="text" id="nombre-requisito" required placeholder="Ej: Bobina de Papel 80gr">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="detalle-requisito">Detalle Técnico / Especificaciones:</label>
+                        <textarea id="detalle-requisito" rows="3" placeholder="Detalla dimensiones, tolerancias, material, etc."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Guardar Requisito</button>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3>Lista de Requisitos Registrados</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N° Requisito</th>
+                            <th>Nombre / Producto</th>
+                            <th>Detalles Técnicos</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-requisitos-body">
+                        <!-- Se poblará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Pestaña 2 -->

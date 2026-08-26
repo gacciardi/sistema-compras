@@ -111,3 +111,102 @@ body {
     background-color: #ad1457;
     box-shadow: 0 0 8px rgba(173, 20, 87, 0.6);
 }
+
+/* Formulario y Tarjetas */
+.card-form {
+    background: #fff5f8;
+    border: 1px solid #f8bbd0;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+}
+
+.form-group-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    color: #880e4f;
+}
+
+.form-group input, .form-group textarea {
+    padding: 8px 10px;
+    border: 1px solid #ce93d8;
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+
+.form-group input:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(216, 27, 96, 0.4);
+}
+
+/* Botones */
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: var(--hover-color);
+    box-shadow: 0 0 8px rgba(255, 64, 129, 0.7);
+}
+
+.btn-danger {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-danger:hover {
+    background-color: #b71c1c;
+}
+
+/* Tablas de Datos */
+.table-container {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid #f8bbd0;
+    padding: 10px;
+    text-align: left;
+}
+
+.data-table th {
+    background-color: #f48fb1;
+    color: white;
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #fff0f5;
+}
