@@ -74,13 +74,104 @@
             </div>
         </section>
 
-        <!-- Pestaña 2 -->
+        <!-- Pestaña 2: Evaluación y Selección de Proveedores -->
         <section id="tab-proveedores" class="tab-content">
             <div class="version-box">
                 <label>Versión:</label>
                 <input type="text" class="version-input" placeholder="v1.0">
             </div>
             <h2>2. Evaluación y Selección de Proveedores</h2>
+
+            <div class="card-form">
+                <h3>Registrar / Evaluar Proveedor</h3>
+                <form id="form-proveedor" onsubmit="guardarProveedor(event)">
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="num-proveedor">N° Proveedor:</label>
+                            <input type="text" id="num-proveedor" required placeholder="Ej: PROV-001">
+                        </div>
+                        <div class="form-group">
+                            <label for="nombre-proveedor">Nombre / Razón Social:</label>
+                            <input type="text" id="nombre-proveedor" required placeholder="Ej: Distribuidora S.A.">
+                        </div>
+                    </div>
+
+                    <!-- 6 Campos editables de Nombre y Cantidad -->
+                    <h4 style="color: #880e4f; margin-top: 15px;">Criterios de Evaluación Editables</h4>
+                    <div class="criterios-grid">
+                        <div class="form-group-row">
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-1" value="Calidad de Entrega" placeholder="Nombre Criterio 1">
+                                <input type="number" id="crit-cant-1" placeholder="Cantidad / Puntaje" min="0" max="100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-2" value="Tiempo de Respuesta" placeholder="Nombre Criterio 2">
+                                <input type="number" id="crit-cant-2" placeholder="Cantidad / Puntaje" min="0" max="100">
+                            </div>
+                        </div>
+                        <div class="form-group-row">
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-3" value="Precios y Pagos" placeholder="Nombre Criterio 3">
+                                <input type="number" id="crit-cant-3" placeholder="Cantidad / Puntaje" min="0" max="100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-4" value="Soporte Técnico" placeholder="Nombre Criterio 4">
+                                <input type="number" id="crit-cant-4" placeholder="Cantidad / Puntaje" min="0" max="100">
+                            </div>
+                        </div>
+                        <div class="form-group-row">
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-5" value="Garantía" placeholder="Nombre Criterio 5">
+                                <input type="number" id="crit-cant-5" placeholder="Cantidad / Puntaje" min="0" max="100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-6" value="Cumplimiento Normativo" placeholder="Nombre Criterio 6">
+                                <input type="number" id="crit-cant-6" placeholder="Cantidad / Puntaje" min="0" max="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fechas y Cálculo -->
+                    <h4 style="color: #880e4f; margin-top: 15px;">Programación de Evaluaciones</h4>
+                    <div class="form-group-row align-items-center">
+                        <div class="form-group">
+                            <label for="fecha-evaluacion">Fecha de Evaluación:</label>
+                            <input type="date" id="fecha-evaluacion" required onchange="calcularDiasDiferencia()">
+                        </div>
+                        
+                        <div class="dias-badge-container">
+                            <span class="badge-label">Días Faltantes:</span>
+                            <span id="caja-dias-restantes" class="dias-badge">0</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="proxima-evaluacion">Próxima Evaluación:</label>
+                            <input type="date" id="proxima-evaluacion" required onchange="calcularDiasDiferencia()">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Proveedor</button>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3>Proveedores Evaluados</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N° Prov.</th>
+                            <th>Nombre</th>
+                            <th>Última Evaluación</th>
+                            <th>Próxima Evaluación</th>
+                            <th>Días Restantes</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-proveedores-body">
+                        <!-- Se poblará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Pestaña 3 -->
