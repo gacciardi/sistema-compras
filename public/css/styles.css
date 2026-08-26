@@ -146,20 +146,21 @@ body {
     color: #880e4f;
 }
 
-.form-group input, .form-group textarea {
+.form-group input, .form-group textarea, .form-select {
     padding: 8px 10px;
     border: 1px solid #ce93d8;
     border-radius: 4px;
     font-size: 0.95em;
+    background-color: #ffffff;
 }
 
-.form-group input:focus, .form-group textarea:focus {
+.form-group input:focus, .form-group textarea:focus, .form-select:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 5px rgba(216, 27, 96, 0.4);
 }
 
-/* Caja de Días Restantes */
+/* Caja de Días Restantes y Resultados */
 .dias-badge-container {
     display: flex;
     flex-direction: column;
@@ -182,6 +183,36 @@ body {
     font-weight: bold;
     color: #d81b60;
 }
+
+.resultado-box {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+    background-color: #f8bbd0;
+    padding: 12px 20px;
+    border-radius: 6px;
+    align-items: center;
+}
+
+.res-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    color: #880e4f;
+}
+
+.clase-badge {
+    padding: 5px 12px;
+    border-radius: 4px;
+    color: white;
+    font-size: 0.95em;
+}
+
+.badge-a { background-color: #2e7d32; }
+.badge-b { background-color: #1565c0; }
+.badge-c { background-color: #ef6c00; }
+.badge-d { background-color: #c62828; }
 
 /* Botones */
 .btn-primary {

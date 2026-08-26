@@ -96,7 +96,6 @@
                         </div>
                     </div>
 
-                    <!-- 6 Campos editables de Nombre y Cantidad -->
                     <h4 style="color: #880e4f; margin-top: 15px;">Criterios de Evaluación Editables</h4>
                     <div class="criterios-grid">
                         <div class="form-group-row">
@@ -131,7 +130,6 @@
                         </div>
                     </div>
 
-                    <!-- Fechas y Cálculo -->
                     <h4 style="color: #880e4f; margin-top: 15px;">Programación de Evaluaciones</h4>
                     <div class="form-group-row align-items-center">
                         <div class="form-group">
@@ -174,13 +172,88 @@
             </div>
         </section>
 
-        <!-- Pestaña 3 -->
+        <!-- Pestaña 3: Estadísticas -->
         <section id="tab-estadisticas" class="tab-content">
             <div class="version-box">
                 <label>Versión:</label>
                 <input type="text" class="version-input" placeholder="v1.0">
             </div>
-            <h2>3. Estadísticas</h2>
+            <h2>3. Estadísticas y Calificación</h2>
+
+            <div class="card-form">
+                <h3>Calcular Clasificación de Proveedor</h3>
+                <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
+                    <div class="form-group">
+                        <label for="select-prov-estadistica">Seleccionar Proveedor:</label>
+                        <select id="select-prov-estadistica" required class="form-select">
+                            <option value="">-- Seleccione un Proveedor --</option>
+                        </select>
+                    </div>
+
+                    <h4 style="color: #880e4f; margin-top: 15px;">Puntajes Manuales por Criterio (0 a 100)</h4>
+                    <div class="criterios-grid">
+                        <div class="form-group-row">
+                            <div class="form-group">
+                                <label for="stat-val-1">Campo 1:</label>
+                                <input type="number" id="stat-val-1" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
+                            </div>
+                            <div class="form-group">
+                                <label for="stat-val-2">Campo 2:</label>
+                                <input type="number" id="stat-val-2" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
+                            </div>
+                            <div class="form-group">
+                                <label for="stat-val-3">Campo 3:</label>
+                                <input type="number" id="stat-val-3" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
+                            </div>
+                        </div>
+                        <div class="form-group-row">
+                            <div class="form-group">
+                                <label for="stat-val-4">Campo 4:</label>
+                                <input type="number" id="stat-val-4" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
+                            </div>
+                            <div class="form-group">
+                                <label for="stat-val-5">Campo 5:</label>
+                                <input type="number" id="stat-val-5" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
+                            </div>
+                            <div class="form-group">
+                                <label for="stat-val-6">Campo 6:</label>
+                                <input type="number" id="stat-val-6" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="resultado-box">
+                        <div class="res-item">
+                            <span>Promedio Total:</span>
+                            <strong id="stat-promedio">0 pts</strong>
+                        </div>
+                        <div class="res-item">
+                            <span>Resultado Clase:</span>
+                            <strong id="stat-clase" class="clase-badge badge-d">Clase D</strong>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Calificación</button>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3>Historial de Clasificaciones</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N° Prov.</th>
+                            <th>Nombre Proveedor</th>
+                            <th>Puntaje Promedio</th>
+                            <th>CLASE</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-estadisticas-body">
+                        <!-- Se poblará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Pestaña 4 -->
