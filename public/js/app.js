@@ -18,6 +18,9 @@ function showTab(tabId) {
         activeButton.classList.add('active');
     }
 
+    if (tabId === 'tab-proveedores') {
+        cargarNombresCriteriosProveedores();
+    }
     if (tabId === 'tab-estadisticas') {
         actualizarSelectProveedoresEstadisticas();
     }
@@ -76,6 +79,29 @@ function eliminarRequisito(num) {
 
 // --- PESTAÑA 2: EVALUACIÓN DE PROVEEDORES ---
 let proveedores = [];
+let nombresCriteriosProveedores = [
+    "Calidad de Entrega",
+    "Tiempo de Respuesta",
+    "Precios y Pagos",
+    "Soporte Técnico",
+    "Garantía",
+    "Cumplimiento Normativo"
+];
+
+function guardarNombresCriteriosProveedores() {
+    for (let i = 1; i <= 6; i++) {
+        const val = document.getElementById(`crit-nombre-${i}`).value.trim();
+        if (val) {
+            nombresCriteriosProveedores[i - 1] = val;
+        }
+    }
+}
+
+function cargarNombresCriteriosProveedores() {
+    for (let i = 1; i <= 6; i++) {
+        document.getElementById(`crit-nombre-${i}`).value = nombresCriteriosProveedores[i - 1];
+    }
+}
 
 function calcularDiasDiferencia() {
     const fEval = document.getElementById('fecha-evaluacion').value;
@@ -99,6 +125,8 @@ function calcularDiasDiferencia() {
 function guardarProveedor(e) {
     e.preventDefault();
 
+    guardarNombresCriteriosProveedores();
+
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
     const fechaEval = document.getElementById('fecha-evaluacion').value;
@@ -121,6 +149,7 @@ function guardarProveedor(e) {
     }
 
     document.getElementById('form-proveedor').reset();
+    cargarNombresCriteriosProveedores();
     document.getElementById('caja-dias-restantes').innerText = '0';
     renderizarTablaProveedores();
 }
@@ -138,11 +167,31 @@ function renderizarTablaProveedores() {
             <td>${p.fechaProx}</td>
             <td><strong>${p.diasRestantes} días</strong></td>
             <td>
+                <button class="btn-warning" onclick="editarProveedor('${p.num}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarProveedor('${p.num}')">Eliminar</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function editarProveedor(num) {
+    const p = proveedores.find(prov => prov.num === num);
+    if (!p) return;
+
+    document.getElementById('num-proveedor').value = p.num;
+    document.getElementById('nombre-proveedor').value = p.nombre;
+    document.getElementById('fecha-evaluacion').value = p.fechaEval;
+    document.getElementById('proxima-evaluacion').value = p.fechaProx;
+
+    p.criterios.forEach((crit, index) => {
+        const i = index + 1;
+        document.getElementById(`crit-nombre-${i}`).value = crit.nombre;
+        document.getElementById(`crit-cant-${i}`).value = crit.cantidad;
+    });
+
+    calcularDiasDiferencia();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function eliminarProveedor(num) {
