@@ -1,3 +1,14 @@
+¡Buen punto! Esos dos ajustes le darán mucha más flexibilidad al sistema.
+
+Para implementarlo:
+
+Acceso Master: Agregaremos un panel en el modal para gestionar el estado (Activo / Inactivo) de todos los usuarios registrados en la Pestaña 6.
+
+Pestaña 3 (Estadísticas): Haremos editables los nombres de los 6 campos para que puedan renombrar "Campo 1", "Campo 2", etc. según las métricas que necesiten medir.
+
+Código Completo para Reemplazar
+1. public/index.html
+HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11,9 +22,9 @@
 <body>
     <header class="top-bar">
         <div class="logo-container">
-            <img src="logo.png" alt="Logo Empresa" id="app-logo">
-            <h1 id="app-title">Sistema de Compras</h1>
-        </div>
+    <img src="logo.jpg" alt="Logo Empresa" id="app-logo">
+    <h1 id="app-title">Sistema de Compras</h1>
+</div>
         <button id="btn-master-login" class="btn-master" onclick="abrirModalMaster()">Acceso Master</button>
     </header>
 
@@ -192,33 +203,33 @@
                         </select>
                     </div>
 
-                    <h4 style="color: #880e4f; margin-top: 15px;">Puntajes Manuales por Criterio (0 a 100)</h4>
+                    <h4 style="color: #880e4f; margin-top: 15px;">Nombres y Puntajes por Criterio (0 a 100)</h4>
                     <div class="criterios-grid">
                         <div class="form-group-row">
                             <div class="form-group">
-                                <label for="stat-val-1">Campo 1:</label>
+                                <input type="text" id="lbl-stat-1" value="Calidad General" placeholder="Nombre Criterio 1" class="input-label-edit">
                                 <input type="number" id="stat-val-1" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <label for="stat-val-2">Campo 2:</label>
+                                <input type="text" id="lbl-stat-2" value="Tiempos de Entrega" placeholder="Nombre Criterio 2" class="input-label-edit">
                                 <input type="number" id="stat-val-2" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <label for="stat-val-3">Campo 3:</label>
+                                <input type="text" id="lbl-stat-3" value="Precios competitivos" placeholder="Nombre Criterio 3" class="input-label-edit">
                                 <input type="number" id="stat-val-3" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                         </div>
                         <div class="form-group-row">
                             <div class="form-group">
-                                <label for="stat-val-4">Campo 4:</label>
+                                <input type="text" id="lbl-stat-4" value="Atención al Cliente" placeholder="Nombre Criterio 4" class="input-label-edit">
                                 <input type="number" id="stat-val-4" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <label for="stat-val-5">Campo 5:</label>
+                                <input type="text" id="lbl-stat-5" value="Garantías y Cambios" placeholder="Nombre Criterio 5" class="input-label-edit">
                                 <input type="number" id="stat-val-5" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                             <div class="form-group">
-                                <label for="stat-val-6">Campo 6:</label>
+                                <input type="text" id="lbl-stat-6" value="Condiciones de Pago" placeholder="Nombre Criterio 6" class="input-label-edit">
                                 <input type="number" id="stat-val-6" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
                             </div>
                         </div>
@@ -481,13 +492,13 @@
     <!-- Modal de Administrador Master -->
     <div id="modal-master" class="modal-overlay">
         <div class="modal-card">
-            <h3>🔑 Panel Administrador Master (Programador)</h3>
+            <h3>🔑 Panel Administrador Master</h3>
             
             <div id="master-auth">
                 <div class="form-group">
-                    <label>Usuario Master:</label>
-                    <input type="text" id="master-user" placeholder="admin">
-                </div>
+    <label>Nombre de archivo de Logo JPG (en carpeta public):</label>
+    <input type="text" id="master-logo-url" value="logo.jpg" placeholder="logo.jpg" onchange="cambiarLogo(this.value)">
+</div>
                 <div class="form-group">
                     <label>Contraseña Master:</label>
                     <input type="password" id="master-pass" placeholder="1234">
@@ -497,7 +508,26 @@
             </div>
 
             <div id="master-panel" style="display: none;">
-                <h4>Configuración Visual y Personalización</h4>
+                <h4>Control Global de Usuarios</h4>
+                <div class="table-container" style="max-height: 180px; overflow-y: auto; margin-bottom: 15px;">
+                    <table class="data-table" style="font-size: 0.85em;">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Sector</th>
+                                <th>Estado</th>
+                                <th>Acción Master</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-master-usuarios-body">
+                            <!-- Se poblará dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid #f8bbd0; margin: 15px 0;">
+
+                <h4>Personalización Visual</h4>
                 <div class="form-group">
                     <label>Color de Fondo del Sistema:</label>
                     <input type="color" id="master-color-bg" value="#fce4ec" onchange="cambiarColorBg(this.value)">
@@ -506,7 +536,7 @@
                     <label>URL / Archivo de Logo:</label>
                     <input type="text" id="master-logo-url" placeholder="logo.png" onchange="cambiarLogo(this.value)">
                 </div>
-                <button class="btn-primary" onclick="cerrarModalMaster()">Guardar y Salir</button>
+                <button class="btn-primary" onclick="cerrarModalMaster()" style="margin-top: 10px;">Guardar y Salir</button>
             </div>
         </div>
     </div>

@@ -479,6 +479,7 @@ function guardarUsuario(e) {
 
     document.getElementById('form-usuarios').reset();
     renderizarTablaUsuarios();
+    renderizarTablaMasterUsuarios();
 }
 
 function renderizarTablaUsuarios() {
@@ -502,10 +503,11 @@ function renderizarTablaUsuarios() {
 function eliminarUsuario(nombre) {
     usuarios = usuarios.filter(u => u.nombre !== nombre);
     renderizarTablaUsuarios();
+    renderizarTablaMasterUsuarios();
 }
 
 
-// --- MODAL DE ADMINISTRADOR MASTER ---
+// --- MODAL DE ADMINISTRADOR MASTER Y CONTROL DE USUARIOS ---
 function abrirModalMaster() {
     document.getElementById('modal-master').style.display = 'flex';
 }
@@ -521,8 +523,44 @@ function autenticarMaster() {
     if (usr === 'admin' && pass === '1234') {
         document.getElementById('master-auth').style.display = 'none';
         document.getElementById('master-panel').style.display = 'block';
+        renderizarTablaMasterUsuarios();
     } else {
         alert('Credenciales de Administrador Master incorrectas.');
+    }
+}
+
+function renderizarTablaMasterUsuarios() {
+    const tbody = document.getElementById('tabla-master-usuarios-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (usuarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
+        return;
+    }
+
+    usuarios.forEach(u => {
+        const tr = document.createElement('tr');
+        const btnAccion = u.estado === 'Activo' 
+            ? `<button class="btn-warning" onclick="alternarEstadoUsuario('${u.nombre}')">Deshabilitar</button>`
+            : `<button class="btn-success" onclick="alternarEstadoUsuario('${u.nombre}')">Habilitar</button>`;
+
+        tr.innerHTML = `
+            <td><strong>${u.nombre}</strong></td>
+            <td>${u.sector}</td>
+            <td>${u.estado}</td>
+            <td>${btnAccion}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function alternarEstadoUsuario(nombre) {
+    const usuario = usuarios.find(u => u.nombre === nombre);
+    if (usuario) {
+        usuario.estado = usuario.estado === 'Activo' ? 'Inactivo' : 'Activo';
+        renderizarTablaUsuarios();
+        renderizarTablaMasterUsuarios();
     }
 }
 
@@ -530,8 +568,8 @@ function cambiarColorBg(color) {
     document.documentElement.style.setProperty('--bg-primary', color);
 }
 
-function cambiarLogo(url) {
-    if (url) {
-        document.getElementById('app-logo').src = url;
+function cambiarLogo(nombreArchivo) {
+    if (nombreArchivo) {
+        document.getElementById('app-logo').src = nombreArchivo;
     }
 }

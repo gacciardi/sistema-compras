@@ -146,6 +146,15 @@ body {
     color: #880e4f;
 }
 
+.input-label-edit {
+    font-weight: bold;
+    font-size: 0.85em;
+    color: #880e4f;
+    border: 1px dashed #ce93d8 !important;
+    background-color: #fff0f5 !important;
+    margin-bottom: 4px;
+}
+
 .form-group input, .form-group textarea, .form-select {
     padding: 8px 10px;
     border: 1px solid #ce93d8;
@@ -262,6 +271,34 @@ body {
     background-color: #b71c1c;
 }
 
+.btn-warning {
+    background-color: #ef6c00;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.btn-warning:hover {
+    background-color: #e65100;
+}
+
+.btn-success {
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.btn-success:hover {
+    background-color: #1b5e20;
+}
+
 /* Tablas de Datos */
 .table-container {
     overflow-x: auto;
@@ -307,6 +344,6 @@ body {
     padding: 25px;
     border-radius: 8px;
     width: 90%;
-    max-width: 450px;
+    max-width: 500px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
