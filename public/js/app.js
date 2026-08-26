@@ -1,7 +1,13 @@
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarTodoDesdeServidor();
-    
-    // Sincronización automática de fondo cada 5 segundos entre computadoras
+
+    // Event listener para el formulario de usuarios
+    const formUsuarios = document.getElementById('form-usuarios');
+    if (formUsuarios) {
+        formUsuarios.addEventListener('submit', guardarUsuario);
+    }
+
+    // Sincronización automática de fondo cada 5 segundos
     setInterval(async () => {
         await cargarTodoDesdeServidor(false);
     }, 5000);
@@ -762,12 +768,17 @@ function renderizarTablaRecepciones() {
 let usuarios = [];
 
 async function guardarUsuario(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     const nombre = document.getElementById('usr-nombre').value.trim();
     const pass = document.getElementById('usr-pass').value;
     const sector = document.getElementById('usr-sector').value;
     const estado = document.getElementById('usr-estado').value;
+
+    if (!nombre) {
+        alert("Por favor ingrese el nombre del usuario.");
+        return;
+    }
 
     await fetch('/api/usuarios', {
         method: 'POST',
@@ -777,13 +788,20 @@ async function guardarUsuario(e) {
 
     document.getElementById('form-usuarios').reset();
     await cargarTodoDesdeServidor(true);
-    renderizarTablaMasterUsuarios();
+    if (typeof renderizarTablaMasterUsuarios === 'function') {
+        renderizarTablaMasterUsuarios();
+    }
 }
 
 function renderizarTablaUsuarios() {
     const tbody = document.getElementById('tabla-usuarios-body');
     if (!tbody) return;
     tbody.innerHTML = '';
+
+    if (!usuarios || usuarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
+        return;
+    }
 
     usuarios.forEach(u => {
         const tr = document.createElement('tr');
@@ -792,11 +810,34 @@ function renderizarTablaUsuarios() {
             <td>${u.sector}</td>
             <td>${u.estado}</td>
             <td>
+                <button class="btn-warning" onclick="editarUsuario('${u.nombre}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarUsuario('${u.nombre}')">Eliminar</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function editarUsuario(nombre) {
+    const u = usuarios.find(usr => usr.nombre === nombre);
+    if (!u) return;
+
+    document.getElementById('usr-nombre').value = u.nombre;
+    document.getElementById('usr-pass').value = u.pass || '';
+    document.getElementById('usr-sector').value = u.sector;
+    document.getElementById('usr-estado').value = u.estado;
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function eliminarUsuario(nombre) {
+    if (!confirm(`¿Estás seguro de eliminar al usuario "${nombre}"?`)) return;
+
+    await fetch(`/api/usuarios/${encodeURIComponent(nombre)}`, { method: 'DELETE' });
+    await cargarTodoDesdeServidor(true);
+    if (typeof renderizarTablaMasterUsuarios === 'function') {
+        renderizarTablaMasterUsuarios();
+    }
 }
 
 
@@ -827,7 +868,7 @@ function renderizarTablaMasterUsuarios() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (usuarios.length === 0) {
+    if (!usuarios || usuarios.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
         return;
     }

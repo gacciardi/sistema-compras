@@ -286,6 +286,13 @@ app.post('/api/usuarios', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/usuarios/:nombre', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM usuarios WHERE nombre=$1', [req.params.nombre]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
