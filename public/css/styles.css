@@ -160,7 +160,7 @@ body {
     box-shadow: 0 0 5px rgba(216, 27, 96, 0.4);
 }
 
-/* Caja de Días Restantes y Resultados */
+/* Badges y Resultados */
 .dias-badge-container {
     display: flex;
     flex-direction: column;
@@ -213,6 +213,15 @@ body {
 .badge-b { background-color: #1565c0; }
 .badge-c { background-color: #ef6c00; }
 .badge-d { background-color: #c62828; }
+
+.status-badge-pending {
+    background-color: #f57c00;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
 
 /* Botones */
 .btn-primary {

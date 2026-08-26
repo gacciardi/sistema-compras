@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Compras</title>
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Librería jsPDF para generación de PDF sin servidor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <header class="top-bar">
@@ -256,13 +258,72 @@
             </div>
         </section>
 
-        <!-- Pestaña 4 -->
+        <!-- Pestaña 4: Compras -->
         <section id="tab-compras" class="tab-content">
             <div class="version-box">
                 <label>Versión:</label>
                 <input type="text" class="version-input" placeholder="v1.0">
             </div>
-            <h2>4. Compras</h2>
+            <h2>4. Emitir Orden de Compra</h2>
+
+            <div class="card-form">
+                <h3>Nueva Orden de Compra</h3>
+                <form id="form-compras" onsubmit="iniciarCompra(event)">
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="select-compra-prov">Proveedor (Pestaña 2):</label>
+                            <select id="select-compra-prov" required class="form-select">
+                                <option value="">-- Seleccione Proveedor --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select-compra-req">Requisito / Producto (Pestaña 1):</label>
+                            <select id="select-compra-req" required class="form-select">
+                                <option value="">-- Seleccione Requisito --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="compra-cantidad">Cantidad Solicitada:</label>
+                            <input type="number" id="compra-cantidad" required min="1" placeholder="Ej: 500">
+                        </div>
+                        <div class="form-group">
+                            <label for="compra-fecha-req">Fecha Requerida de Entrega:</label>
+                            <input type="date" id="compra-fecha-req" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="compra-observaciones">Observaciones / Detalles Adicionales:</label>
+                        <textarea id="compra-observaciones" rows="3" placeholder="Lugar de entrega, condiciones de pago, etc."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="background-color: #2e7d32;">
+                        📄 Iniciar Compra y Descargar PDF
+                    </button>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3>Historial de Órdenes Emitidas</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>N° Orden</th>
+                            <th>Proveedor</th>
+                            <th>Producto / Req.</th>
+                            <th>Cantidad</th>
+                            <th>Fecha Entrega</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-compras-body">
+                        <!-- Se poblará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Pestaña 5 -->

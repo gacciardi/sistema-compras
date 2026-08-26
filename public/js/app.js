@@ -18,9 +18,12 @@ function showTab(tabId) {
         activeButton.classList.add('active');
     }
 
-    // Cargar select de proveedores si se abre la pestaña 3
+    // Cargar selectores dinámicos al cambiar a las pestañas 3 y 4
     if (tabId === 'tab-estadisticas') {
-        actualizarSelectProveedores();
+        actualizarSelectProveedoresEstadisticas();
+    }
+    if (tabId === 'tab-compras') {
+        actualizarSelectsCompras();
     }
 }
 
@@ -149,7 +152,7 @@ function eliminarProveedor(num) {
 // --- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN ---
 let estadisticas = [];
 
-function actualizarSelectProveedores() {
+function actualizarSelectProveedoresEstadisticas() {
     const select = document.getElementById('select-prov-estadistica');
     select.innerHTML = '<option value="">-- Seleccione un Proveedor --</option>';
 
@@ -251,4 +254,124 @@ function renderizarTablaEstadisticas() {
 function eliminarEstadistica(provNum) {
     estadisticas = estadisticas.filter(s => s.provNum !== provNum);
     renderizarTablaEstadisticas();
+}
+
+
+// --- PESTAÑA 4: COMPRAS Y EMISIÓN DE PDF ---
+let ordenesCompra = [];
+let contadorOrdenes = 1001;
+
+function actualizarSelectsCompras() {
+    // Cargar Proveedores desde la Pestaña 2
+    const selectProv = document.getElementById('select-compra-prov');
+    selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
+    proveedores.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.num;
+        opt.innerText = `${p.num} - ${p.nombre}`;
+        selectProv.appendChild(opt);
+    });
+
+    // Cargar Requisitos desde la Pestaña 1
+    const selectReq = document.getElementById('select-compra-req');
+    selectReq.innerHTML = '<option value="">-- Seleccione Requisito --</option>';
+    requisitos.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.num;
+        opt.innerText = `${r.num} - ${r.nombre}`;
+        selectReq.appendChild(opt);
+    });
+}
+
+function iniciarCompra(e) {
+    e.preventDefault();
+
+    const provNum = document.getElementById('select-compra-prov').value;
+    const reqNum = document.getElementById('select-compra-req').value;
+    const cantidad = document.getElementById('compra-cantidad').value;
+    const fechaReq = document.getElementById('compra-fecha-req').value;
+    const observaciones = document.getElementById('compra-observaciones').value.trim();
+
+    const provObj = proveedores.find(p => p.num === provNum);
+    const reqObj = requisitos.find(r => r.num === reqNum);
+
+    const nuevaOrden = {
+        idOrden: `OC-${contadorOrdenes++}`,
+        provNum,
+        provNombre: provObj ? provObj.nombre : provNum,
+        reqNum,
+        reqNombre: reqObj ? reqObj.nombre : reqNum,
+        reqDetalle: reqObj ? reqObj.detalle : '',
+        cantidad,
+        fechaReq,
+        observaciones,
+        estado: 'Pendiente'
+    };
+
+    ordenesCompra.push(nuevaOrden);
+    renderizarTablaCompras();
+    generarPDFOrden(nuevaOrden);
+
+    document.getElementById('form-compras').reset();
+}
+
+function renderizarTablaCompras() {
+    const tbody = document.getElementById('tabla-compras-body');
+    tbody.innerHTML = '';
+
+    ordenesCompra.forEach(oc => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${oc.idOrden}</strong></td>
+            <td>${oc.provNombre}</td>
+            <td>${oc.reqNombre}</td>
+            <td>${oc.cantidad}</td>
+            <td>${oc.fechaReq}</td>
+            <td><span class="status-badge-pending">${oc.estado}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function generarPDFOrden(orden) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(216, 27, 96);
+    doc.text("ORDEN DE COMPRA", 105, 20, null, null, "center");
+
+    doc.setFontSize(12);
+    doc.setTextColor(51, 51, 51);
+    doc.text(`N° Orden: ${orden.idOrden}`, 20, 40);
+    doc.text(`Fecha Emisión: ${new Date().toLocaleDateString()}`, 20, 48);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("DATOS DEL PROVEEDOR:", 20, 62);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Proveedor: ${orden.provNombre} (${orden.provNum})`, 20, 70);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("DETALLE DEL PEDIDO:", 20, 85);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, 93);
+    doc.text(`Cantidad Solicitada: ${orden.cantidad}`, 20, 101);
+    doc.text(`Fecha Requerida de Entrega: ${orden.fechaReq}`, 20, 109);
+
+    if (orden.reqDetalle) {
+        doc.text(`Especificaciones Técnicas: ${orden.reqDetalle}`, 20, 117);
+    }
+
+    if (orden.observaciones) {
+        doc.text(`Observaciones: ${orden.observaciones}`, 20, 127);
+    }
+
+    doc.setDrawColor(216, 27, 96);
+    doc.line(20, 140, 190, 140);
+
+    doc.setFontSize(10);
+    doc.text("Favor de confirmar la recepción de la presente orden de compra.", 105, 150, null, null, "center");
+
+    doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
 }
