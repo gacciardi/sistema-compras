@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="css/styles.css">
     <!-- Librería jsPDF para generación de PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Librería Chart.js para gráficos de evolución -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <header class="top-bar">
@@ -180,16 +182,28 @@
                 <label>Versión:</label>
                 <input type="text" class="version-input" placeholder="v1.0">
             </div>
-            <h2>3. Estadísticas y Calificación</h2>
+            <h2>3. Estadísticas y Calificación Anual</h2>
 
             <div class="card-form">
-                <h3>Calcular / Editar Clasificación de Proveedor</h3>
+                <h3>Calcular / Editar Clasificación Anual de Proveedor</h3>
                 <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
-                    <div class="form-group">
-                        <label for="select-prov-estadistica">Seleccionar Proveedor:</label>
-                        <select id="select-prov-estadistica" required class="form-select" onchange="cargarCalificacionExistente()">
-                            <option value="">-- Seleccione un Proveedor --</option>
-                        </select>
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="select-prov-estadistica">Seleccionar Proveedor:</label>
+                            <select id="select-prov-estadistica" required class="form-select" onchange="cargarCalificacionExistente()">
+                                <option value="">-- Seleccione un Proveedor --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="max-width: 180px;">
+                            <label for="select-anio-estadistica">Año de Evaluación:</label>
+                            <select id="select-anio-estadistica" required class="form-select" onchange="cargarCalificacionExistente()">
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                                <option value="2022">2022</option>
+                            </select>
+                        </div>
                     </div>
 
                     <h4 style="color: #880e4f; margin-top: 15px;">Nombres y Puntajes por Criterio (0 a 100)</h4>
@@ -226,7 +240,7 @@
 
                     <div class="resultado-box">
                         <div class="res-item">
-                            <span>Promedio Total:</span>
+                            <span>Promedio Anual:</span>
                             <strong id="stat-promedio">0 pts</strong>
                         </div>
                         <div class="res-item">
@@ -235,15 +249,33 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Calificación</button>
+                    <div style="display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap;">
+                        <button type="submit" class="btn-primary">💾 Guardar Calificación</button>
+                        <button type="button" class="btn-info" onclick="abrirModalPerformance()">📊 Índice de Performance y Evolución</button>
+                    </div>
                 </form>
             </div>
 
             <div class="table-container">
-                <h3>Historial de Clasificaciones</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                    <h3>Historial de Clasificaciones Anuales</h3>
+                    <div>
+                        <label style="font-weight: bold; color: #880e4f; margin-right: 5px;">Filtrar por Año:</label>
+                        <select id="filtro-tabla-anio" class="form-select" style="width: auto; display: inline-block;" onchange="renderizarTablaEstadisticas()">
+                            <option value="TODOS">-- Todos los Años --</option>
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                        </select>
+                    </div>
+                </div>
+
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>Año</th>
                             <th>N° Prov.</th>
                             <th>Nombre Proveedor</th>
                             <th>Puntaje Promedio</th>
@@ -477,6 +509,55 @@
             </div>
         </section>
     </main>
+
+    <!-- Modal Índice de Performance y Evolución Multianual -->
+    <div id="modal-performance" class="modal-overlay">
+        <div class="modal-card" style="max-width: 750px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin:0; color: #0288d1;">📊 Índice de Performance y Evolución Temporal</h3>
+                <button class="btn-danger" onclick="cerrarModalPerformance()" style="padding: 4px 10px;">✕ Cerrar</button>
+            </div>
+
+            <div id="perf-contenido">
+                <div class="performance-summary">
+                    <div>
+                        <span style="font-size: 0.9em; color: #555;">Proveedor:</span><br>
+                        <strong id="perf-prov-nombre" style="font-size: 1.2em; color: #0288d1;">-</strong>
+                    </div>
+                    <div style="text-align: center;">
+                        <span style="font-size: 0.9em; color: #555;">Índice de Performance Histórico:</span><br>
+                        <strong id="perf-indice-valor" style="font-size: 1.5em; color: #2e7d32;">0 pts</strong>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 0.9em; color: #555;">Tendencia:</span><br>
+                        <span id="perf-tendencia-badge" class="clase-badge badge-b">Estable</span>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 15px; color: #333;">Gráfico de Evolución Multianual (0 - 100 pts)</h4>
+                <div style="position: relative; height: 230px; width: 100%; margin-bottom: 20px;">
+                    <canvas id="chartEvolucion"></canvas>
+                </div>
+
+                <h4>Histórico de Calificaciones Evaluadas</h4>
+                <div class="table-container" style="max-height: 180px; overflow-y: auto;">
+                    <table class="data-table" style="font-size: 0.85em;">
+                        <thead>
+                            <tr>
+                                <th>Año</th>
+                                <th>Puntaje Promedio</th>
+                                <th>Clase</th>
+                                <th>Evaluación / Observaciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-perf-historico-body">
+                            <!-- Se poblará dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de Administrador Master -->
     <div id="modal-master" class="modal-overlay">

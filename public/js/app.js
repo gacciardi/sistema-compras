@@ -200,7 +200,7 @@ function eliminarProveedor(num) {
 }
 
 
-// --- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN ---
+// --- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN MULTIANUAL ---
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
     "Calidad General",
@@ -210,6 +210,7 @@ let nombresCriteriosEstadisticas = [
     "Garantías y Cambios",
     "Condiciones de Pago"
 ];
+let chartEvolucionInstance = null;
 
 function guardarNombresCriteriosEstadisticas() {
     for (let i = 1; i <= 6; i++) {
@@ -238,11 +239,14 @@ function actualizarSelectProveedoresEstadisticas() {
     });
 
     cargarNombresCriteriosEstadisticas();
+    renderizarTablaEstadisticas();
 }
 
 function cargarCalificacionExistente() {
     const provNum = document.getElementById('select-prov-estadistica').value;
-    const registro = estadisticas.find(e => e.provNum === provNum);
+    const anio = document.getElementById('select-anio-estadistica').value;
+    
+    const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro && registro.puntajes) {
         for (let i = 1; i <= 6; i++) {
@@ -299,7 +303,8 @@ function calcularEstadistica(e) {
     e.preventDefault();
 
     const provNum = document.getElementById('select-prov-estadistica').value;
-    if (!provNum) return;
+    const anio = document.getElementById('select-anio-estadistica').value;
+    if (!provNum || !anio) return;
 
     guardarNombresCriteriosEstadisticas();
 
@@ -311,10 +316,11 @@ function calcularEstadistica(e) {
         puntajes.push(parseFloat(document.getElementById(`stat-val-${i}`).value) || 0);
     }
 
-    const index = estadisticas.findIndex(e => e.provNum === provNum);
+    const index = estadisticas.findIndex(e => e.provNum === provNum && e.anio === anio);
     const registro = {
         provNum,
         provNombre: proveedor ? proveedor.nombre : 'Desconocido',
+        anio,
         promedio,
         clase,
         claseCSS,
@@ -328,6 +334,7 @@ function calcularEstadistica(e) {
     }
 
     document.getElementById('form-estadisticas').reset();
+    document.getElementById('select-anio-estadistica').value = "2026";
     cargarNombresCriteriosEstadisticas();
     document.getElementById('stat-promedio').innerText = '0 pts';
     document.getElementById('stat-clase').innerText = 'Clase D';
@@ -338,33 +345,141 @@ function calcularEstadistica(e) {
 
 function renderizarTablaEstadisticas() {
     const tbody = document.getElementById('tabla-estadisticas-body');
+    const filtroAnio = document.getElementById('filtro-tabla-anio').value;
     tbody.innerHTML = '';
 
-    estadisticas.forEach((s) => {
+    let lista = estadisticas;
+    if (filtroAnio !== 'TODOS') {
+        lista = estadisticas.filter(s => s.anio === filtroAnio);
+    }
+
+    lista.sort((a, b) => b.anio.localeCompare(a.anio));
+
+    lista.forEach((s) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${s.provNum}</strong></td>
+            <td><strong>${s.anio}</strong></td>
+            <td>${s.provNum}</td>
             <td>${s.provNombre}</td>
             <td>${s.promedio} pts</td>
             <td><span class="clase-badge ${s.claseCSS}">${s.clase}</span></td>
             <td>
-                <button class="btn-warning" onclick="editarEstadistica('${s.provNum}')">Editar</button>
-                <button class="btn-danger" onclick="eliminarEstadistica('${s.provNum}')">Eliminar</button>
+                <button class="btn-warning" onclick="editarEstadistica('${s.provNum}', '${s.anio}')">Editar</button>
+                <button class="btn-danger" onclick="eliminarEstadistica('${s.provNum}', '${s.anio}')">Eliminar</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function editarEstadistica(provNum) {
+function editarEstadistica(provNum, anio) {
     document.getElementById('select-prov-estadistica').value = provNum;
+    document.getElementById('select-anio-estadistica').value = anio;
     cargarCalificacionExistente();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function eliminarEstadistica(provNum) {
-    estadisticas = estadisticas.filter(s => s.provNum !== provNum);
+function eliminarEstadistica(provNum, anio) {
+    estadisticas = estadisticas.filter(s => !(s.provNum === provNum && s.anio === anio));
     renderizarTablaEstadisticas();
+}
+
+// --- MODAL DE ÍNDICE DE PERFORMANCE Y GRÁFICO DE EVOLUCIÓN ---
+function abrirModalPerformance() {
+    const provNum = document.getElementById('select-prov-estadistica').value;
+    if (!provNum) {
+        alert("Por favor, selecciona un proveedor para ver su Índice de Performance.");
+        return;
+    }
+
+    const proveedor = proveedores.find(p => p.num === provNum);
+    const registros = estadisticas.filter(e => e.provNum === provNum).sort((a,b) => a.anio.localeCompare(b.anio));
+
+    if (registros.length === 0) {
+        alert("El proveedor seleccionado aún no posee evaluaciones guardadas.");
+        return;
+    }
+
+    document.getElementById('modal-performance').style.display = 'flex';
+    document.getElementById('perf-prov-nombre').innerText = `${proveedor ? proveedor.nombre : provNum} (${provNum})`;
+
+    // Calcular promedio acumulado (Índice de Performance)
+    const sumaTotal = registros.reduce((acc, curr) => acc + curr.promedio, 0);
+    const promedioPerformance = Math.round(sumaTotal / registros.length);
+    document.getElementById('perf-indice-valor').innerText = `${promedioPerformance} pts`;
+
+    // Tendencia
+    const badgeTend = document.getElementById('perf-tendencia-badge');
+    if (registros.length >= 2) {
+        const ult = registros[registros.length - 1].promedio;
+        const penult = registros[registros.length - 2].promedio;
+        if (ult > penult) {
+            badgeTend.innerText = "↗ Mejorando";
+            badgeTend.className = "clase-badge badge-a";
+        } else if (ult < penult) {
+            badgeTend.innerText = "↘ En Descenso";
+            badgeTend.className = "clase-badge badge-d";
+        } else {
+            badgeTend.innerText = "➡️ Estable";
+            badgeTend.className = "clase-badge badge-b";
+        }
+    } else {
+        badgeTend.innerText = "Sin histórico previo";
+        badgeTend.className = "clase-badge badge-b";
+    }
+
+    // Llenar tabla histórica
+    const tbody = document.getElementById('tabla-perf-historico-body');
+    tbody.innerHTML = '';
+    registros.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${r.anio}</strong></td>
+            <td>${r.promedio} pts</td>
+            <td><span class="clase-badge ${r.claseCSS}">${r.clase}</span></td>
+            <td>Promedio acumulado de 6 criterios evaluados</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Renderizar gráfico de Chart.js
+    const ctx = document.getElementById('chartEvolucion').getContext('2d');
+    if (chartEvolucionInstance) {
+        chartEvolucionInstance.destroy();
+    }
+
+    chartEvolucionInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: registros.map(r => r.anio),
+            datasets: [{
+                label: 'Puntaje de Evaluación (0 - 100 pts)',
+                data: registros.map(r => r.promedio),
+                borderColor: '#0288d1',
+                backgroundColor: 'rgba(2, 136, 209, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#d81b60',
+                pointRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: { stepSize: 20 }
+                }
+            }
+        }
+    });
+}
+
+function cerrarModalPerformance() {
+    document.getElementById('modal-performance').style.display = 'none';
 }
 
 

@@ -241,6 +241,17 @@ body {
     font-weight: bold;
 }
 
+/* Performance Box */
+.performance-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #e1f5fe;
+    border-left: 5px solid #0288d1;
+    padding: 15px;
+    border-radius: 6px;
+}
+
 /* Botones */
 .btn-primary {
     background-color: var(--primary-color);
@@ -256,6 +267,22 @@ body {
 .btn-primary:hover {
     background-color: var(--hover-color);
     box-shadow: 0 0 8px rgba(255, 64, 129, 0.7);
+}
+
+.btn-info {
+    background-color: #0288d1;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-info:hover {
+    background-color: #039be5;
+    box-shadow: 0 0 8px rgba(3, 155, 229, 0.7);
 }
 
 .btn-danger {
