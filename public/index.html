@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Compras</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Librería jsPDF para generación de PDF sin servidor -->
+    <!-- Librería jsPDF para generación de PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <header class="top-bar">
         <div class="logo-container">
             <img src="logo.png" alt="Logo Empresa" id="app-logo">
-            <h1>Sistema de Compras</h1>
+            <h1 id="app-title">Sistema de Compras</h1>
         </div>
-        <button id="btn-master-login" class="btn-master">Acceso Master</button>
+        <button id="btn-master-login" class="btn-master" onclick="abrirModalMaster()">Acceso Master</button>
     </header>
 
     <nav class="nav-tabs">
@@ -344,7 +344,6 @@
                         </select>
                     </div>
 
-                    <!-- 6 Campos editables de control de calidad/recepción -->
                     <h4 style="color: #880e4f; margin-top: 15px;">Detalles y Control de Recepción (6 Campos)</h4>
                     <div class="form-group-row">
                         <div class="form-group">
@@ -417,15 +416,100 @@
             </div>
         </section>
 
-        <!-- Pestaña 6 -->
+        <!-- Pestaña 6: Gestión de Usuarios -->
         <section id="tab-usuarios" class="tab-content">
             <div class="version-box">
                 <label>Versión:</label>
                 <input type="text" class="version-input" placeholder="v1.0">
             </div>
-            <h2>6. Gestión de Usuarios</h2>
+            <h2>6. Gestión de Usuarios y Permisos</h2>
+
+            <div class="card-form">
+                <h3>ABM de Usuarios por Sector</h3>
+                <form id="form-usuarios" onsubmit="guardarUsuario(event)">
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="usr-nombre">Nombre de Usuario:</label>
+                            <input type="text" id="usr-nombre" required placeholder="Ej: jperez">
+                        </div>
+                        <div class="form-group">
+                            <label for="usr-pass">Contraseña:</label>
+                            <input type="password" id="usr-pass" required placeholder="********">
+                        </div>
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="usr-sector">Sector Asignado:</label>
+                            <select id="usr-sector" required class="form-select">
+                                <option value="Compras">Sector Compras</option>
+                                <option value="Recepcion">Sector Recepción</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="usr-estado">Estado del Usuario:</label>
+                            <select id="usr-estado" class="form-select">
+                                <option value="Activo">Activo</option>
+                                <option value="Inactivo">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Registrar Usuario</button>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <h3>Usuarios Registrados</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Sector</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-usuarios-body">
+                        <!-- Se poblará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
         </section>
     </main>
+
+    <!-- Modal de Administrador Master -->
+    <div id="modal-master" class="modal-overlay">
+        <div class="modal-card">
+            <h3>🔑 Panel Administrador Master (Programador)</h3>
+            
+            <div id="master-auth">
+                <div class="form-group">
+                    <label>Usuario Master:</label>
+                    <input type="text" id="master-user" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña Master:</label>
+                    <input type="password" id="master-pass" placeholder="1234">
+                </div>
+                <button class="btn-primary" onclick="autenticarMaster()">Ingresar</button>
+                <button class="btn-danger" onclick="cerrarModalMaster()">Cancelar</button>
+            </div>
+
+            <div id="master-panel" style="display: none;">
+                <h4>Configuración Visual y Personalización</h4>
+                <div class="form-group">
+                    <label>Color de Fondo del Sistema:</label>
+                    <input type="color" id="master-color-bg" value="#fce4ec" onchange="cambiarColorBg(this.value)">
+                </div>
+                <div class="form-group">
+                    <label>URL / Archivo de Logo:</label>
+                    <input type="text" id="master-logo-url" placeholder="logo.png" onchange="cambiarLogo(this.value)">
+                </div>
+                <button class="btn-primary" onclick="cerrarModalMaster()">Guardar y Salir</button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/app.js"></script>
 </body>

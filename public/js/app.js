@@ -457,3 +457,81 @@ function renderizarTablaRecepciones() {
         tbody.appendChild(tr);
     });
 }
+
+
+// --- PESTAÑA 6: GESTIÓN DE USUARIOS ---
+let usuarios = [];
+
+function guardarUsuario(e) {
+    e.preventDefault();
+
+    const nombre = document.getElementById('usr-nombre').value.trim();
+    const pass = document.getElementById('usr-pass').value;
+    const sector = document.getElementById('usr-sector').value;
+    const estado = document.getElementById('usr-estado').value;
+
+    const index = usuarios.findIndex(u => u.nombre === nombre);
+    if (index !== -1) {
+        usuarios[index] = { nombre, pass, sector, estado };
+    } else {
+        usuarios.push({ nombre, pass, sector, estado });
+    }
+
+    document.getElementById('form-usuarios').reset();
+    renderizarTablaUsuarios();
+}
+
+function renderizarTablaUsuarios() {
+    const tbody = document.getElementById('tabla-usuarios-body');
+    tbody.innerHTML = '';
+
+    usuarios.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${u.nombre}</strong></td>
+            <td>${u.sector}</td>
+            <td>${u.estado}</td>
+            <td>
+                <button class="btn-danger" onclick="eliminarUsuario('${u.nombre}')">Eliminar</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function eliminarUsuario(nombre) {
+    usuarios = usuarios.filter(u => u.nombre !== nombre);
+    renderizarTablaUsuarios();
+}
+
+
+// --- MODAL DE ADMINISTRADOR MASTER ---
+function abrirModalMaster() {
+    document.getElementById('modal-master').style.display = 'flex';
+}
+
+function cerrarModalMaster() {
+    document.getElementById('modal-master').style.display = 'none';
+}
+
+function autenticarMaster() {
+    const usr = document.getElementById('master-user').value;
+    const pass = document.getElementById('master-pass').value;
+
+    if (usr === 'admin' && pass === '1234') {
+        document.getElementById('master-auth').style.display = 'none';
+        document.getElementById('master-panel').style.display = 'block';
+    } else {
+        alert('Credenciales de Administrador Master incorrectas.');
+    }
+}
+
+function cambiarColorBg(color) {
+    document.documentElement.style.setProperty('--bg-primary', color);
+}
+
+function cambiarLogo(url) {
+    if (url) {
+        document.getElementById('app-logo').src = url;
+    }
+}
