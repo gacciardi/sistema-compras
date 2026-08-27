@@ -6,13 +6,11 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Configuración de PostgreSQL
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Crear tablas en la Base de Datos
 async function initDB() {
     if (!process.env.DATABASE_URL) return;
     try {
@@ -91,7 +89,6 @@ async function initDB() {
             );
         `);
 
-        // Migración automática de columnas
         await pool.query(`
             ALTER TABLE requisitos ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
             ALTER TABLE proveedores ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
@@ -107,12 +104,9 @@ async function initDB() {
 
 initDB();
 
-// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// --- API ENDPOINTS ---
 
 app.get('/api/configuraciones', async (req, res) => {
     try {

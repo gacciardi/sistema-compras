@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor();
 
     const formUsuarios = document.getElementById('form-usuarios');
@@ -11,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 5000);
 });
 
-// Navegación entre pestañas
 function showTab(tabId) {
     const sections = document.querySelectorAll('.tab-content');
     sections.forEach(section => section.classList.remove('active'));
@@ -45,23 +45,44 @@ function showTab(tabId) {
     }
 }
 
-// Carga los valores más recientes guardados en la BD a los campos de Formulario
+function restaurarNumerosFormularioMemoria() {
+    const valReq = localStorage.getItem('num_form_req');
+    const valProv = localStorage.getItem('num_form_prov');
+    const valStat = localStorage.getItem('num_form_stat');
+    const valComp = localStorage.getItem('num_form_comp');
+    const valRec = localStorage.getItem('num_form_rec');
+
+    if (valReq && document.getElementById('num-formulario-req')) document.getElementById('num-formulario-req').value = valReq;
+    if (valProv && document.getElementById('num-formulario-prov')) document.getElementById('num-formulario-prov').value = valProv;
+    if (valStat && document.getElementById('num-formulario')) document.getElementById('num-formulario').value = valStat;
+    if (valComp && document.getElementById('num-formulario-comp')) document.getElementById('num-formulario-comp').value = valComp;
+    if (valRec && document.getElementById('num-formulario-rec')) document.getElementById('num-formulario-rec').value = valRec;
+}
+
 function autocompletarNumerosFormularioDesdeBD() {
     if (requisitos.length > 0) {
         const ultReq = requisitos[requisitos.length - 1];
-        if (ultReq.numFormulario) document.getElementById('num-formulario-req').value = ultReq.numFormulario;
+        if (ultReq.numFormulario && !document.getElementById('num-formulario-req').value) {
+            document.getElementById('num-formulario-req').value = ultReq.numFormulario;
+        }
     }
     if (proveedores.length > 0) {
         const ultProv = proveedores[proveedores.length - 1];
-        if (ultProv.numFormulario) document.getElementById('num-formulario-prov').value = ultProv.numFormulario;
+        if (ultProv.numFormulario && !document.getElementById('num-formulario-prov').value) {
+            document.getElementById('num-formulario-prov').value = ultProv.numFormulario;
+        }
     }
     if (ordenesCompra.length > 0) {
         const ultComp = ordenesCompra[ordenesCompra.length - 1];
-        if (ultComp.numFormulario) document.getElementById('num-formulario-comp').value = ultComp.numFormulario;
+        if (ultComp.numFormulario && !document.getElementById('num-formulario-comp').value) {
+            document.getElementById('num-formulario-comp').value = ultComp.numFormulario;
+        }
     }
     if (recepciones.length > 0) {
         const ultRec = recepciones[recepciones.length - 1];
-        if (ultRec.numFormulario) document.getElementById('num-formulario-rec').value = ultRec.numFormulario;
+        if (ultRec.numFormulario && !document.getElementById('num-formulario-rec').value) {
+            document.getElementById('num-formulario-rec').value = ultRec.numFormulario;
+        }
     }
 }
 
@@ -105,6 +126,7 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             renderizarTablaRecepciones();
             renderizarTablaUsuarios();
 
+            restaurarNumerosFormularioMemoria();
             autocompletarNumerosFormularioDesdeBD();
         }
     } catch (e) {
@@ -112,7 +134,7 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
     }
 }
 
-// --- PESTAÑA 1: REQUISITOS TÉCNICOS ---
+// --- PESTAÑA 1 ---
 let requisitos = [];
 
 async function guardarRequisito(e) {
@@ -123,6 +145,8 @@ async function guardarRequisito(e) {
     const fecha = document.getElementById('fecha-requisito')?.value || new Date().toISOString().split('T')[0];
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
+    localStorage.setItem('num_form_req', numFormulario);
+
     await fetch('/api/requisitos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,6 +154,7 @@ async function guardarRequisito(e) {
     });
 
     document.getElementById('form-requisito').reset();
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -161,13 +186,13 @@ async function eliminarRequisito(num) {
 }
 
 
-// --- PESTAÑA 2: SELECCIÓN DE PROVEEDORES ---
+// --- PESTAÑA 2 ---
 let proveedores = [];
 let nombresCriteriosProveedores = [
     "Cumplimiento de Entrega",
-    "Plazo de Entrega",
-    "Condicion de Pago",
     "Calidad Insumos/Servicios",
+    "Condicion de Pago",
+    "Plazo de Entrega",
     "Atencion",
     "Respuesta a Reclamos"
 ];
@@ -202,6 +227,8 @@ async function guardarProveedor(e) {
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
 
+    localStorage.setItem('num_form_prov', numFormulario);
+
     const criterios = [];
     for (let i = 1; i <= 6; i++) {
         criterios.push({
@@ -217,6 +244,7 @@ async function guardarProveedor(e) {
     });
 
     document.getElementById('form-proveedor').reset();
+    restaurarNumerosFormularioMemoria();
     cargarNombresCriteriosProveedores();
     await cargarTodoDesdeServidor(true);
 }
@@ -268,13 +296,13 @@ async function eliminarProveedor(num) {
 }
 
 
-// --- PESTAÑA 3: EVALUACIÓN Y ESTADÍSTICAS ---
+// --- PESTAÑA 3 ---
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
     "Cumplimiento de Entrega",
-    "Plazo de Entrega (Auto)",
-    "Condicion de Pago",
     "Calidad Insumos/Servicios",
+    "Condicion de Pago",
+    "Plazo de Entrega (Auto)",
     "Atencion",
     "Respuesta a Reclamos"
 ];
@@ -377,7 +405,7 @@ function cargarCalificacionExistente() {
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro) {
-        document.getElementById('num-formulario').value = registro.numFormulario || 'FOR-CAL-002';
+        document.getElementById('num-formulario').value = registro.numFormulario || localStorage.getItem('num_form_stat') || 'FOR-CAL-002';
 
         if (registro.fechaEval) {
             document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
@@ -392,7 +420,7 @@ function cargarCalificacionExistente() {
             calcularPuntajeClase();
         }
     } else {
-        document.getElementById('num-formulario').value = 'FOR-CAL-002';
+        restaurarNumerosFormularioMemoria();
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
@@ -401,10 +429,9 @@ function cargarCalificacionExistente() {
             document.getElementById(`stat-val-${i}`).value = '';
         }
 
-        // Asignación al Campo 2: Plazo de Entrega (Auto)
         const puntajeAuto = calcularPuntajeTiemposReales(provNum);
         if (puntajeAuto !== null) {
-            document.getElementById('stat-val-2').value = puntajeAuto;
+            document.getElementById('stat-val-4').value = puntajeAuto;
         }
 
         calcularPuntajeClase();
@@ -457,6 +484,7 @@ async function calcularEstadistica(e) {
     await guardarNombresCriteriosEstadisticas();
 
     const numFormulario = document.getElementById('num-formulario').value.trim();
+    localStorage.setItem('num_form_stat', numFormulario);
 
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
@@ -492,6 +520,7 @@ async function calcularEstadistica(e) {
     });
 
     document.getElementById('form-estadisticas').reset();
+    restaurarNumerosFormularioMemoria();
     document.getElementById('select-anio-estadistica').value = "2026";
     document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
     cargarNombresCriteriosEstadisticas();
@@ -546,7 +575,7 @@ function editarEstadistica(provNum, anio) {
 }
 
 
-// --- MODAL DE ÍNDICE DE PERFORMANCE ---
+// --- MODAL PERFORMANCE ---
 function abrirModalPerformance() {
     const provNum = document.getElementById('select-prov-estadistica').value;
     if (!provNum) {
@@ -637,7 +666,7 @@ function cerrarModalPerformance() {
 }
 
 
-// --- PESTAÑA 4: COMPRAS Y EMISIÓN DE PDF ---
+// --- PESTAÑA 4 ---
 let ordenesCompra = [];
 
 function actualizarSelectsCompras() {
@@ -672,6 +701,8 @@ async function iniciarCompra(e) {
     const fechaEmision = document.getElementById('compra-fecha-emision')?.value || new Date().toISOString().split('T')[0];
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
+
+    localStorage.setItem('num_form_comp', numFormulario);
 
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
@@ -710,6 +741,7 @@ async function iniciarCompra(e) {
 
     generarPDFOrden(nuevaOrden);
     document.getElementById('form-compras').reset();
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -783,7 +815,7 @@ function generarPDFOrden(orden) {
 }
 
 
-// --- PESTAÑA 5: RECEPCIÓN DE MERCADERÍA ---
+// --- PESTAÑA 5 ---
 let recepciones = [];
 
 function actualizarSelectOrdenesPendientes() {
@@ -824,6 +856,8 @@ async function guardarRecepcion(e) {
     const obs = document.getElementById('rec-campo-6').value.trim();
     const fechaRecepcion = document.getElementById('rec-fecha')?.value || new Date().toISOString().split('T')[0];
 
+    localStorage.setItem('num_form_rec', numFormulario);
+
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
     const nuevaRec = {
@@ -846,6 +880,7 @@ async function guardarRecepcion(e) {
     });
 
     document.getElementById('form-recepcion').reset();
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
     actualizarSelectOrdenesPendientes();
 }
@@ -874,7 +909,7 @@ function renderizarTablaRecepciones() {
 }
 
 
-// --- PESTAÑA 6: GESTIÓN DE USUARIOS ---
+// --- PESTAÑA 6 ---
 let usuarios = [];
 
 async function guardarUsuario(e) {
@@ -951,7 +986,7 @@ async function eliminarUsuario(nombre) {
 }
 
 
-// --- MODAL Y CONFIGURACIÓN PERSISTENTE ---
+// --- MODAL Y CONFIGURACIÓN ---
 function abrirModalMaster() {
     document.getElementById('modal-master').style.display = 'flex';
 }
