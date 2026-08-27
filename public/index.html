@@ -103,11 +103,11 @@
                     <h4 style="margin-top: 20px;">Criterios de Selección (Editable para todos los usuarios)</h4>
                     <div class="form-grid-6">
                         <div class="form-group">
-                            <input type="text" id="crit-nombre-1" class="input-editable-label" value="Calidad de Entrega">
+                            <input type="text" id="crit-nombre-1" class="input-editable-label" value="Calidad de Insumos/Servicios">
                             <input type="number" id="crit-cant-1" min="0" max="100" placeholder="0-100">
                         </div>
                         <div class="form-group">
-                            <input type="text" id="crit-nombre-2" class="input-editable-label" value="Tiempo de Respuesta">
+                            <input type="text" id="crit-nombre-2" class="input-editable-label" value="Plazo de Entrega">
                             <input type="number" id="crit-cant-2" min="0" max="100" placeholder="0-100">
                         </div>
                         <div class="form-group">
@@ -160,10 +160,6 @@
                         <div class="form-group">
                             <label for="num-formulario">N° de Formulario *</label>
                             <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="version-formulario">Versión *</label>
-                            <input type="text" id="version-formulario" placeholder="Ej: V2" required>
                         </div>
                     </div>
 
@@ -219,28 +215,28 @@
                     <h4 style="margin-top: 20px;">Criterios de Calificación Anual (Puntajes de 0 a 100)</h4>
                     <div class="form-grid-6">
                         <div class="form-group">
-                            <input type="text" id="lbl-stat-1" class="input-editable-label" value="Calidad General">
-                            <input type="number" id="stat-val-1" min="0" max="100" oninput="calcularPuntajeClase()">
+                            <input type="text" id="lbl-stat-1" class="input-editable-label" value="Calidad de Insumos/Servicios">
+                            <input type="number" id="stat-val-1" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
                         </div>
                         <div class="form-group">
-                            <input type="text" id="lbl-stat-2" class="input-editable-label" value="Tiempos de Entrega (Auto)">
-                            <input type="number" id="stat-val-2" min="0" max="100" oninput="calcularPuntajeClase()">
+                            <input type="text" id="lbl-stat-2" class="input-editable-label" value="Plazo de Entrega (Auto)">
+                            <input type="number" id="stat-val-2" min="0" max="100" placeholder="Calculado auto" readonly class="input-readonly">
                         </div>
                         <div class="form-group">
                             <input type="text" id="lbl-stat-3" class="input-editable-label" value="Precios competitivos">
-                            <input type="number" id="stat-val-3" min="0" max="100" oninput="calcularPuntajeClase()">
+                            <input type="number" id="stat-val-3" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
                         </div>
                         <div class="form-group">
                             <input type="text" id="lbl-stat-4" class="input-editable-label" value="Atención al Cliente">
-                            <input type="number" id="stat-val-4" min="0" max="100" oninput="calcularPuntajeClase()">
+                            <input type="number" id="stat-val-4" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
                         </div>
                         <div class="form-group">
                             <input type="text" id="lbl-stat-5" class="input-editable-label" value="Garantías y Cambios">
-                            <input type="number" id="stat-val-5" min="0" max="100" oninput="calcularPuntajeClase()">
+                            <input type="number" id="stat-val-5" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
                         </div>
                         <div class="form-group">
                             <input type="text" id="lbl-stat-6" class="input-editable-label" value="Condiciones de Pago">
-                            <input type="number" id="stat-val-6" min="0" max="100" oninput="calcularPuntajeClase()">
+                            <input type="number" id="stat-val-6" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
                         </div>
                     </div>
 
@@ -270,7 +266,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Form. / Ver.</th>
+                            <th>N° Formulario</th>
                             <th>Año</th>
                             <th>N° Proveedor</th>
                             <th>Nombre Proveedor</th>
@@ -385,13 +381,6 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="rec-campo-4">Cumplimiento de Tiempo</label>
-                            <select id="rec-campo-4">
-                                <option value="En Término">En Término</option>
-                                <option value="Con Demora">Con Demora</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
                             <label for="rec-campo-5">Control de Calidad Visual</label>
                             <select id="rec-campo-5">
                                 <option value="Aprobado">Aprobado</option>
@@ -421,6 +410,7 @@
                             <th>Cant. Recibida</th>
                             <th>Calidad</th>
                             <th>Fecha Recepción</th>
+                            <th>Observaciones</th>
                             <th>Estado</th>
                         </tr>
                     </thead>

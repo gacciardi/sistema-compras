@@ -457,3 +457,19 @@ th {
         text-align: center;
     }
 }
+/* ESTILO PARA CAMPOS DE SOLO LECTURA (SIN FLECHAS) */
+.input-readonly {
+    background-color: #fce4ec !important;
+    color: #880e4f !important;
+    font-weight: 700 !important;
+    border: 1.5px solid #f48fb1 !important;
+    cursor: not-allowed;
+    appearance: textfield;
+    -moz-appearance: textfield; /* Firefox */
+}
+
+.input-readonly::-webkit-outer-spin-button,
+.input-readonly::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}

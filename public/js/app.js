@@ -140,8 +140,8 @@ async function eliminarRequisito(num) {
 // --- PESTAÑA 2: SELECCIÓN DE PROVEEDORES ---
 let proveedores = [];
 let nombresCriteriosProveedores = [
-    "Calidad de Entrega",
-    "Tiempo de Respuesta",
+    "Calidad de Insumos/Servicios",
+    "Plazo de Entrega",
     "Precios y Pagos",
     "Soporte Técnico",
     "Garantía",
@@ -244,8 +244,8 @@ async function eliminarProveedor(num) {
 // --- PESTAÑA 3: EVALUACIÓN Y ESTADÍSTICAS ---
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
-    "Calidad General",
-    "Tiempos de Entrega (Auto)",
+    "Calidad de Insumos/Servicios",
+    "Plazo de Entrega (Auto)",
     "Precios competitivos",
     "Atención al Cliente",
     "Garantías y Cambios",
@@ -275,7 +275,7 @@ function calcularFechaProximaDesdeDias() {
     }
 }
 
-// LÓGICA AUTOMÁTICA: Calcular Nota de Entrega en base a fechas de Pestaña 4 y 5
+// LÓGICA AUTOMÁTICA: Calcular Nota de Plazo de Entrega en base a fechas de Pestaña 4 y 5
 function calcularPuntajeTiemposReales(provNum) {
     const provObj = proveedores.find(p => p.num === provNum);
     const nombreProv = provObj ? provObj.nombre : '';
@@ -352,7 +352,6 @@ function cargarCalificacionExistente() {
 
     if (registro) {
         document.getElementById('num-formulario').value = registro.numFormulario || '';
-        document.getElementById('version-formulario').value = registro.version || '';
 
         if (registro.fechaEval) {
             document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
@@ -368,7 +367,6 @@ function cargarCalificacionExistente() {
         }
     } else {
         document.getElementById('num-formulario').value = 'FOR-CAL-002';
-        document.getElementById('version-formulario').value = 'V1';
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
@@ -377,7 +375,7 @@ function cargarCalificacionExistente() {
             document.getElementById(`stat-val-${i}`).value = '';
         }
 
-        // Sugerir nota calculada automáticamente para Tiempos de Entrega
+        // Sugerir nota calculada automáticamente para el Criterio 2: Plazo de Entrega
         const puntajeAuto = calcularPuntajeTiemposReales(provNum);
         if (puntajeAuto !== null) {
             document.getElementById('stat-val-2').value = puntajeAuto;
@@ -433,7 +431,6 @@ async function calcularEstadistica(e) {
     await guardarNombresCriteriosEstadisticas();
 
     const numFormulario = document.getElementById('num-formulario').value.trim();
-    const version = document.getElementById('version-formulario').value.trim();
 
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
@@ -449,7 +446,7 @@ async function calcularEstadistica(e) {
 
     const registro = {
         numFormulario,
-        version,
+        version: '',
         provNum,
         provNombre: proveedor ? proveedor.nombre : 'Desconocido',
         anio,
@@ -498,7 +495,7 @@ function renderizarTablaEstadisticas() {
         const fProx = s.fechaProx ? s.fechaProx.split('T')[0] : '';
 
         tr.innerHTML = `
-            <td><strong>${s.numFormulario || ''} (${s.version || ''})</strong></td>
+            <td><strong>${s.numFormulario || ''}</strong></td>
             <td><strong>${s.anio}</strong></td>
             <td>${s.provNum}</td>
             <td>${s.provNombre}</td>
@@ -781,7 +778,7 @@ async function guardarRecepcion(e) {
     const remito = document.getElementById('rec-campo-1').value.trim();
     const cantRecibida = document.getElementById('rec-campo-2').value;
     const empaque = document.getElementById('rec-campo-3').value;
-    const tiempo = document.getElementById('rec-campo-4').value;
+    const tiempo = '';
     const calidad = document.getElementById('rec-campo-5').value;
     const obs = document.getElementById('rec-campo-6').value.trim();
     const fechaRecepcion = document.getElementById('rec-fecha')?.value || new Date().toISOString().split('T')[0];
@@ -826,6 +823,7 @@ function renderizarTablaRecepciones() {
             <td>${r.cantRecibida}</td>
             <td>${r.calidad}</td>
             <td>${fRec}</td>
+            <td>${r.obs || '-'}</td>
             <td><span class="status-badge-received">Recibido</span></td>
         `;
         tbody.appendChild(tr);
