@@ -165,9 +165,9 @@ async function eliminarRequisito(num) {
 let proveedores = [];
 let nombresCriteriosProveedores = [
     "Cumplimiento de Entrega",
-    "Calidad Insumos/Servicios",
-    "Condicion de Pago",
     "Plazo de Entrega",
+    "Condicion de Pago",
+    "Calidad Insumos/Servicios",
     "Atencion",
     "Respuesta a Reclamos"
 ];
@@ -272,9 +272,9 @@ async function eliminarProveedor(num) {
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
     "Cumplimiento de Entrega",
-    "Calidad Insumos/Servicios",
-    "Condicion de Pago",
     "Plazo de Entrega (Auto)",
+    "Condicion de Pago",
+    "Calidad Insumos/Servicios",
     "Atencion",
     "Respuesta a Reclamos"
 ];
@@ -401,10 +401,10 @@ function cargarCalificacionExistente() {
             document.getElementById(`stat-val-${i}`).value = '';
         }
 
-        // Asignación explícita al Campo 4: Plazo de Entrega (Auto)
+        // Asignación al Campo 2: Plazo de Entrega (Auto)
         const puntajeAuto = calcularPuntajeTiemposReales(provNum);
         if (puntajeAuto !== null) {
-            document.getElementById('stat-val-4').value = puntajeAuto;
+            document.getElementById('stat-val-2').value = puntajeAuto;
         }
 
         calcularPuntajeClase();
