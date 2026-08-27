@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         formUsuarios.addEventListener('submit', guardarUsuario);
     }
 
-    // Sincronización automática de fondo cada 5 segundos
     setInterval(async () => {
         await cargarTodoDesdeServidor(false);
     }, 5000);
@@ -46,7 +45,6 @@ function showTab(tabId) {
     }
 }
 
-// Cargar todo desde el Servidor / Base de Datos
 async function cargarTodoDesdeServidor(renderCompleto = true) {
     try {
         const [resReq, resProv, resStat, resComp, resRec, resUsr, resConfig] = await Promise.all([
@@ -205,7 +203,6 @@ function renderizarTablaProveedores() {
 
     proveedores.forEach((p) => {
         const tr = document.createElement('tr');
-
         tr.innerHTML = `
             <td><strong>${p.num}</strong></td>
             <td>${p.nombre}</td>
@@ -248,7 +245,7 @@ async function eliminarProveedor(num) {
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
     "Calidad General",
-    "Tiempos de Entrega",
+    "Tiempos de Entrega (Auto)",
     "Precios competitivos",
     "Atención al Cliente",
     "Garantías y Cambios",
@@ -256,7 +253,6 @@ let nombresCriteriosEstadisticas = [
 ];
 let chartEvolucionInstance = null;
 
-// Lógica de suma de días para calcular la fecha próxima exacta
 function calcularFechaProximaDesdeDias() {
     const fEvalVal = document.getElementById('fecha-evaluacion').value;
     const diasVal = parseInt(document.getElementById('dias-proxima-eval').value);
@@ -277,6 +273,38 @@ function calcularFechaProximaDesdeDias() {
         badgeFechaCalc.innerText = '-- / -- / ----';
         return '';
     }
+}
+
+// LÓGICA AUTOMÁTICA: Calcular Nota de Entrega en base a fechas de Pestaña 4 y 5
+function calcularPuntajeTiemposReales(provNum) {
+    const provObj = proveedores.find(p => p.num === provNum);
+    const nombreProv = provObj ? provObj.nombre : '';
+
+    const recepcionesProv = recepciones.filter(r => r.provNombre === nombreProv);
+    if (recepcionesProv.length === 0) return null;
+
+    let sumaPuntajes = 0;
+    let contador = 0;
+
+    recepcionesProv.forEach(rec => {
+        const orden = ordenesCompra.find(oc => oc.idOrden === rec.idOrden);
+        if (orden && orden.fechaReq && rec.fechaRecepcion) {
+            const fRequerida = new Date(orden.fechaReq.split('T')[0] + 'T00:00:00');
+            const fReal = new Date(rec.fechaRecepcion.split('T')[0] + 'T00:00:00');
+            
+            const diffDias = Math.ceil((fReal - fRequerida) / (1000 * 60 * 60 * 24));
+            
+            let puntajeEntrega = 100;
+            if (diffDias > 0 && diffDias <= 3) puntajeEntrega = 80;
+            else if (diffDias > 3 && diffDias <= 7) puntajeEntrega = 50;
+            else if (diffDias > 7) puntajeEntrega = 20;
+
+            sumaPuntajes += puntajeEntrega;
+            contador++;
+        }
+    });
+
+    return contador > 0 ? Math.round(sumaPuntajes / contador) : null;
 }
 
 async function guardarNombresCriteriosEstadisticas() {
@@ -323,6 +351,9 @@ function cargarCalificacionExistente() {
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro) {
+        document.getElementById('num-formulario').value = registro.numFormulario || '';
+        document.getElementById('version-formulario').value = registro.version || '';
+
         if (registro.fechaEval) {
             document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
         }
@@ -336,15 +367,23 @@ function cargarCalificacionExistente() {
             calcularPuntajeClase();
         }
     } else {
+        document.getElementById('num-formulario').value = 'FOR-CAL-002';
+        document.getElementById('version-formulario').value = 'V1';
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
+
         for (let i = 1; i <= 6; i++) {
             document.getElementById(`stat-val-${i}`).value = '';
         }
-        document.getElementById('stat-promedio').innerText = '0 pts';
-        document.getElementById('stat-clase').innerText = 'Clase D';
-        document.getElementById('stat-clase').className = 'clase-badge badge-d';
+
+        // Sugerir nota calculada automáticamente para Tiempos de Entrega
+        const puntajeAuto = calcularPuntajeTiemposReales(provNum);
+        if (puntajeAuto !== null) {
+            document.getElementById('stat-val-2').value = puntajeAuto;
+        }
+
+        calcularPuntajeClase();
     }
 }
 
@@ -393,6 +432,9 @@ async function calcularEstadistica(e) {
 
     await guardarNombresCriteriosEstadisticas();
 
+    const numFormulario = document.getElementById('num-formulario').value.trim();
+    const version = document.getElementById('version-formulario').value.trim();
+
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
 
@@ -406,6 +448,8 @@ async function calcularEstadistica(e) {
     }
 
     const registro = {
+        numFormulario,
+        version,
         provNum,
         provNombre: proveedor ? proveedor.nombre : 'Desconocido',
         anio,
@@ -454,6 +498,7 @@ function renderizarTablaEstadisticas() {
         const fProx = s.fechaProx ? s.fechaProx.split('T')[0] : '';
 
         tr.innerHTML = `
+            <td><strong>${s.numFormulario || ''} (${s.version || ''})</strong></td>
             <td><strong>${s.anio}</strong></td>
             <td>${s.provNum}</td>
             <td>${s.provNombre}</td>
@@ -865,7 +910,7 @@ async function eliminarUsuario(nombre) {
 }
 
 
-// --- MODAL Y CONFIGURACIÓN PERSISTENTE EN BASE DE DATOS ---
+// --- MODAL Y CONFIGURACIÓN PERSISTENTE ---
 function abrirModalMaster() {
     document.getElementById('modal-master').style.display = 'flex';
 }
