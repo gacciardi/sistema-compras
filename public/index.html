@@ -47,7 +47,7 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario-req">N° de Formulario *</label>
-                            <input type="text" id="num-formulario-req" placeholder="Ej: FOR-REQ-001" required>
+                            <input type="text" id="num-formulario-req" placeholder="Ej: FOR-REQ-001" oninput="localStorage.setItem('num_form_req', this.value)" required>
                         </div>
                     </div>
 
@@ -102,7 +102,7 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario-prov">N° de Formulario *</label>
-                            <input type="text" id="num-formulario-prov" placeholder="Ej: FOR-PROV-001" required>
+                            <input type="text" id="num-formulario-prov" placeholder="Ej: FOR-PROV-001" oninput="localStorage.setItem('num_form_prov', this.value)" required>
                         </div>
                     </div>
 
@@ -177,7 +177,7 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario">N° de Formulario *</label>
-                            <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" required>
+                            <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" oninput="localStorage.setItem('num_form_stat', this.value)" required>
                         </div>
                     </div>
 
@@ -308,7 +308,15 @@
             <h2>Gestión de Órdenes de Compra</h2>
             <div class="card">
                 <form id="form-compras" onsubmit="iniciarCompra(event)">
-                    <div class="form-grid">
+                    <!-- CONTROL DOCUMENTAL SUPERIOR -->
+                    <div class="control-documental-grid">
+                        <div class="form-group">
+                            <label for="num-formulario-comp">N° de Formulario *</label>
+                            <input type="text" id="num-formulario-comp" placeholder="Ej: FOR-OC-001" oninput="localStorage.setItem('num_form_comp', this.value)" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 15px;">
                         <div class="form-group">
                             <label for="select-compra-prov">Seleccionar Proveedor *</label>
                             <select id="select-compra-prov" required>
@@ -347,6 +355,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>N° Formulario</th>
                             <th>N° Orden</th>
                             <th>Proveedor</th>
                             <th>Requisito</th>
@@ -372,7 +381,7 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario-rec">N° de Formulario *</label>
-                            <input type="text" id="num-formulario-rec" placeholder="Ej: FOR-REC-001" required>
+                            <input type="text" id="num-formulario-rec" placeholder="Ej: FOR-REC-001" oninput="localStorage.setItem('num_form_rec', this.value)" required>
                         </div>
                     </div>
 

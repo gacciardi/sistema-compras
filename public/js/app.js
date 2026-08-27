@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor();
 
     const formUsuarios = document.getElementById('form-usuarios');
@@ -45,20 +46,19 @@ function showTab(tabId) {
     }
 }
 
-// Cargar y mantener los números de formulario almacenados
+// Cargar y mantener de forma permanente los números de formulario
 function restaurarNumerosFormularioMemoria() {
-    if (localStorage.getItem('num_form_req')) {
-        document.getElementById('num-formulario-req').value = localStorage.getItem('num_form_req');
-    }
-    if (localStorage.getItem('num_form_prov')) {
-        document.getElementById('num-formulario-prov').value = localStorage.getItem('num_form_prov');
-    }
-    if (localStorage.getItem('num_form_stat')) {
-        document.getElementById('num-formulario').value = localStorage.getItem('num_form_stat');
-    }
-    if (localStorage.getItem('num_form_rec')) {
-        document.getElementById('num-formulario-rec').value = localStorage.getItem('num_form_rec');
-    }
+    const valReq = localStorage.getItem('num_form_req');
+    const valProv = localStorage.getItem('num_form_prov');
+    const valStat = localStorage.getItem('num_form_stat');
+    const valComp = localStorage.getItem('num_form_comp');
+    const valRec = localStorage.getItem('num_form_rec');
+
+    if (valReq && document.getElementById('num-formulario-req')) document.getElementById('num-formulario-req').value = valReq;
+    if (valProv && document.getElementById('num-formulario-prov')) document.getElementById('num-formulario-prov').value = valProv;
+    if (valStat && document.getElementById('num-formulario')) document.getElementById('num-formulario').value = valStat;
+    if (valComp && document.getElementById('num-formulario-comp')) document.getElementById('num-formulario-comp').value = valComp;
+    if (valRec && document.getElementById('num-formulario-rec')) document.getElementById('num-formulario-rec').value = valRec;
 }
 
 async function cargarTodoDesdeServidor(renderCompleto = true) {
@@ -128,7 +128,7 @@ async function guardarRequisito(e) {
     });
 
     document.getElementById('form-requisito').reset();
-    document.getElementById('num-formulario-req').value = numFormulario;
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -218,7 +218,7 @@ async function guardarProveedor(e) {
     });
 
     document.getElementById('form-proveedor').reset();
-    document.getElementById('num-formulario-prov').value = numFormulario;
+    restaurarNumerosFormularioMemoria();
     cargarNombresCriteriosProveedores();
     await cargarTodoDesdeServidor(true);
 }
@@ -379,7 +379,7 @@ function cargarCalificacionExistente() {
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro) {
-        document.getElementById('num-formulario').value = registro.numFormulario || localStorage.getItem('num_form_stat') || 'FOR-CAL-002';
+        document.getElementById('num-formulario').value = registro.numFormulario || localStorage.getItem('num_form_stat') || '';
 
         if (registro.fechaEval) {
             document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
@@ -394,7 +394,7 @@ function cargarCalificacionExistente() {
             calcularPuntajeClase();
         }
     } else {
-        document.getElementById('num-formulario').value = localStorage.getItem('num_form_stat') || 'FOR-CAL-002';
+        restaurarNumerosFormularioMemoria();
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
@@ -494,7 +494,7 @@ async function calcularEstadistica(e) {
     });
 
     document.getElementById('form-estadisticas').reset();
-    document.getElementById('num-formulario').value = numFormulario;
+    restaurarNumerosFormularioMemoria();
     document.getElementById('select-anio-estadistica').value = "2026";
     document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
     cargarNombresCriteriosEstadisticas();
@@ -668,12 +668,15 @@ function actualizarSelectsCompras() {
 async function iniciarCompra(e) {
     e.preventDefault();
 
+    const numFormulario = document.getElementById('num-formulario-comp').value.trim();
     const provNum = document.getElementById('select-compra-prov').value;
     const reqNum = document.getElementById('select-compra-req').value;
     const cantidad = document.getElementById('compra-cantidad').value;
     const fechaEmision = document.getElementById('compra-fecha-emision')?.value || new Date().toISOString().split('T')[0];
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
+
+    localStorage.setItem('num_form_comp', numFormulario);
 
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
@@ -691,6 +694,7 @@ async function iniciarCompra(e) {
 
     const nuevaOrden = {
         idOrden,
+        numFormulario,
         provNum,
         provNombre: provObj ? provObj.nombre : provNum,
         reqNum,
@@ -711,6 +715,7 @@ async function iniciarCompra(e) {
 
     generarPDFOrden(nuevaOrden);
     document.getElementById('form-compras').reset();
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -726,6 +731,7 @@ function renderizarTablaCompras() {
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
         tr.innerHTML = `
+            <td><strong>${oc.numFormulario || ''}</strong></td>
             <td><strong>${oc.idOrden}</strong></td>
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
@@ -749,6 +755,7 @@ function generarPDFOrden(orden) {
 
     doc.setFontSize(12);
     doc.setTextColor(51, 51, 51);
+    doc.text(`N° Formulario: ${orden.numFormulario || ''}`, 20, 32);
     doc.text(`N° Orden: ${orden.idOrden}`, 20, 40);
     doc.text(`Fecha Emisión: ${orden.fechaEmision || new Date().toLocaleDateString()}`, 20, 48);
 
@@ -847,7 +854,7 @@ async function guardarRecepcion(e) {
     });
 
     document.getElementById('form-recepcion').reset();
-    document.getElementById('num-formulario-rec').value = numFormulario;
+    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
     actualizarSelectOrdenesPendientes();
 }
