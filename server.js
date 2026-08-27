@@ -20,6 +20,7 @@ async function initDB() {
             CREATE TABLE IF NOT EXISTS requisitos (
                 num VARCHAR(50) PRIMARY KEY,
                 nombre TEXT NOT NULL,
+                fecha DATE,
                 detalle TEXT
             );
 
@@ -52,6 +53,7 @@ async function initDB() {
                 req_nombre TEXT,
                 req_detalle TEXT,
                 cantidad INT,
+                fecha_emision DATE,
                 fecha_req DATE,
                 observaciones TEXT,
                 estado VARCHAR(20) DEFAULT 'Pendiente'
@@ -67,7 +69,7 @@ async function initDB() {
                 tiempo VARCHAR(50),
                 calidad VARCHAR(50),
                 obs TEXT,
-                fecha_recepcion TEXT
+                fecha_recepcion DATE
             );
 
             CREATE TABLE IF NOT EXISTS usuarios (
@@ -82,6 +84,13 @@ async function initDB() {
                 valor JSONB
             );
         `);
+
+        // Migración automática para agregar columnas si la tabla ya existía
+        await pool.query(`
+            ALTER TABLE requisitos ADD COLUMN IF NOT EXISTS fecha DATE;
+            ALTER TABLE compras ADD COLUMN IF NOT EXISTS fecha_emision DATE;
+        `);
+
         console.log("Base de datos conectada y tablas inicializadas correctamente.");
     } catch (err) {
         console.error("Error al inicializar la base de datos:", err);
@@ -97,7 +106,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API ENDPOINTS ---
 
-// Configuraciones globales (Títulos, Logo, Color BG)
+// Configuraciones globales
 app.get('/api/configuraciones', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM configuraciones');
@@ -128,12 +137,12 @@ app.get('/api/requisitos', async (req, res) => {
 });
 
 app.post('/api/requisitos', async (req, res) => {
-    const { num, nombre, detalle } = req.body;
+    const { num, nombre, fecha, detalle } = req.body;
     try {
         await pool.query(
-            `INSERT INTO requisitos (num, nombre, detalle) VALUES ($1, $2, $3)
-             ON CONFLICT (num) DO UPDATE SET nombre=$2, detalle=$3`,
-            [num, nombre, detalle]
+            `INSERT INTO requisitos (num, nombre, fecha, detalle) VALUES ($1, $2, $3, $4)
+             ON CONFLICT (num) DO UPDATE SET nombre=$2, fecha=$3, detalle=$4`,
+            [num, nombre, fecha, detalle]
         );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -215,6 +224,7 @@ app.get('/api/compras', async (req, res) => {
             reqNombre: r.req_nombre,
             reqDetalle: r.req_detalle,
             cantidad: r.cantidad,
+            fechaEmision: r.fecha_emision,
             fechaReq: r.fecha_req,
             observaciones: r.observaciones,
             estado: r.estado
@@ -223,13 +233,13 @@ app.get('/api/compras', async (req, res) => {
 });
 
 app.post('/api/compras', async (req, res) => {
-    const { idOrden, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaReq, observaciones, estado } = req.body;
+    const { idOrden, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado } = req.body;
     try {
         await pool.query(
-            `INSERT INTO compras (id_orden, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_req, observaciones, estado)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             ON CONFLICT (id_orden) DO UPDATE SET estado=$10`,
-            [idOrden, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaReq, observaciones, estado]
+            `INSERT INTO compras (id_orden, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, observaciones, estado)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             ON CONFLICT (id_orden) DO UPDATE SET estado=$11`,
+            [idOrden, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado]
         );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }

@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarTodoDesdeServidor();
 
-    // Event listener para el formulario de usuarios
     const formUsuarios = document.getElementById('form-usuarios');
     if (formUsuarios) {
         formUsuarios.addEventListener('submit', guardarUsuario);
@@ -100,12 +99,13 @@ async function guardarRequisito(e) {
     e.preventDefault();
     const num = document.getElementById('num-requisito').value.trim();
     const nombre = document.getElementById('nombre-requisito').value.trim();
+    const fecha = document.getElementById('fecha-requisito')?.value || new Date().toISOString().split('T')[0];
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
     await fetch('/api/requisitos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ num, nombre, detalle })
+        body: JSON.stringify({ num, nombre, fecha, detalle })
     });
 
     document.getElementById('form-requisito').reset();
@@ -119,9 +119,11 @@ function renderizarTablaRequisitos() {
 
     requisitos.forEach((req) => {
         const tr = document.createElement('tr');
+        const fReq = req.fecha ? req.fecha.split('T')[0] : '';
         tr.innerHTML = `
             <td><strong>${req.num}</strong></td>
             <td>${req.nombre}</td>
+            <td>${fReq}</td>
             <td>${req.detalle || ''}</td>
             <td>
                 <button class="btn-danger" onclick="eliminarRequisito('${req.num}')">Eliminar</button>
@@ -583,6 +585,7 @@ async function iniciarCompra(e) {
     const provNum = document.getElementById('select-compra-prov').value;
     const reqNum = document.getElementById('select-compra-req').value;
     const cantidad = document.getElementById('compra-cantidad').value;
+    const fechaEmision = document.getElementById('compra-fecha-emision')?.value || new Date().toISOString().split('T')[0];
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
 
@@ -597,6 +600,7 @@ async function iniciarCompra(e) {
         reqNombre: reqObj ? reqObj.nombre : reqNum,
         reqDetalle: reqObj ? reqObj.detalle : '',
         cantidad,
+        fechaEmision,
         fechaReq,
         observaciones,
         estado: 'Pendiente'
@@ -621,6 +625,7 @@ function renderizarTablaCompras() {
     ordenesCompra.forEach(oc => {
         const tr = document.createElement('tr');
         const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
+        const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
         tr.innerHTML = `
@@ -628,6 +633,7 @@ function renderizarTablaCompras() {
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
             <td>${oc.cantidad}</td>
+            <td>${fEmis}</td>
             <td>${fReq}</td>
             <td><span class="${badgeClass}">${oc.estado}</span></td>
         `;
@@ -647,7 +653,7 @@ function generarPDFOrden(orden) {
     doc.setFontSize(12);
     doc.setTextColor(51, 51, 51);
     doc.text(`N° Orden: ${orden.idOrden}`, 20, 40);
-    doc.text(`Fecha Emisión: ${new Date().toLocaleDateString()}`, 20, 48);
+    doc.text(`Fecha Emisión: ${orden.fechaEmision || new Date().toLocaleDateString()}`, 20, 48);
 
     doc.setFont("helvetica", "bold");
     doc.text("DATOS DEL PROVEEDOR:", 20, 62);
@@ -717,6 +723,7 @@ async function guardarRecepcion(e) {
     const tiempo = document.getElementById('rec-campo-4').value;
     const calidad = document.getElementById('rec-campo-5').value;
     const obs = document.getElementById('rec-campo-6').value.trim();
+    const fechaRecepcion = document.getElementById('rec-fecha')?.value || new Date().toISOString().split('T')[0];
 
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
@@ -729,7 +736,7 @@ async function guardarRecepcion(e) {
         tiempo,
         calidad,
         obs,
-        fechaRecepcion: new Date().toLocaleDateString()
+        fechaRecepcion
     };
 
     await fetch('/api/recepciones', {
@@ -750,13 +757,14 @@ function renderizarTablaRecepciones() {
 
     recepciones.forEach(r => {
         const tr = document.createElement('tr');
+        const fRec = r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : '';
         tr.innerHTML = `
             <td><strong>${r.idOrden}</strong></td>
             <td>${r.provNombre}</td>
             <td>${r.remito}</td>
             <td>${r.cantRecibida}</td>
             <td>${r.calidad}</td>
-            <td>${r.fechaRecepcion}</td>
+            <td>${fRec}</td>
             <td><span class="status-badge-received">Recibido</span></td>
         `;
         tbody.appendChild(tr);

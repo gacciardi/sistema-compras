@@ -3,433 +3,384 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Compras</title>
+    <title>Sistema de Gestión de Compras y Proveedores</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Librería jsPDF para generación de PDF -->
+    <!-- Librería jsPDF para generación de Órdenes de Compra en PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Librería Chart.js para gráficos de evolución -->
+    <!-- Librería Chart.js para gráficos de evaluación multianual -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header class="top-bar">
+
+    <!-- CABECERA DE LA APLICACIÓN -->
+    <header class="main-header">
         <div class="logo-container">
-            <img src="logo.jpg" alt="Logo Empresa" id="app-logo">
-            <h1 id="app-title">Sistema de Compras</h1>
+            <img id="app-logo" src="img/logo.png" alt="Logo Empresa" onerror="this.src='https://via.placeholder.com/150x50?text=LOGO'">
         </div>
-        <button id="btn-master-login" class="btn-master" onclick="abrirModalMaster()">Acceso Master</button>
+        <div class="header-title">
+            <h1>Sistema Integrado de Compras y Evaluación de Proveedores</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn-master" onclick="abrirModalMaster()">⚙️ Panel Master</button>
+        </div>
     </header>
 
+    <!-- NAVEGACIÓN POR PESTAÑAS -->
     <nav class="nav-tabs">
         <button class="tab-btn active" onclick="showTab('tab-requisitos')">1. Requisitos Técnicos</button>
         <button class="tab-btn" onclick="showTab('tab-proveedores')">2. Evaluación Proveedores</button>
-        <button class="tab-btn" onclick="showTab('tab-estadisticas')">3. Estadísticas</button>
-        <button class="tab-btn" onclick="showTab('tab-compras')">4. Compras</button>
-        <button class="tab-btn" onclick="showTab('tab-recepcion')">5. Recepción</button>
+        <button class="tab-btn" onclick="showTab('tab-estadisticas')">3. Estadísticas Multianuales</button>
+        <button class="tab-btn" onclick="showTab('tab-compras')">4. Órdenes de Compra</button>
+        <button class="tab-btn" onclick="showTab('tab-recepcion')">5. Recepción Mercadería</button>
         <button class="tab-btn" onclick="showTab('tab-usuarios')">6. Gestión Usuarios</button>
     </nav>
 
+    <!-- CONTENEDOR PRINCIPAL -->
     <main class="content-container">
-        <!-- Pestaña 1: Requisitos Técnicos -->
+
+        <!-- PESTAÑA 1: REQUISITOS TÉCNICOS -->
         <section id="tab-requisitos" class="tab-content active">
-            <div class="version-box">
-                <label>Versión:</label>
-                <input type="text" class="version-input" placeholder="v1.0">
-            </div>
-            <h2>1. Requisitos Técnicos</h2>
-            
-            <div class="card-form">
-                <h3>Agregar / Editar Requisito Técnico</h3>
+            <h2>Gestión de Requisitos Técnicos</h2>
+            <div class="card">
                 <form id="form-requisito" onsubmit="guardarRequisito(event)">
-                    <div class="form-group-row">
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label for="num-requisito">N° de Requisito:</label>
-                            <input type="text" id="num-requisito" required placeholder="Ej: REQ-001">
+                            <label for="num-requisito">N° de Requisito *</label>
+                            <input type="text" id="num-requisito" placeholder="Ej: REQ-001" required>
                         </div>
                         <div class="form-group">
-                            <label for="nombre-requisito">Nombre del Requisito / Producto:</label>
-                            <input type="text" id="nombre-requisito" required placeholder="Ej: Bobina de Papel 80gr">
+                            <label for="nombre-requisito">Nombre / Insumo *</label>
+                            <input type="text" id="nombre-requisito" placeholder="Ej: Acero Inoxidable 304" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fecha-requisito">Fecha de Registro *</label>
+                            <input type="date" id="fecha-requisito" required>
                         </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="detalle-requisito">Detalle Técnico / Especificaciones:</label>
-                        <textarea id="detalle-requisito" rows="3" placeholder="Detalla dimensiones, tolerancias, material, etc."></textarea>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="detalle-requisito">Especificaciones Técnicas / Detalle</label>
+                        <textarea id="detalle-requisito" rows="3" placeholder="Especifique tolerancias, medidas, norma ISO, etc."></textarea>
                     </div>
-                    
-                    <button type="submit" class="btn-primary">Guardar Requisito</button>
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Requisito</button>
                 </form>
             </div>
 
-            <div class="table-container">
-                <h3>Lista de Requisitos Registrados</h3>
-                <table class="data-table">
+            <h3>Listado de Requisitos Guardados</h3>
+            <div class="table-responsive">
+                <table>
                     <thead>
                         <tr>
                             <th>N° Requisito</th>
-                            <th>Nombre / Producto</th>
-                            <th>Detalles Técnicos</th>
+                            <th>Nombre / Insumo</th>
+                            <th>Fecha</th>
+                            <th>Detalle / Especificación</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-requisitos-body">
-                        <!-- Se poblará dinámicamente -->
+                        <!-- Carga dinámica -->
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Pestaña 2: Evaluación y Selección de Proveedores -->
+        <!-- PESTAÑA 2: EVALUACIÓN DE PROVEEDORES -->
         <section id="tab-proveedores" class="tab-content">
-            <div class="version-box">
-                <label>Versión:</label>
-                <input type="text" class="version-input" placeholder="v1.0">
-            </div>
-            <h2>2. Evaluación y Selección de Proveedores</h2>
-
-            <div class="card-form">
-                <h3>Registrar / Evaluar Proveedor</h3>
+            <h2>Evaluación Inicial y Seguimiento de Proveedores</h2>
+            <div class="card">
                 <form id="form-proveedor" onsubmit="guardarProveedor(event)">
-                    <div class="form-group-row">
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label for="num-proveedor">N° Proveedor:</label>
-                            <input type="text" id="num-proveedor" required placeholder="Ej: PROV-001">
+                            <label for="num-proveedor">N° de Proveedor *</label>
+                            <input type="text" id="num-proveedor" placeholder="Ej: PROV-102" required>
                         </div>
                         <div class="form-group">
-                            <label for="nombre-proveedor">Nombre / Razón Social:</label>
-                            <input type="text" id="nombre-proveedor" required placeholder="Ej: Distribuidora S.A.">
+                            <label for="nombre-proveedor">Razon Social / Nombre *</label>
+                            <input type="text" id="nombre-proveedor" placeholder="Ej: Metalúrgica del Sur S.A." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fecha-evaluacion">Fecha Evaluación *</label>
+                            <input type="date" id="fecha-evaluacion" onchange="calcularDiasDiferencia()" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="proxima-evaluacion">Próxima Evaluación *</label>
+                            <input type="date" id="proxima-evaluacion" onchange="calcularDiasDiferencia()" required>
                         </div>
                     </div>
 
-                    <h4 style="color: #880e4f; margin-top: 15px;">Nombres y Puntajes de Criterios de Evaluación</h4>
-                    <div class="criterios-grid">
-                        <div class="form-group-row">
-                            <div class="form-group">
-                                <input type="text" id="crit-nombre-1" value="Calidad de Entrega" placeholder="Nombre Criterio 1" class="input-label-edit" onchange="guardarNombresCriteriosProveedores()">
-                                <input type="number" id="crit-cant-1" placeholder="Cantidad / Puntaje" min="0" max="100">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="crit-nombre-2" value="Tiempo de Respuesta" placeholder="Nombre Criterio 2" class="input-label-edit" onchange="guardarNombresCriteriosProveedores()">
-                                <input type="number" id="crit-cant-2" placeholder="Cantidad / Puntaje" min="0" max="100">
-                            </div>
+                    <div class="badge-dias-container">
+                        <span>Días Restantes para Próxima Evaluación: </span>
+                        <strong id="caja-dias-restantes">0</strong>
+                    </div>
+
+                    <h4 style="margin-top: 20px;">Criterios Evaluados (Editable para todos los usuarios)</h4>
+                    <div class="form-grid-6">
+                        <div class="form-group">
+                            <input type="text" id="crit-nombre-1" class="input-editable-label" value="Calidad de Entrega">
+                            <input type="number" id="crit-cant-1" min="0" max="100" placeholder="0-100">
                         </div>
-                        <div class="form-group-row">
-                            <div class="form-group">
-                                <input type="text" id="crit-nombre-3" value="Precios y Pagos" placeholder="Nombre Criterio 3" class="input-label-edit" onchange="guardarNombresCriteriosProveedores()">
-                                <input type="number" id="crit-cant-3" placeholder="Cantidad / Puntaje" min="0" max="100">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="crit-nombre-4" value="Soporte Técnico" placeholder="Nombre Criterio 4" class="input-label-edit" onchange="guardarNombresCriteriosProveedores()">
-                                <input type="number" id="crit-cant-4" placeholder="Cantidad / Puntaje" min="0" max="100">
-                            </div>
+                        <div class="form-group">
+                            <input type="text" id="crit-nombre-2" class="input-editable-label" value="Tiempo de Respuesta">
+                            <input type="number" id="crit-cant-2" min="0" max="100" placeholder="0-100">
                         </div>
-                        <div class="form-group-row">
-                            <div class="form-group">
-                                <input type="text" id="crit-nombre-5" value="Garantía" placeholder="Nombre Criterio 5" class="input-label-edit" onchange="guardarNombresCriteriosProveedores()">
-                                <input type="number" id="crit-cant-5" placeholder="Cantidad / Puntaje" min="0" max="100">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="crit-nombre-6" value="Cumplimiento Normativo" placeholder="Nombre Criterio 6" class="input-label-edit" onchange="guardarNombresCriteriosProveedores()">
-                                <input type="number" id="crit-cant-6" placeholder="Cantidad / Puntaje" min="0" max="100">
-                            </div>
+                        <div class="form-group">
+                            <input type="text" id="crit-nombre-3" class="input-editable-label" value="Precios y Pagos">
+                            <input type="number" id="crit-cant-3" min="0" max="100" placeholder="0-100">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="crit-nombre-4" class="input-editable-label" value="Soporte Técnico">
+                            <input type="number" id="crit-cant-4" min="0" max="100" placeholder="0-100">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="crit-nombre-5" class="input-editable-label" value="Garantía">
+                            <input type="number" id="crit-cant-5" min="0" max="100" placeholder="0-100">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="crit-nombre-6" class="input-editable-label" value="Cumplimiento Normativo">
+                            <input type="number" id="crit-cant-6" min="0" max="100" placeholder="0-100">
                         </div>
                     </div>
 
-                    <h4 style="color: #880e4f; margin-top: 15px;">Programación de Evaluaciones</h4>
-                    <div class="form-group-row align-items-center">
-                        <div class="form-group">
-                            <label for="fecha-evaluacion">Fecha de Evaluación:</label>
-                            <input type="date" id="fecha-evaluacion" required onchange="calcularDiasDiferencia()">
-                        </div>
-                        
-                        <div class="dias-badge-container">
-                            <span class="badge-label">Días Faltantes:</span>
-                            <span id="caja-dias-restantes" class="dias-badge">0</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="proxima-evaluacion">Próxima Evaluación:</label>
-                            <input type="date" id="proxima-evaluacion" required onchange="calcularDiasDiferencia()">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Proveedor</button>
+                    <button type="submit" class="btn-primary" style="margin-top: 20px;">Guardar / Actualizar Proveedor</button>
                 </form>
             </div>
 
-            <div class="table-container">
-                <h3>Proveedores Evaluados</h3>
-                <table class="data-table">
+            <h3>Proveedores Registrados</h3>
+            <div class="table-responsive">
+                <table>
                     <thead>
                         <tr>
-                            <th>N° Prov.</th>
-                            <th>Nombre</th>
-                            <th>Última Evaluación</th>
-                            <th>Próxima Evaluación</th>
+                            <th>N° Proveedor</th>
+                            <th>Nombre / Razón Social</th>
+                            <th>Fecha Eval.</th>
+                            <th>Próx. Eval.</th>
                             <th>Días Restantes</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-proveedores-body">
-                        <!-- Se poblará dinámicamente -->
+                        <!-- Carga dinámica -->
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Pestaña 3: Estadísticas -->
+        <!-- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN MULTIANUAL -->
         <section id="tab-estadisticas" class="tab-content">
-            <div class="version-box">
-                <label>Versión:</label>
-                <input type="text" class="version-input" placeholder="v1.0">
-            </div>
-            <h2>3. Estadísticas y Calificación Anual</h2>
-
-            <div class="card-form">
-                <h3>Calcular / Editar Clasificación Anual de Proveedor</h3>
+            <h2>Calificación Multianual y Clasificación (A, B, C, D)</h2>
+            <div class="card">
                 <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
-                    <div class="form-group-row">
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label for="select-prov-estadistica">Seleccionar Proveedor:</label>
-                            <select id="select-prov-estadistica" required class="form-select" onchange="cargarCalificacionExistente()">
+                            <label for="select-prov-estadistica">Seleccionar Proveedor *</label>
+                            <select id="select-prov-estadistica" onchange="cargarCalificacionExistente()" required>
                                 <option value="">-- Seleccione un Proveedor --</option>
                             </select>
                         </div>
-                        <div class="form-group" style="max-width: 180px;">
-                            <label for="select-anio-estadistica">Año de Evaluación:</label>
-                            <select id="select-anio-estadistica" required class="form-select" onchange="cargarCalificacionExistente()">
+                        <div class="form-group">
+                            <label for="select-anio-estadistica">Año Evaluado *</label>
+                            <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()" required>
                                 <option value="2026">2026</option>
                                 <option value="2025">2025</option>
                                 <option value="2024">2024</option>
                                 <option value="2023">2023</option>
-                                <option value="2022">2022</option>
                             </select>
                         </div>
                     </div>
 
-                    <h4 style="color: #880e4f; margin-top: 15px;">Nombres y Puntajes por Criterio (0 a 100)</h4>
-                    <div class="criterios-grid">
-                        <div class="form-group-row">
-                            <div class="form-group">
-                                <input type="text" id="lbl-stat-1" value="Calidad General" placeholder="Nombre Criterio 1" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
-                                <input type="number" id="stat-val-1" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="lbl-stat-2" value="Tiempos de Entrega" placeholder="Nombre Criterio 2" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
-                                <input type="number" id="stat-val-2" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="lbl-stat-3" value="Precios competitivos" placeholder="Nombre Criterio 3" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
-                                <input type="number" id="stat-val-3" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
-                            </div>
+                    <h4 style="margin-top: 20px;">Criterios de Calificación Anual (Puntajes de 0 a 100)</h4>
+                    <div class="form-grid-6">
+                        <div class="form-group">
+                            <input type="text" id="lbl-stat-1" class="input-editable-label" value="Calidad General">
+                            <input type="number" id="stat-val-1" min="0" max="100" oninput="calcularPuntajeClase()">
                         </div>
-                        <div class="form-group-row">
-                            <div class="form-group">
-                                <input type="text" id="lbl-stat-4" value="Atención al Cliente" placeholder="Nombre Criterio 4" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
-                                <input type="number" id="stat-val-4" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="lbl-stat-5" value="Garantías y Cambios" placeholder="Nombre Criterio 5" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
-                                <input type="number" id="stat-val-5" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="lbl-stat-6" value="Condiciones de Pago" placeholder="Nombre Criterio 6" class="input-label-edit" onchange="guardarNombresCriteriosEstadisticas()">
-                                <input type="number" id="stat-val-6" class="input-stat" placeholder="Puntos" min="0" max="100" oninput="calcularPuntajeClase()">
-                            </div>
+                        <div class="form-group">
+                            <input type="text" id="lbl-stat-2" class="input-editable-label" value="Tiempos de Entrega">
+                            <input type="number" id="stat-val-2" min="0" max="100" oninput="calcularPuntajeClase()">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="lbl-stat-3" class="input-editable-label" value="Precios competitivos">
+                            <input type="number" id="stat-val-3" min="0" max="100" oninput="calcularPuntajeClase()">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="lbl-stat-4" class="input-editable-label" value="Atención al Cliente">
+                            <input type="number" id="stat-val-4" min="0" max="100" oninput="calcularPuntajeClase()">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="lbl-stat-5" class="input-editable-label" value="Garantías y Cambios">
+                            <input type="number" id="stat-val-5" min="0" max="100" oninput="calcularPuntajeClase()">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="lbl-stat-6" class="input-editable-label" value="Condiciones de Pago">
+                            <input type="number" id="stat-val-6" min="0" max="100" oninput="calcularPuntajeClase()">
                         </div>
                     </div>
 
-                    <div class="resultado-box">
-                        <div class="res-item">
-                            <span>Promedio Anual:</span>
-                            <strong id="stat-promedio">0 pts</strong>
-                        </div>
-                        <div class="res-item">
-                            <span>Resultado Clase:</span>
-                            <strong id="stat-clase" class="clase-badge badge-d">Clase D</strong>
-                        </div>
+                    <div class="resultado-clasificacion-box" style="margin-top:20px;">
+                        <div>Promedio Anual: <strong id="stat-promedio">0 pts</strong></div>
+                        <div>Clasificación Obtenida: <span id="stat-clase" class="clase-badge badge-d">Clase D</span></div>
                     </div>
 
-                    <div style="display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap;">
-                        <button type="submit" class="btn-primary">💾 Guardar Calificación</button>
-                        <button type="button" class="btn-info" onclick="abrirModalPerformance()">📊 Índice de Performance y Evolución</button>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button type="submit" class="btn-primary">Guardar Calificación Anual</button>
+                        <button type="button" class="btn-info" onclick="abrirModalPerformance()">📊 Ver Índice de Performance Histórico</button>
                     </div>
                 </form>
             </div>
 
-            <div class="table-container">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
-                    <h3>Historial de Clasificaciones Anuales</h3>
-                    <div>
-                        <label style="font-weight: bold; color: #880e4f; margin-right: 5px;">Filtrar por Año:</label>
-                        <select id="filtro-tabla-anio" class="form-select" style="width: auto; display: inline-block;" onchange="renderizarTablaEstadisticas()">
-                            <option value="TODOS">-- Todos los Años --</option>
-                            <option value="2026">2026</option>
-                            <option value="2025">2025</option>
-                            <option value="2024">2024</option>
-                            <option value="2023">2023</option>
-                            <option value="2022">2022</option>
-                        </select>
-                    </div>
-                </div>
+            <div class="filter-bar">
+                <label for="filtro-tabla-anio">Filtrar Tabla por Año: </label>
+                <select id="filtro-tabla-anio" onchange="renderizarTablaEstadisticas()">
+                    <option value="TODOS">Todos los años</option>
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                </select>
+            </div>
 
-                <table class="data-table">
+            <div class="table-responsive">
+                <table>
                     <thead>
                         <tr>
                             <th>Año</th>
-                            <th>N° Prov.</th>
+                            <th>N° Proveedor</th>
                             <th>Nombre Proveedor</th>
-                            <th>Puntaje Promedio</th>
-                            <th>CLASE</th>
+                            <th>Promedio</th>
+                            <th>Clasificación</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-estadisticas-body">
-                        <!-- Se poblará dinámicamente -->
+                        <!-- Carga dinámica -->
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Pestaña 4: Compras -->
+        <!-- PESTAÑA 4: COMPRAS Y EMISIÓN DE PDF -->
         <section id="tab-compras" class="tab-content">
-            <div class="version-box">
-                <label>Versión:</label>
-                <input type="text" class="version-input" placeholder="v1.0">
-            </div>
-            <h2>4. Emitir Orden de Compra</h2>
-
-            <div class="card-form">
-                <h3>Nueva Orden de Compra</h3>
+            <h2>Gestión de Órdenes de Compra</h2>
+            <div class="card">
                 <form id="form-compras" onsubmit="iniciarCompra(event)">
-                    <div class="form-group-row">
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label for="select-compra-prov">Proveedor (Pestaña 2):</label>
-                            <select id="select-compra-prov" required class="form-select">
+                            <label for="select-compra-prov">Seleccionar Proveedor *</label>
+                            <select id="select-compra-prov" required>
                                 <option value="">-- Seleccione Proveedor --</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="select-compra-req">Requisito / Producto (Pestaña 1):</label>
-                            <select id="select-compra-req" required class="form-select">
+                            <label for="select-compra-req">Requisito Técnico Asociado *</label>
+                            <select id="select-compra-req" required>
                                 <option value="">-- Seleccione Requisito --</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div class="form-group-row">
                         <div class="form-group">
-                            <label for="compra-cantidad">Cantidad Solicitada:</label>
-                            <input type="number" id="compra-cantidad" required min="1" placeholder="Ej: 500">
+                            <label for="compra-cantidad">Cantidad Solicitada *</label>
+                            <input type="number" id="compra-cantidad" min="1" placeholder="Ej: 50" required>
                         </div>
                         <div class="form-group">
-                            <label for="compra-fecha-req">Fecha Requerida de Entrega:</label>
+                            <label for="compra-fecha-emision">Fecha Emisión Orden *</label>
+                            <input type="date" id="compra-fecha-emision" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="compra-fecha-req">Fecha Requerida de Entrega *</label>
                             <input type="date" id="compra-fecha-req" required>
                         </div>
                     </div>
-
-                    <div class="form-group">
-                        <label for="compra-observaciones">Observaciones / Detalles Adicionales:</label>
-                        <textarea id="compra-observaciones" rows="3" placeholder="Lugar de entrega, condiciones de pago, etc."></textarea>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="compra-observaciones">Observaciones / Condiciones de Entrega</label>
+                        <textarea id="compra-observaciones" rows="2" placeholder="Lugar de entrega, horario, observaciones generales..."></textarea>
                     </div>
-
-                    <button type="submit" class="btn-primary" style="background-color: #2e7d32;">
-                        📄 Iniciar Compra y Descargar PDF
-                    </button>
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Emitir Orden y Descargar PDF</button>
                 </form>
             </div>
 
-            <div class="table-container">
-                <h3>Historial de Órdenes Emitidas</h3>
-                <table class="data-table">
+            <h3>Órdenes de Compra Emitidas</h3>
+            <div class="table-responsive">
+                <table>
                     <thead>
                         <tr>
                             <th>N° Orden</th>
                             <th>Proveedor</th>
-                            <th>Producto / Req.</th>
+                            <th>Requisito</th>
                             <th>Cantidad</th>
-                            <th>Fecha Entrega</th>
+                            <th>Fecha Emisión</th>
+                            <th>Fecha Requerida</th>
                             <th>Estado</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-compras-body">
-                        <!-- Se poblará dinámicamente -->
+                        <!-- Carga dinámica -->
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Pestaña 5: Recepción de Mercadería -->
+        <!-- PESTAÑA 5: RECEPCIÓN DE MERCADERÍA -->
         <section id="tab-recepcion" class="tab-content">
-            <div class="version-box">
-                <label>Versión:</label>
-                <input type="text" class="version-input" placeholder="v1.0">
-            </div>
-            <h2>5. Recepción de Mercadería</h2>
-
-            <div class="card-form">
-                <h3>Registrar Ingreso de Mercadería</h3>
+            <h2>Recepción e Inspección de Mercadería</h2>
+            <div class="card">
                 <form id="form-recepcion" onsubmit="guardarRecepcion(event)">
-                    <div class="form-group">
-                        <label for="select-recepcion-orden">Seleccionar Orden Pendiente:</label>
-                        <select id="select-recepcion-orden" required class="form-select" onchange="cargarDetalleOrdenPendiente()">
-                            <option value="">-- Seleccione Orden Pendiente --</option>
-                        </select>
-                    </div>
-
-                    <h4 style="color: #880e4f; margin-top: 15px;">Detalles y Control de Recepción (6 Campos)</h4>
-                    <div class="form-group-row">
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label for="rec-campo-1">N° Remito Proveedor:</label>
-                            <input type="text" id="rec-campo-1" required placeholder="Ej: REM-00458">
-                        </div>
-                        <div class="form-group">
-                            <label for="rec-campo-2">Cantidad Recibida Real:</label>
-                            <input type="number" id="rec-campo-2" required placeholder="Ej: 500">
-                        </div>
-                    </div>
-
-                    <div class="form-group-row">
-                        <div class="form-group">
-                            <label for="rec-campo-3">Estado del Empaque / Embalaje:</label>
-                            <select id="rec-campo-3" class="form-select">
-                                <option value="Excelente">Excelente</option>
-                                <option value="Bueno">Bueno</option>
-                                <option value="Dañado Parcial">Dañado Parcial</option>
-                                <option value="Defectuoso">Defectuoso</option>
+                            <label for="select-recepcion-orden">Seleccionar Orden Pendiente *</label>
+                            <select id="select-recepcion-orden" onchange="cargarDetalleOrdenPendiente()" required>
+                                <option value="">-- Seleccione Orden Pendiente --</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="rec-campo-4">Cumplimiento de Tiempo de Entrega:</label>
-                            <select id="rec-campo-4" class="form-select">
-                                <option value="A tiempo">A tiempo</option>
-                                <option value="Con Retraso">Con Retraso</option>
-                                <option value="Adelantado">Adelantado</option>
-                            </select>
+                            <label for="rec-campo-1">N° de Remito del Proveedor *</label>
+                            <input type="text" id="rec-campo-1" placeholder="Ej: R-0001-0004512" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="rec-fecha">Fecha de Recepción *</label>
+                            <input type="date" id="rec-fecha" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="rec-campo-2">Cantidad Recibida *</label>
+                            <input type="number" id="rec-campo-2" min="1" required>
                         </div>
                     </div>
 
-                    <div class="form-group-row">
+                    <div class="form-grid" style="margin-top: 15px;">
                         <div class="form-group">
-                            <label for="rec-campo-5">Calidad / Conformidad Visual:</label>
-                            <select id="rec-campo-5" class="form-select">
+                            <label for="rec-campo-3">Estado de Empaque / Bulto</label>
+                            <select id="rec-campo-3">
                                 <option value="Conforme">Conforme</option>
-                                <option value="Aprobado con Concesión">Aprobado con Concesión</option>
-                                <option value="Rechazado">Rechazado</option>
+                                <option value="Dañado">Dañado</option>
+                                <option value="Abierto">Abierto / Incompleto</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="rec-campo-6">Observaciones de Recepción:</label>
-                            <input type="text" id="rec-campo-6" placeholder="Notas de inspección o desviaciones">
+                            <label for="rec-campo-4">Cumplimiento de Tiempo</label>
+                            <select id="rec-campo-4">
+                                <option value="En Término">En Término</option>
+                                <option value="Con Demora">Con Demora</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="rec-campo-5">Control de Calidad Visual</label>
+                            <select id="rec-campo-5">
+                                <option value="Aprobado">Aprobado</option>
+                                <option value="Rechazado">Rechazado</option>
+                                <option value="Aprobado Condicional">Aprobado Condicional</option>
+                            </select>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Confirmar Recepción</button>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="rec-campo-6">Observaciones de Recepción</label>
+                        <textarea id="rec-campo-6" rows="2" placeholder="Detalle cualquier desvío o aclaración del remito..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Registrar Recepción</button>
                 </form>
             </div>
 
-            <div class="table-container">
-                <h3>Historial de Mercadería Recibida</h3>
-                <table class="data-table">
+            <h3>Histórico de Mercadería Recibida</h3>
+            <div class="table-responsive">
+                <table>
                     <thead>
                         <tr>
                             <th>N° Orden</th>
@@ -442,171 +393,161 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-recepcion-body">
-                        <!-- Se poblará dinámicamente -->
+                        <!-- Carga dinámica -->
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Pestaña 6: Gestión de Usuarios -->
+        <!-- PESTAÑA 6: GESTIÓN DE USUARIOS -->
         <section id="tab-usuarios" class="tab-content">
-            <div class="version-box">
-                <label>Versión:</label>
-                <input type="text" class="version-input" placeholder="v1.0">
-            </div>
-            <h2>6. Gestión de Usuarios y Permisos</h2>
-
-            <div class="card-form">
-                <h3>ABM de Usuarios por Sector</h3>
-                <form id="form-usuarios" onsubmit="guardarUsuario(event)">
-                    <div class="form-group-row">
+            <h2>Administración de Usuarios del Sistema</h2>
+            <div class="card">
+                <form id="form-usuarios">
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label for="usr-nombre">Nombre de Usuario:</label>
-                            <input type="text" id="usr-nombre" required placeholder="Ej: jperez">
+                            <label for="usr-nombre">Nombre de Usuario *</label>
+                            <input type="text" id="usr-nombre" placeholder="Ej: jperez" required>
                         </div>
                         <div class="form-group">
-                            <label for="usr-pass">Contraseña:</label>
-                            <input type="password" id="usr-pass" required placeholder="********">
+                            <label for="usr-pass">Contraseña *</label>
+                            <input type="password" id="usr-pass" placeholder="••••••••" required>
                         </div>
-                    </div>
-
-                    <div class="form-group-row">
                         <div class="form-group">
-                            <label for="usr-sector">Sector Asignado:</label>
-                            <select id="usr-sector" required class="form-select">
-                                <option value="Compras">Sector Compras</option>
-                                <option value="Recepcion">Sector Recepción</option>
+                            <label for="usr-sector">Sector / Área *</label>
+                            <select id="usr-sector" required>
+                                <option value="Compras">Compras</option>
+                                <option value="Almacén">Almacén / Depósito</option>
+                                <option value="Calidad">Calidad</option>
+                                <option value="Administración">Administración</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="usr-estado">Estado del Usuario:</label>
-                            <select id="usr-estado" class="form-select">
+                            <label for="usr-estado">Estado *</label>
+                            <select id="usr-estado" required>
                                 <option value="Activo">Activo</option>
                                 <option value="Inactivo">Inactivo</option>
                             </select>
                         </div>
                     </div>
-
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Registrar Usuario</button>
+                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar / Actualizar Usuario</button>
                 </form>
             </div>
 
-            <div class="table-container">
-                <h3>Usuarios Registrados</h3>
-                <table class="data-table">
+            <h3>Usuarios Registrados</h3>
+            <div class="table-responsive">
+                <table>
                     <thead>
                         <tr>
-                            <th>Usuario</th>
+                            <th>Nombre Usuario</th>
                             <th>Sector</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-usuarios-body">
-                        <!-- Se poblará dinámicamente -->
+                        <!-- Carga dinámica -->
                     </tbody>
                 </table>
             </div>
         </section>
+
     </main>
 
-    <!-- Modal Índice de Performance y Evolución Multianual -->
-    <div id="modal-performance" class="modal-overlay">
-        <div class="modal-card" style="max-width: 750px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin:0; color: #0288d1;">📊 Índice de Performance y Evolución Temporal</h3>
-                <button class="btn-danger" onclick="cerrarModalPerformance()" style="padding: 4px 10px;">✕ Cerrar</button>
+    <!-- MODAL DE PANEL MASTER -->
+    <div id="modal-master" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Panel de Configuración Master</h3>
+                <button class="btn-close" onclick="cerrarModalMaster()">✕</button>
             </div>
-
-            <div id="perf-contenido">
-                <div class="performance-summary">
-                    <div>
-                        <span style="font-size: 0.9em; color: #555;">Proveedor:</span><br>
-                        <strong id="perf-prov-nombre" style="font-size: 1.2em; color: #0288d1;">-</strong>
+            <div class="modal-body">
+                <div id="master-auth">
+                    <p>Ingrese credenciales de Administrador Master:</p>
+                    <div class="form-group">
+                        <label>Usuario Master:</label>
+                        <input type="text" id="master-user">
                     </div>
-                    <div style="text-align: center;">
-                        <span style="font-size: 0.9em; color: #555;">Índice de Performance Histórico:</span><br>
-                        <strong id="perf-indice-valor" style="font-size: 1.5em; color: #2e7d32;">0 pts</strong>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>Contraseña Master:</label>
+                        <input type="password" id="master-pass">
                     </div>
-                    <div style="text-align: right;">
-                        <span style="font-size: 0.9em; color: #555;">Tendencia:</span><br>
-                        <span id="perf-tendencia-badge" class="clase-badge badge-b">Estable</span>
-                    </div>
+                    <button class="btn-primary" style="margin-top: 15px;" onclick="autenticarMaster()">Ingresar</button>
                 </div>
 
-                <h4 style="margin-top: 15px; color: #333;">Gráfico de Evolución Multianual (0 - 100 pts)</h4>
-                <div style="position: relative; height: 230px; width: 100%; margin-bottom: 20px;">
-                    <canvas id="chartEvolucion"></canvas>
-                </div>
+                <div id="master-panel" style="display: none;">
+                    <h4>Personalización de Sistema</h4>
+                    <div class="form-group">
+                        <label for="master-color-bg">Color de Fondo Principal:</label>
+                        <input type="color" id="master-color-bg" value="#f8f9fa" onchange="cambiarColorBg(this.value)">
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="master-logo-url">URL / Ruta del Logo:</label>
+                        <input type="text" id="master-logo-url" placeholder="img/logo.png" onchange="cambiarLogo(this.value)">
+                    </div>
 
-                <h4>Histórico de Calificaciones Evaluadas</h4>
-                <div class="table-container" style="max-height: 180px; overflow-y: auto;">
-                    <table class="data-table" style="font-size: 0.85em;">
-                        <thead>
-                            <tr>
-                                <th>Año</th>
-                                <th>Puntaje Promedio</th>
-                                <th>Clase</th>
-                                <th>Evaluación / Observaciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-perf-historico-body">
-                            <!-- Se poblará dinámicamente -->
-                        </tbody>
-                    </table>
+                    <h4 style="margin-top: 20px;">Control Global de Usuarios</h4>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Sector</th>
+                                    <th>Estado</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-master-usuarios-body">
+                                <!-- Carga dinámica -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Administrador Master -->
-    <div id="modal-master" class="modal-overlay">
-        <div class="modal-card">
-            <h3>🔑 Panel Administrador Master</h3>
-            
-            <div id="master-auth">
-                <div class="form-group">
-                    <label>Usuario Master:</label>
-                    <input type="text" id="master-user" placeholder="admin">
-                </div>
-                <div class="form-group">
-                    <label>Contraseña Master:</label>
-                    <input type="password" id="master-pass" placeholder="1234">
-                </div>
-                <button class="btn-primary" onclick="autenticarMaster()">Ingresar</button>
-                <button class="btn-danger" onclick="cerrarModalMaster()">Cancelar</button>
+    <!-- MODAL ÍNDICE DE PERFORMANCE HISTÓRICO -->
+    <div id="modal-performance" class="modal-overlay" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>📊 Índice de Performance de Proveedor</h3>
+                <button class="btn-close" onclick="cerrarModalPerformance()">✕</button>
             </div>
+            <div class="modal-body">
+                <h4 id="perf-prov-nombre">Nombre Proveedor</h4>
+                
+                <div class="perf-metric-container">
+                    <div class="metric-card">
+                        <span>Índice de Performance Acumulado:</span>
+                        <strong id="perf-indice-valor">0 pts</strong>
+                    </div>
+                    <div class="metric-card">
+                        <span>Tendencia:</span>
+                        <span id="perf-tendencia-badge" class="clase-badge badge-b">Estable</span>
+                    </div>
+                </div>
 
-            <div id="master-panel" style="display: none;">
-                <h4>Control Global de Usuarios</h4>
-                <div class="table-container" style="max-height: 180px; overflow-y: auto; margin-bottom: 15px;">
-                    <table class="data-table" style="font-size: 0.85em;">
+                <div style="height: 250px; margin-top: 20px;">
+                    <canvas id="chartEvolucion"></canvas>
+                </div>
+
+                <h4 style="margin-top: 20px;">Historial de Evaluaciones Anuales</h4>
+                <div class="table-responsive">
+                    <table>
                         <thead>
                             <tr>
-                                <th>Usuario</th>
-                                <th>Sector</th>
-                                <th>Estado</th>
-                                <th>Acción Master</th>
+                                <th>Año</th>
+                                <th>Puntaje</th>
+                                <th>Clasificación</th>
+                                <th>Detalle</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-master-usuarios-body">
-                            <!-- Se poblará dinámicamente -->
+                        <tbody id="tabla-perf-historico-body">
+                            <!-- Carga dinámica -->
                         </tbody>
                     </table>
                 </div>
-
-                <hr style="border: 0; border-top: 1px solid #f8bbd0; margin: 15px 0;">
-
-                <h4>Personalización Visual</h4>
-                <div class="form-group">
-                    <label>Color de Fondo del Sistema:</label>
-                    <input type="color" id="master-color-bg" value="#fce4ec" onchange="cambiarColorBg(this.value)">
-                </div>
-                <div class="form-group">
-                    <label>Archivo JPG de Logo (en carpeta public):</label>
-                    <input type="text" id="master-logo-url" value="logo.jpg" placeholder="logo.jpg" onchange="cambiarLogo(this.value)">
-                </div>
-                <button class="btn-primary" onclick="cerrarModalMaster()" style="margin-top: 10px;">Guardar y Salir</button>
             </div>
         </div>
     </div>
