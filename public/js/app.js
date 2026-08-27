@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         formUsuarios.addEventListener('submit', guardarUsuario);
     }
 
-    // Sincronización continua sin sobreescribir campos activos
     setInterval(async () => {
         await cargarTodoDesdeServidor(false);
     }, 5000);
@@ -45,34 +44,29 @@ function showTab(tabId) {
     }
 }
 
-// Carga los N° de Formulario registrados en la Base de Datos para todas las PCs
-function autocompletarNumerosFormularioDesdeBD() {
-    const activeEl = document.activeElement;
+// Guardado directo de N° de Formulario en PostgreSQL
+async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
+    const valor = document.getElementById(idInput).value.trim();
+    if (!valor) {
+        alert("Por favor ingrese un N° de Formulario para guardar.");
+        return;
+    }
 
-    if (requisitos.length > 0) {
-        const ult = requisitos[requisitos.length - 1];
-        const el = document.getElementById('num-formulario-req');
-        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
-    }
-    if (proveedores.length > 0) {
-        const ult = proveedores[proveedores.length - 1];
-        const el = document.getElementById('num-formulario-prov');
-        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
-    }
-    if (estadisticas.length > 0) {
-        const ult = estadisticas[estadisticas.length - 1];
-        const el = document.getElementById('num-formulario');
-        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
-    }
-    if (ordenesCompra.length > 0) {
-        const ult = ordenesCompra[ordenesCompra.length - 1];
-        const el = document.getElementById('num-formulario-comp');
-        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
-    }
-    if (recepciones.length > 0) {
-        const ult = recepciones[recepciones.length - 1];
-        const el = document.getElementById('num-formulario-rec');
-        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
+    try {
+        const res = await fetch('/api/configuraciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clave: claveConfig, valor: valor })
+        });
+
+        if (res.ok) {
+            alert(`✅ N° de Formulario "${valor}" guardado correctamente en la Base de Datos PostgreSQL para todas las PCs.`);
+        } else {
+            alert("❌ Ocurrió un error al guardar en la base de datos.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("❌ Error de conexión al servidor.");
     }
 }
 
@@ -96,6 +90,26 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         usuarios = await resUsr.json();
 
         const config = await resConfig.json();
+
+        // Aplicación global de N° de Formulario configurados
+        const activeEl = document.activeElement;
+
+        if (config.num_form_req && activeEl !== document.getElementById('num-formulario-req')) {
+            document.getElementById('num-formulario-req').value = config.num_form_req;
+        }
+        if (config.num_form_prov && activeEl !== document.getElementById('num-formulario-prov')) {
+            document.getElementById('num-formulario-prov').value = config.num_form_prov;
+        }
+        if (config.num_form_stat && activeEl !== document.getElementById('num-formulario')) {
+            document.getElementById('num-formulario').value = config.num_form_stat;
+        }
+        if (config.num_form_comp && activeEl !== document.getElementById('num-formulario-comp')) {
+            document.getElementById('num-formulario-comp').value = config.num_form_comp;
+        }
+        if (config.num_form_rec && activeEl !== document.getElementById('num-formulario-rec')) {
+            document.getElementById('num-formulario-rec').value = config.num_form_rec;
+        }
+
         if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) {
             nombresCriteriosProveedores = config.crit_prov_labels;
         }
@@ -116,8 +130,6 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             renderizarTablaRecepciones();
             renderizarTablaUsuarios();
         }
-
-        autocompletarNumerosFormularioDesdeBD();
     } catch (e) {
         console.error("Error al cargar datos:", e);
     }

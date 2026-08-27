@@ -33,7 +33,7 @@
 
     <main class="content-container">
 
-        <!-- PESTAÑA 1 -->
+        <!-- PESTAÑA 1: REQUISITOS TÉCNICOS -->
         <section id="tab-requisitos" class="tab-content active">
             <h2>Gestión de Requisitos Técnicos</h2>
             <div class="card">
@@ -41,7 +41,10 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario-req">N° de Formulario *</label>
-                            <input type="text" id="num-formulario-req" placeholder="Ej: FOR-REQ-001" oninput="localStorage.setItem('num_form_req', this.value)" required>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="num-formulario-req" placeholder="Ej: F: 740-02 R:2" required>
+                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_req', 'num-formulario-req')">💾 Guardar N°</button>
+                            </div>
                         </div>
                     </div>
 
@@ -85,7 +88,7 @@
             </div>
         </section>
 
-        <!-- PESTAÑA 2 -->
+        <!-- PESTAÑA 2: SELECCIÓN DE PROVEEDORES -->
         <section id="tab-proveedores" class="tab-content">
             <h2>Selección de Proveedores y Criterios Iniciales</h2>
             <div class="card">
@@ -93,7 +96,10 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario-prov">N° de Formulario *</label>
-                            <input type="text" id="num-formulario-prov" placeholder="Ej: FOR-PROV-001" oninput="localStorage.setItem('num_form_prov', this.value)" required>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="num-formulario-prov" placeholder="Ej: FOR-PROV-001" required>
+                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_prov', 'num-formulario-prov')">💾 Guardar N°</button>
+                            </div>
                         </div>
                     </div>
 
@@ -156,7 +162,7 @@
             </div>
         </section>
 
-        <!-- PESTAÑA 3 -->
+        <!-- PESTAÑA 3: EVALUACIÓN Y ESTADÍSTICAS -->
         <section id="tab-estadisticas" class="tab-content">
             <h2>Evaluación y Estadísticas de Proveedores</h2>
             <div class="card">
@@ -165,7 +171,10 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario">N° de Formulario *</label>
-                            <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" oninput="localStorage.setItem('num_form_stat', this.value)" required>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" required>
+                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_stat', 'num-formulario')">💾 Guardar N°</button>
+                            </div>
                         </div>
                     </div>
 
@@ -287,7 +296,7 @@
             </div>
         </section>
 
-        <!-- PESTAÑA 4 -->
+        <!-- PESTAÑA 4: COMPRAS -->
         <section id="tab-compras" class="tab-content">
             <h2>Gestión de Órdenes de Compra</h2>
             <div class="card">
@@ -295,7 +304,10 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario-comp">N° de Formulario *</label>
-                            <input type="text" id="num-formulario-comp" placeholder="Ej: FOR-OC-001" oninput="localStorage.setItem('num_form_comp', this.value)" required>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="num-formulario-comp" placeholder="Ej: FOR-OC-001" required>
+                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_comp', 'num-formulario-comp')">💾 Guardar N°</button>
+                            </div>
                         </div>
                     </div>
 
@@ -353,7 +365,7 @@
             </div>
         </section>
 
-        <!-- PESTAÑA 5 -->
+        <!-- PESTAÑA 5: RECEPCIÓN -->
         <section id="tab-recepcion" class="tab-content">
             <h2>Recepción e Inspección de Mercadería</h2>
             <div class="card">
@@ -361,7 +373,10 @@
                     <div class="control-documental-grid">
                         <div class="form-group">
                             <label for="num-formulario-rec">N° de Formulario *</label>
-                            <input type="text" id="num-formulario-rec" placeholder="Ej: FOR-REC-001" oninput="localStorage.setItem('num_form_rec', this.value)" required>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="num-formulario-rec" placeholder="Ej: FOR-REC-001" required>
+                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_rec', 'num-formulario-rec')">💾 Guardar N°</button>
+                            </div>
                         </div>
                     </div>
 
@@ -435,7 +450,7 @@
             </div>
         </section>
 
-        <!-- PESTAÑA 6 -->
+        <!-- PESTAÑA 6: GESTIÓN DE USUARIOS -->
         <section id="tab-usuarios" class="tab-content">
             <h2>Administración de Usuarios del Sistema</h2>
             <div class="card">
