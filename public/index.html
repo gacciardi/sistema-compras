@@ -1,4 +1,3 @@
-HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -44,7 +43,15 @@ HTML
             <h2>Gestión de Requisitos Técnicos</h2>
             <div class="card">
                 <form id="form-requisito" onsubmit="guardarRequisito(event)">
-                    <div class="form-grid">
+                    <!-- CONTROL DOCUMENTAL SUPERIOR -->
+                    <div class="control-documental-grid">
+                        <div class="form-group">
+                            <label for="num-formulario-req">N° de Formulario *</label>
+                            <input type="text" id="num-formulario-req" placeholder="Ej: FOR-REQ-001" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 15px;">
                         <div class="form-group">
                             <label for="num-requisito">N° de Requisito *</label>
                             <input type="text" id="num-requisito" placeholder="Ej: REQ-001" required>
@@ -71,6 +78,7 @@ HTML
                 <table>
                     <thead>
                         <tr>
+                            <th>N° Formulario</th>
                             <th>N° Requisito</th>
                             <th>Nombre / Insumo</th>
                             <th>Fecha</th>
@@ -90,7 +98,15 @@ HTML
             <h2>Selección de Proveedores y Criterios Iniciales</h2>
             <div class="card">
                 <form id="form-proveedor" onsubmit="guardarProveedor(event)">
-                    <div class="form-grid">
+                    <!-- CONTROL DOCUMENTAL SUPERIOR -->
+                    <div class="control-documental-grid">
+                        <div class="form-group">
+                            <label for="num-formulario-prov">N° de Formulario *</label>
+                            <input type="text" id="num-formulario-prov" placeholder="Ej: FOR-PROV-001" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 15px;">
                         <div class="form-group">
                             <label for="num-proveedor">N° de Proveedor *</label>
                             <input type="text" id="num-proveedor" placeholder="Ej: PROV-102" required>
@@ -138,6 +154,7 @@ HTML
                 <table>
                     <thead>
                         <tr>
+                            <th>N° Formulario</th>
                             <th>N° Proveedor</th>
                             <th>Nombre / Razón Social</th>
                             <th>Acciones</th>
@@ -351,7 +368,15 @@ HTML
             <h2>Recepción e Inspección de Mercadería</h2>
             <div class="card">
                 <form id="form-recepcion" onsubmit="guardarRecepcion(event)">
-                    <div class="form-grid">
+                    <!-- CONTROL DOCUMENTAL SUPERIOR -->
+                    <div class="control-documental-grid">
+                        <div class="form-group">
+                            <label for="num-formulario-rec">N° de Formulario *</label>
+                            <input type="text" id="num-formulario-rec" placeholder="Ej: FOR-REC-001" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 15px;">
                         <div class="form-group">
                             <label for="select-recepcion-orden">Seleccionar Orden Pendiente *</label>
                             <select id="select-recepcion-orden" onchange="cargarDetalleOrdenPendiente()" required>
@@ -405,6 +430,7 @@ HTML
                 <table>
                     <thead>
                         <tr>
+                            <th>N° Formulario</th>
                             <th>N° Orden</th>
                             <th>Proveedor</th>
                             <th>N° Remito</th>
