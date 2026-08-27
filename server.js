@@ -51,6 +51,7 @@ async function initDB() {
 
             CREATE TABLE IF NOT EXISTS compras (
                 id_orden VARCHAR(50) PRIMARY KEY,
+                num_formulario VARCHAR(50),
                 prov_num VARCHAR(50),
                 prov_nombre TEXT,
                 req_num VARCHAR(50),
@@ -94,6 +95,7 @@ async function initDB() {
         await pool.query(`
             ALTER TABLE requisitos ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
             ALTER TABLE proveedores ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
+            ALTER TABLE compras ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
             ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
         `);
 
@@ -235,6 +237,7 @@ app.get('/api/compras', async (req, res) => {
         const result = await pool.query('SELECT * FROM compras');
         res.json(result.rows.map(r => ({
             idOrden: r.id_orden,
+            numFormulario: r.num_formulario,
             provNum: r.prov_num,
             provNombre: r.prov_nombre,
             reqNum: r.req_num,
@@ -250,13 +253,13 @@ app.get('/api/compras', async (req, res) => {
 });
 
 app.post('/api/compras', async (req, res) => {
-    const { idOrden, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado } = req.body;
+    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado } = req.body;
     try {
         await pool.query(
-            `INSERT INTO compras (id_orden, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, observaciones, estado)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-             ON CONFLICT (id_orden) DO UPDATE SET estado=$11`,
-            [idOrden, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado]
+            `INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, observaciones, estado)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             ON CONFLICT (id_orden) DO UPDATE SET num_formulario=$2, estado=$12`,
+            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado]
         );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
