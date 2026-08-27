@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor();
 
     const formUsuarios = document.getElementById('form-usuarios');
@@ -46,19 +45,24 @@ function showTab(tabId) {
     }
 }
 
-// Cargar y mantener de forma permanente los números de formulario
-function restaurarNumerosFormularioMemoria() {
-    const valReq = localStorage.getItem('num_form_req');
-    const valProv = localStorage.getItem('num_form_prov');
-    const valStat = localStorage.getItem('num_form_stat');
-    const valComp = localStorage.getItem('num_form_comp');
-    const valRec = localStorage.getItem('num_form_rec');
-
-    if (valReq && document.getElementById('num-formulario-req')) document.getElementById('num-formulario-req').value = valReq;
-    if (valProv && document.getElementById('num-formulario-prov')) document.getElementById('num-formulario-prov').value = valProv;
-    if (valStat && document.getElementById('num-formulario')) document.getElementById('num-formulario').value = valStat;
-    if (valComp && document.getElementById('num-formulario-comp')) document.getElementById('num-formulario-comp').value = valComp;
-    if (valRec && document.getElementById('num-formulario-rec')) document.getElementById('num-formulario-rec').value = valRec;
+// Carga los valores más recientes guardados en la BD a los campos de Formulario
+function autocompletarNumerosFormularioDesdeBD() {
+    if (requisitos.length > 0) {
+        const ultReq = requisitos[requisitos.length - 1];
+        if (ultReq.numFormulario) document.getElementById('num-formulario-req').value = ultReq.numFormulario;
+    }
+    if (proveedores.length > 0) {
+        const ultProv = proveedores[proveedores.length - 1];
+        if (ultProv.numFormulario) document.getElementById('num-formulario-prov').value = ultProv.numFormulario;
+    }
+    if (ordenesCompra.length > 0) {
+        const ultComp = ordenesCompra[ordenesCompra.length - 1];
+        if (ultComp.numFormulario) document.getElementById('num-formulario-comp').value = ultComp.numFormulario;
+    }
+    if (recepciones.length > 0) {
+        const ultRec = recepciones[recepciones.length - 1];
+        if (ultRec.numFormulario) document.getElementById('num-formulario-rec').value = ultRec.numFormulario;
+    }
 }
 
 async function cargarTodoDesdeServidor(renderCompleto = true) {
@@ -101,7 +105,7 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             renderizarTablaRecepciones();
             renderizarTablaUsuarios();
 
-            restaurarNumerosFormularioMemoria();
+            autocompletarNumerosFormularioDesdeBD();
         }
     } catch (e) {
         console.error("Error al cargar datos:", e);
@@ -119,8 +123,6 @@ async function guardarRequisito(e) {
     const fecha = document.getElementById('fecha-requisito')?.value || new Date().toISOString().split('T')[0];
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
-    localStorage.setItem('num_form_req', numFormulario);
-
     await fetch('/api/requisitos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,7 +130,6 @@ async function guardarRequisito(e) {
     });
 
     document.getElementById('form-requisito').reset();
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -164,9 +165,9 @@ async function eliminarRequisito(num) {
 let proveedores = [];
 let nombresCriteriosProveedores = [
     "Cumplimiento de Entrega",
-    "Plazo de Entrega",
-    "Condicion de Pago",
     "Calidad Insumos/Servicios",
+    "Condicion de Pago",
+    "Plazo de Entrega",
     "Atencion",
     "Respuesta a Reclamos"
 ];
@@ -201,8 +202,6 @@ async function guardarProveedor(e) {
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
 
-    localStorage.setItem('num_form_prov', numFormulario);
-
     const criterios = [];
     for (let i = 1; i <= 6; i++) {
         criterios.push({
@@ -218,7 +217,6 @@ async function guardarProveedor(e) {
     });
 
     document.getElementById('form-proveedor').reset();
-    restaurarNumerosFormularioMemoria();
     cargarNombresCriteriosProveedores();
     await cargarTodoDesdeServidor(true);
 }
@@ -274,9 +272,9 @@ async function eliminarProveedor(num) {
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
     "Cumplimiento de Entrega",
-    "Plazo de Entrega (Auto)",
-    "Condicion de Pago",
     "Calidad Insumos/Servicios",
+    "Condicion de Pago",
+    "Plazo de Entrega (Auto)",
     "Atencion",
     "Respuesta a Reclamos"
 ];
@@ -379,7 +377,7 @@ function cargarCalificacionExistente() {
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro) {
-        document.getElementById('num-formulario').value = registro.numFormulario || localStorage.getItem('num_form_stat') || '';
+        document.getElementById('num-formulario').value = registro.numFormulario || 'FOR-CAL-002';
 
         if (registro.fechaEval) {
             document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
@@ -394,7 +392,7 @@ function cargarCalificacionExistente() {
             calcularPuntajeClase();
         }
     } else {
-        restaurarNumerosFormularioMemoria();
+        document.getElementById('num-formulario').value = 'FOR-CAL-002';
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
@@ -403,9 +401,10 @@ function cargarCalificacionExistente() {
             document.getElementById(`stat-val-${i}`).value = '';
         }
 
+        // Asignación explícita al Campo 4: Plazo de Entrega (Auto)
         const puntajeAuto = calcularPuntajeTiemposReales(provNum);
         if (puntajeAuto !== null) {
-            document.getElementById('stat-val-2').value = puntajeAuto;
+            document.getElementById('stat-val-4').value = puntajeAuto;
         }
 
         calcularPuntajeClase();
@@ -458,7 +457,6 @@ async function calcularEstadistica(e) {
     await guardarNombresCriteriosEstadisticas();
 
     const numFormulario = document.getElementById('num-formulario').value.trim();
-    localStorage.setItem('num_form_stat', numFormulario);
 
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
@@ -494,7 +492,6 @@ async function calcularEstadistica(e) {
     });
 
     document.getElementById('form-estadisticas').reset();
-    restaurarNumerosFormularioMemoria();
     document.getElementById('select-anio-estadistica').value = "2026";
     document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
     cargarNombresCriteriosEstadisticas();
@@ -676,8 +673,6 @@ async function iniciarCompra(e) {
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
 
-    localStorage.setItem('num_form_comp', numFormulario);
-
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
 
@@ -715,7 +710,6 @@ async function iniciarCompra(e) {
 
     generarPDFOrden(nuevaOrden);
     document.getElementById('form-compras').reset();
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -830,8 +824,6 @@ async function guardarRecepcion(e) {
     const obs = document.getElementById('rec-campo-6').value.trim();
     const fechaRecepcion = document.getElementById('rec-fecha')?.value || new Date().toISOString().split('T')[0];
 
-    localStorage.setItem('num_form_rec', numFormulario);
-
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
     const nuevaRec = {
@@ -854,7 +846,6 @@ async function guardarRecepcion(e) {
     });
 
     document.getElementById('form-recepcion').reset();
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
     actualizarSelectOrdenesPendientes();
 }

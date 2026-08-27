@@ -91,7 +91,7 @@ async function initDB() {
             );
         `);
 
-        // Migración automática de columnas de número de formulario
+        // Migración automática de columnas
         await pool.query(`
             ALTER TABLE requisitos ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
             ALTER TABLE proveedores ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
