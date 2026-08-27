@@ -27,9 +27,6 @@ async function initDB() {
             CREATE TABLE IF NOT EXISTS proveedores (
                 num VARCHAR(50) PRIMARY KEY,
                 nombre TEXT NOT NULL,
-                fecha_eval DATE,
-                fecha_prox DATE,
-                dias_restantes INT,
                 criterios JSONB
             );
 
@@ -38,6 +35,9 @@ async function initDB() {
                 prov_num VARCHAR(50),
                 prov_nombre TEXT,
                 anio VARCHAR(10),
+                fecha_eval DATE,
+                dias_plazo INT,
+                fecha_prox DATE,
                 promedio INT,
                 clase VARCHAR(10),
                 clase_css VARCHAR(20),
@@ -85,10 +85,11 @@ async function initDB() {
             );
         `);
 
-        // Migración automática para agregar columnas si la tabla ya existía
+        // Migración automática de columnas en PostgreSQL
         await pool.query(`
-            ALTER TABLE requisitos ADD COLUMN IF NOT EXISTS fecha DATE;
-            ALTER TABLE compras ADD COLUMN IF NOT EXISTS fecha_emision DATE;
+            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS fecha_eval DATE;
+            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS dias_plazo INT;
+            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS fecha_prox DATE;
         `);
 
         console.log("Base de datos conectada y tablas inicializadas correctamente.");
@@ -164,13 +165,13 @@ app.get('/api/proveedores', async (req, res) => {
 });
 
 app.post('/api/proveedores', async (req, res) => {
-    const { num, nombre, fechaEval, fechaProx, diasRestantes, criterios } = req.body;
+    const { num, nombre, criterios } = req.body;
     try {
         await pool.query(
-            `INSERT INTO proveedores (num, nombre, fecha_eval, fecha_prox, dias_restantes, criterios)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (num) DO UPDATE SET nombre=$2, fecha_eval=$3, fecha_prox=$4, dias_restantes=$5, criterios=$6`,
-            [num, nombre, fechaEval, fechaProx, diasRestantes, JSON.stringify(criterios)]
+            `INSERT INTO proveedores (num, nombre, criterios)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (num) DO UPDATE SET nombre=$2, criterios=$3`,
+            [num, nombre, JSON.stringify(criterios)]
         );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -191,6 +192,9 @@ app.get('/api/estadisticas', async (req, res) => {
             provNum: r.prov_num,
             provNombre: r.prov_nombre,
             anio: r.anio,
+            fechaEval: r.fecha_eval,
+            diasPlazo: r.dias_plazo,
+            fechaProx: r.fecha_prox,
             promedio: r.promedio,
             clase: r.clase,
             claseCSS: r.clase_css,
@@ -200,13 +204,13 @@ app.get('/api/estadisticas', async (req, res) => {
 });
 
 app.post('/api/estadisticas', async (req, res) => {
-    const { provNum, provNombre, anio, promedio, clase, claseCSS, puntajes } = req.body;
+    const { provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, puntajes } = req.body;
     try {
         await pool.query(
-            `INSERT INTO estadisticas (prov_num, prov_nombre, anio, promedio, clase, clase_css, puntajes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (prov_num, anio) DO UPDATE SET promedio=$4, clase=$5, clase_css=$6, puntajes=$7`,
-            [provNum, provNombre, anio, promedio, clase, claseCSS, JSON.stringify(puntajes)]
+            `INSERT INTO estadisticas (prov_num, prov_nombre, anio, fecha_eval, dias_plazo, fecha_prox, promedio, clase, clase_css, puntajes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (prov_num, anio) DO UPDATE SET fecha_eval=$4, dias_plazo=$5, fecha_prox=$6, promedio=$7, clase=$8, clase_css=$9, puntajes=$10`,
+            [provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, JSON.stringify(puntajes)]
         );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }

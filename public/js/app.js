@@ -139,7 +139,7 @@ async function eliminarRequisito(num) {
 }
 
 
-// --- PESTAÑA 2: EVALUACIÓN DE PROVEEDORES ---
+// --- PESTAÑA 2: SELECCIÓN DE PROVEEDORES ---
 let proveedores = [];
 let nombresCriteriosProveedores = [
     "Calidad de Entrega",
@@ -171,25 +171,6 @@ function cargarNombresCriteriosProveedores() {
     }
 }
 
-function calcularDiasDiferencia() {
-    const fEval = document.getElementById('fecha-evaluacion').value;
-    const fProx = document.getElementById('proxima-evaluacion').value;
-    const cajaBadge = document.getElementById('caja-dias-restantes');
-
-    if (fEval && fProx) {
-        const fechaIni = new Date(fEval);
-        const fechaFin = new Date(fProx);
-        const diffTiempo = fechaFin - fechaIni;
-        const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
-
-        cajaBadge.innerText = diffDias >= 0 ? diffDias : 'Error';
-        cajaBadge.style.color = diffDias < 0 ? '#d32f2f' : '#d81b60';
-        return diffDias;
-    }
-    cajaBadge.innerText = '0';
-    return 0;
-}
-
 async function guardarProveedor(e) {
     e.preventDefault();
 
@@ -197,9 +178,6 @@ async function guardarProveedor(e) {
 
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
-    const fechaEval = document.getElementById('fecha-evaluacion').value;
-    const fechaProx = document.getElementById('proxima-evaluacion').value;
-    const diasRestantes = calcularDiasDiferencia();
 
     const criterios = [];
     for (let i = 1; i <= 6; i++) {
@@ -212,12 +190,11 @@ async function guardarProveedor(e) {
     await fetch('/api/proveedores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ num, nombre, fechaEval, fechaProx, diasRestantes, criterios })
+        body: JSON.stringify({ num, nombre, criterios })
     });
 
     document.getElementById('form-proveedor').reset();
     cargarNombresCriteriosProveedores();
-    document.getElementById('caja-dias-restantes').innerText = '0';
     await cargarTodoDesdeServidor(true);
 }
 
@@ -228,16 +205,10 @@ function renderizarTablaProveedores() {
 
     proveedores.forEach((p) => {
         const tr = document.createElement('tr');
-        const fEval = p.fecha_eval ? p.fecha_eval.split('T')[0] : p.fechaEval;
-        const fProx = p.fecha_prox ? p.fecha_prox.split('T')[0] : p.fechaProx;
-        const dRest = p.dias_restantes !== undefined ? p.dias_restantes : p.diasRestantes;
 
         tr.innerHTML = `
             <td><strong>${p.num}</strong></td>
             <td>${p.nombre}</td>
-            <td>${fEval || ''}</td>
-            <td>${fProx || ''}</td>
-            <td><strong>${dRest || 0} días</strong></td>
             <td>
                 <button class="btn-warning" onclick="editarProveedor('${p.num}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarProveedor('${p.num}')">Eliminar</button>
@@ -253,8 +224,6 @@ function editarProveedor(num) {
 
     document.getElementById('num-proveedor').value = p.num;
     document.getElementById('nombre-proveedor').value = p.nombre;
-    document.getElementById('fecha-evaluacion').value = p.fecha_eval ? p.fecha_eval.split('T')[0] : p.fechaEval;
-    document.getElementById('proxima-evaluacion').value = p.fecha_prox ? p.fecha_prox.split('T')[0] : p.fechaProx;
 
     if (p.criterios && Array.isArray(p.criterios)) {
         p.criterios.forEach((crit, index) => {
@@ -266,7 +235,6 @@ function editarProveedor(num) {
         });
     }
 
-    calcularDiasDiferencia();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -276,7 +244,7 @@ async function eliminarProveedor(num) {
 }
 
 
-// --- PESTAÑA 3: ESTADÍSTICAS Y CLASIFICACIÓN MULTIANUAL ---
+// --- PESTAÑA 3: EVALUACIÓN Y ESTADÍSTICAS ---
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
     "Calidad General",
@@ -287,6 +255,29 @@ let nombresCriteriosEstadisticas = [
     "Condiciones de Pago"
 ];
 let chartEvolucionInstance = null;
+
+// Lógica de suma de días para calcular la fecha próxima exacta
+function calcularFechaProximaDesdeDias() {
+    const fEvalVal = document.getElementById('fecha-evaluacion').value;
+    const diasVal = parseInt(document.getElementById('dias-proxima-eval').value);
+    const badgeFechaCalc = document.getElementById('fecha-calculada-prox');
+
+    if (fEvalVal && !isNaN(diasVal) && diasVal > 0) {
+        const fechaBase = new Date(fEvalVal + 'T00:00:00');
+        fechaBase.setDate(fechaBase.getDate() + diasVal);
+
+        const dia = String(fechaBase.getDate()).padStart(2, '0');
+        const mes = String(fechaBase.getMonth() + 1).padStart(2, '0');
+        const anio = fechaBase.getFullYear();
+
+        const fechaFormateada = `${dia}/${mes}/${anio}`;
+        badgeFechaCalc.innerText = fechaFormateada;
+        return `${anio}-${mes}-${dia}`;
+    } else {
+        badgeFechaCalc.innerText = '-- / -- / ----';
+        return '';
+    }
+}
 
 async function guardarNombresCriteriosEstadisticas() {
     for (let i = 1; i <= 6; i++) {
@@ -331,12 +322,23 @@ function cargarCalificacionExistente() {
     
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
-    if (registro && registro.puntajes) {
-        for (let i = 1; i <= 6; i++) {
-            document.getElementById(`stat-val-${i}`).value = registro.puntajes[i - 1] || '';
+    if (registro) {
+        if (registro.fechaEval) {
+            document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
         }
-        calcularPuntajeClase();
+        document.getElementById('dias-proxima-eval').value = registro.diasPlazo || '';
+        calcularFechaProximaDesdeDias();
+
+        if (registro.puntajes) {
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById(`stat-val-${i}`).value = registro.puntajes[i - 1] || '';
+            }
+            calcularPuntajeClase();
+        }
     } else {
+        document.getElementById('fecha-evaluacion').value = '';
+        document.getElementById('dias-proxima-eval').value = '';
+        document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
         for (let i = 1; i <= 6; i++) {
             document.getElementById(`stat-val-${i}`).value = '';
         }
@@ -394,6 +396,10 @@ async function calcularEstadistica(e) {
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
 
+    const fechaEval = document.getElementById('fecha-evaluacion').value;
+    const diasPlazo = parseInt(document.getElementById('dias-proxima-eval').value) || 0;
+    const fechaProx = calcularFechaProximaDesdeDias();
+
     const puntajes = [];
     for (let i = 1; i <= 6; i++) {
         puntajes.push(parseFloat(document.getElementById(`stat-val-${i}`).value) || 0);
@@ -403,6 +409,9 @@ async function calcularEstadistica(e) {
         provNum,
         provNombre: proveedor ? proveedor.nombre : 'Desconocido',
         anio,
+        fechaEval,
+        diasPlazo,
+        fechaProx,
         promedio,
         clase,
         claseCSS,
@@ -417,6 +426,7 @@ async function calcularEstadistica(e) {
 
     document.getElementById('form-estadisticas').reset();
     document.getElementById('select-anio-estadistica').value = "2026";
+    document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
     cargarNombresCriteriosEstadisticas();
     document.getElementById('stat-promedio').innerText = '0 pts';
     document.getElementById('stat-clase').innerText = 'Clase D';
@@ -440,10 +450,16 @@ function renderizarTablaEstadisticas() {
 
     lista.forEach((s) => {
         const tr = document.createElement('tr');
+        const fEval = s.fechaEval ? s.fechaEval.split('T')[0] : '';
+        const fProx = s.fechaProx ? s.fechaProx.split('T')[0] : '';
+
         tr.innerHTML = `
             <td><strong>${s.anio}</strong></td>
             <td>${s.provNum}</td>
             <td>${s.provNombre}</td>
+            <td>${fEval}</td>
+            <td><strong>${s.diasPlazo || 0} días</strong></td>
+            <td><strong>${fProx}</strong></td>
             <td>${s.promedio} pts</td>
             <td><span class="clase-badge ${s.claseCSS}">${s.clase}</span></td>
             <td>
