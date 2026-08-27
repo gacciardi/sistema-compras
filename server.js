@@ -32,6 +32,8 @@ async function initDB() {
 
             CREATE TABLE IF NOT EXISTS estadisticas (
                 id SERIAL PRIMARY KEY,
+                num_formulario VARCHAR(50),
+                version VARCHAR(20),
                 prov_num VARCHAR(50),
                 prov_nombre TEXT,
                 anio VARCHAR(10),
@@ -87,9 +89,8 @@ async function initDB() {
 
         // Migración automática de columnas en PostgreSQL
         await pool.query(`
-            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS fecha_eval DATE;
-            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS dias_plazo INT;
-            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS fecha_prox DATE;
+            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
+            ALTER TABLE estadisticas ADD COLUMN IF NOT EXISTS version VARCHAR(20);
         `);
 
         console.log("Base de datos conectada y tablas inicializadas correctamente.");
@@ -107,7 +108,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API ENDPOINTS ---
 
-// Configuraciones globales
 app.get('/api/configuraciones', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM configuraciones');
@@ -129,7 +129,6 @@ app.post('/api/configuraciones', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Requisitos
 app.get('/api/requisitos', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM requisitos');
@@ -156,7 +155,6 @@ app.delete('/api/requisitos/:num', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Proveedores
 app.get('/api/proveedores', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM proveedores');
@@ -184,11 +182,13 @@ app.delete('/api/proveedores/:num', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Estadísticas
+// Estadísticas con control documental
 app.get('/api/estadisticas', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM estadisticas');
         res.json(result.rows.map(r => ({
+            numFormulario: r.num_formulario,
+            version: r.version,
             provNum: r.prov_num,
             provNombre: r.prov_nombre,
             anio: r.anio,
@@ -204,19 +204,18 @@ app.get('/api/estadisticas', async (req, res) => {
 });
 
 app.post('/api/estadisticas', async (req, res) => {
-    const { provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, puntajes } = req.body;
+    const { numFormulario, version, provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, puntajes } = req.body;
     try {
         await pool.query(
-            `INSERT INTO estadisticas (prov_num, prov_nombre, anio, fecha_eval, dias_plazo, fecha_prox, promedio, clase, clase_css, puntajes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             ON CONFLICT (prov_num, anio) DO UPDATE SET fecha_eval=$4, dias_plazo=$5, fecha_prox=$6, promedio=$7, clase=$8, clase_css=$9, puntajes=$10`,
-            [provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, JSON.stringify(puntajes)]
+            `INSERT INTO estadisticas (num_formulario, version, prov_num, prov_nombre, anio, fecha_eval, dias_plazo, fecha_prox, promedio, clase, clase_css, puntajes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             ON CONFLICT (prov_num, anio) DO UPDATE SET num_formulario=$1, version=$2, fecha_eval=$6, dias_plazo=$7, fecha_prox=$8, promedio=$9, clase=$10, clase_css=$11, puntajes=$12`,
+            [numFormulario, version, provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, JSON.stringify(puntajes)]
         );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Compras
 app.get('/api/compras', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM compras');
@@ -249,7 +248,6 @@ app.post('/api/compras', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Recepciones
 app.get('/api/recepciones', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM recepciones');
@@ -280,7 +278,6 @@ app.post('/api/recepciones', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Usuarios
 app.get('/api/usuarios', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM usuarios');

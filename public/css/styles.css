@@ -22,7 +22,7 @@ body {
     line-height: 1.5;
 }
 
-/* CABECERA */
+/* CABECERA CON SOMBRA ROSADA */
 .main-header {
     background-color: #ffffff;
     padding: 14px 20px;
@@ -65,7 +65,7 @@ body {
     box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* NAVEGACIÓN POR PESTAÑAS */
+/* NAVEGACIÓN POR PESTAÑAS (SCROLL HORIZONTAL EN CELULARES) */
 .nav-tabs {
     display: flex;
     background-color: #ffffff;
@@ -100,7 +100,7 @@ body {
     font-weight: 700;
 }
 
-/* CONTENEDOR PRINCIPAL Y TARJETAS ROSADAS */
+/* CONTENEDOR PRINCIPAL Y TARJETAS */
 .content-container {
     padding: 18px;
     max-width: 1200px;
@@ -124,7 +124,7 @@ body {
     margin-bottom: 22px;
 }
 
-/* GRILLAS ADAPTABLES */
+/* GRILLAS ADAPTABLES PARA CAMPOS */
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -175,7 +175,7 @@ body {
     outline: none;
 }
 
-/* INPUTS CON BORDES ROSADOS */
+/* INPUTS Y SELECTS CON BORDES ROSADOS */
 input[type="text"],
 input[type="number"],
 input[type="date"],
@@ -195,6 +195,45 @@ input:focus, select:focus, textarea:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 8px rgba(216, 27, 96, 0.3);
     outline: none;
+}
+
+/* CONTROL DOCUMENTAL (FORMULARIO Y VERSIÓN EN PESTAÑA 3) */
+.control-documental-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    background-color: var(--primary-light);
+    padding: 14px 18px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+    margin-bottom: 15px;
+}
+
+/* CARTEL FIJO DE REGLA Y EVIDENCIA DE CÁLCULO */
+.regla-calculo-box {
+    background-color: #fff8e1;
+    border: 1px solid #ffe082;
+    border-left: 5px solid #ffa000;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-top: 18px;
+    color: #5d4037;
+    font-size: 0.88rem;
+}
+
+.regla-calculo-box h5 {
+    color: #e65100;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.regla-calculo-box ul {
+    margin-top: 6px;
+    margin-left: 20px;
+}
+
+.regla-calculo-box li {
+    margin-bottom: 3px;
 }
 
 /* BOTONES ILUMINADOS (GLOW) */
@@ -259,7 +298,7 @@ input:focus, select:focus, textarea:focus {
     box-shadow: 0 6px 18px rgba(2, 136, 209, 0.5);
 }
 
-/* TABLAS */
+/* TABLAS RESPONSIVAS */
 .table-responsive {
     width: 100%;
     overflow-x: auto;
@@ -290,7 +329,7 @@ th {
     font-weight: 700;
 }
 
-/* BADGES DE CLASIFICACIÓN Y RESULTADOS ROSADOS */
+/* BADGES Y RESULTADOS */
 .clase-badge {
     padding: 5px 12px;
     border-radius: 14px;
@@ -341,6 +380,13 @@ th {
     color: #880e4f;
 }
 
+.filter-bar {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 /* MODALES */
 .modal-overlay {
     position: fixed;
@@ -387,7 +433,7 @@ th {
     color: #880e4f;
 }
 
-/* MÓVILES PANTALLAS PEQUEÑAS */
+/* ADAPTACIÓN PARA CELULARES Y PANTALLAS PEQUEÑAS */
 @media (max-width: 480px) {
     .main-header {
         flex-direction: column;

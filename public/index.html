@@ -154,7 +154,20 @@
             <h2>Evaluación y Estadísticas de Proveedores</h2>
             <div class="card">
                 <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
-                    <div class="form-grid">
+                    
+                    <!-- CONTROL DOCUMENTAL SUPERIOR -->
+                    <div class="control-documental-grid">
+                        <div class="form-group">
+                            <label for="num-formulario">N° de Formulario *</label>
+                            <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="version-formulario">Versión *</label>
+                            <input type="text" id="version-formulario" placeholder="Ej: V2" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 15px;">
                         <div class="form-group">
                             <label for="select-prov-estadistica">Seleccionar Proveedor *</label>
                             <select id="select-prov-estadistica" onchange="cargarCalificacionExistente()" required>
@@ -186,9 +199,21 @@
                         <div class="form-group">
                             <label>Fecha Calculada Próxima Evaluación:</label>
                             <div class="badge-dias-container" style="margin-top: 5px;">
-                                <strong id="fecha-calculada-prox" style="font-size: 1.1em; color: #0288d1;">-- / -- / ----</strong>
+                                <strong id="fecha-calculada-prox" style="font-size: 1.1em; color: #880e4f;">-- / -- / ----</strong>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- CARTEL FIJO DE REGLA Y EVIDENCIA DE CÁLCULO -->
+                    <div class="regla-calculo-box">
+                        <h5>📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
+                        <p>El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
+                        <ul>
+                            <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
+                            <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
+                            <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
+                            <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
+                        </ul>
                     </div>
 
                     <h4 style="margin-top: 20px;">Criterios de Calificación Anual (Puntajes de 0 a 100)</h4>
@@ -198,7 +223,7 @@
                             <input type="number" id="stat-val-1" min="0" max="100" oninput="calcularPuntajeClase()">
                         </div>
                         <div class="form-group">
-                            <input type="text" id="lbl-stat-2" class="input-editable-label" value="Tiempos de Entrega">
+                            <input type="text" id="lbl-stat-2" class="input-editable-label" value="Tiempos de Entrega (Auto)">
                             <input type="number" id="stat-val-2" min="0" max="100" oninput="calcularPuntajeClase()">
                         </div>
                         <div class="form-group">
@@ -245,6 +270,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>Form. / Ver.</th>
                             <th>Año</th>
                             <th>N° Proveedor</th>
                             <th>Nombre Proveedor</th>
