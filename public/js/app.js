@@ -45,6 +45,22 @@ function showTab(tabId) {
     }
 }
 
+// Cargar y mantener los números de formulario almacenados
+function restaurarNumerosFormularioMemoria() {
+    if (localStorage.getItem('num_form_req')) {
+        document.getElementById('num-formulario-req').value = localStorage.getItem('num_form_req');
+    }
+    if (localStorage.getItem('num_form_prov')) {
+        document.getElementById('num-formulario-prov').value = localStorage.getItem('num_form_prov');
+    }
+    if (localStorage.getItem('num_form_stat')) {
+        document.getElementById('num-formulario').value = localStorage.getItem('num_form_stat');
+    }
+    if (localStorage.getItem('num_form_rec')) {
+        document.getElementById('num-formulario-rec').value = localStorage.getItem('num_form_rec');
+    }
+}
+
 async function cargarTodoDesdeServidor(renderCompleto = true) {
     try {
         const [resReq, resProv, resStat, resComp, resRec, resUsr, resConfig] = await Promise.all([
@@ -84,6 +100,8 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             renderizarTablaCompras();
             renderizarTablaRecepciones();
             renderizarTablaUsuarios();
+
+            restaurarNumerosFormularioMemoria();
         }
     } catch (e) {
         console.error("Error al cargar datos:", e);
@@ -95,18 +113,22 @@ let requisitos = [];
 
 async function guardarRequisito(e) {
     e.preventDefault();
+    const numFormulario = document.getElementById('num-formulario-req').value.trim();
     const num = document.getElementById('num-requisito').value.trim();
     const nombre = document.getElementById('nombre-requisito').value.trim();
     const fecha = document.getElementById('fecha-requisito')?.value || new Date().toISOString().split('T')[0];
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
+    localStorage.setItem('num_form_req', numFormulario);
+
     await fetch('/api/requisitos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ num, nombre, fecha, detalle })
+        body: JSON.stringify({ numFormulario, num, nombre, fecha, detalle })
     });
 
     document.getElementById('form-requisito').reset();
+    document.getElementById('num-formulario-req').value = numFormulario;
     await cargarTodoDesdeServidor(true);
 }
 
@@ -119,6 +141,7 @@ function renderizarTablaRequisitos() {
         const tr = document.createElement('tr');
         const fReq = req.fecha ? req.fecha.split('T')[0] : '';
         tr.innerHTML = `
+            <td><strong>${req.numFormulario || ''}</strong></td>
             <td><strong>${req.num}</strong></td>
             <td>${req.nombre}</td>
             <td>${fReq}</td>
@@ -174,8 +197,11 @@ async function guardarProveedor(e) {
 
     await guardarNombresCriteriosProveedores();
 
+    const numFormulario = document.getElementById('num-formulario-prov').value.trim();
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
+
+    localStorage.setItem('num_form_prov', numFormulario);
 
     const criterios = [];
     for (let i = 1; i <= 6; i++) {
@@ -188,10 +214,11 @@ async function guardarProveedor(e) {
     await fetch('/api/proveedores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ num, nombre, criterios })
+        body: JSON.stringify({ numFormulario, num, nombre, criterios })
     });
 
     document.getElementById('form-proveedor').reset();
+    document.getElementById('num-formulario-prov').value = numFormulario;
     cargarNombresCriteriosProveedores();
     await cargarTodoDesdeServidor(true);
 }
@@ -204,6 +231,7 @@ function renderizarTablaProveedores() {
     proveedores.forEach((p) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td><strong>${p.numFormulario || ''}</strong></td>
             <td><strong>${p.num}</strong></td>
             <td>${p.nombre}</td>
             <td>
@@ -219,6 +247,7 @@ function editarProveedor(num) {
     const p = proveedores.find(prov => prov.num === num);
     if (!p) return;
 
+    document.getElementById('num-formulario-prov').value = p.numFormulario || '';
     document.getElementById('num-proveedor').value = p.num;
     document.getElementById('nombre-proveedor').value = p.nombre;
 
@@ -275,7 +304,6 @@ function calcularFechaProximaDesdeDias() {
     }
 }
 
-// LÓGICA AUTOMÁTICA: Calcular Nota de Plazo de Entrega en base a fechas de Pestaña 4 y 5
 function calcularPuntajeTiemposReales(provNum) {
     const provObj = proveedores.find(p => p.num === provNum);
     const nombreProv = provObj ? provObj.nombre : '';
@@ -351,7 +379,7 @@ function cargarCalificacionExistente() {
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro) {
-        document.getElementById('num-formulario').value = registro.numFormulario || '';
+        document.getElementById('num-formulario').value = registro.numFormulario || localStorage.getItem('num_form_stat') || 'FOR-CAL-002';
 
         if (registro.fechaEval) {
             document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
@@ -366,7 +394,7 @@ function cargarCalificacionExistente() {
             calcularPuntajeClase();
         }
     } else {
-        document.getElementById('num-formulario').value = 'FOR-CAL-002';
+        document.getElementById('num-formulario').value = localStorage.getItem('num_form_stat') || 'FOR-CAL-002';
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
@@ -375,7 +403,6 @@ function cargarCalificacionExistente() {
             document.getElementById(`stat-val-${i}`).value = '';
         }
 
-        // Sugerir nota calculada automáticamente para el Criterio 2: Plazo de Entrega
         const puntajeAuto = calcularPuntajeTiemposReales(provNum);
         if (puntajeAuto !== null) {
             document.getElementById('stat-val-2').value = puntajeAuto;
@@ -431,6 +458,7 @@ async function calcularEstadistica(e) {
     await guardarNombresCriteriosEstadisticas();
 
     const numFormulario = document.getElementById('num-formulario').value.trim();
+    localStorage.setItem('num_form_stat', numFormulario);
 
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
@@ -466,6 +494,7 @@ async function calcularEstadistica(e) {
     });
 
     document.getElementById('form-estadisticas').reset();
+    document.getElementById('num-formulario').value = numFormulario;
     document.getElementById('select-anio-estadistica').value = "2026";
     document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
     cargarNombresCriteriosEstadisticas();
@@ -649,7 +678,6 @@ async function iniciarCompra(e) {
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
 
-    // CÁLCULO DINÁMICO DEL NÚMERO DE ORDEN PARA EVITAR DUPLICADOS
     let nuevoNumero = 1001;
     if (ordenesCompra.length > 0) {
         const numerosExistentes = ordenesCompra.map(o => {
@@ -786,6 +814,7 @@ async function guardarRecepcion(e) {
     const idOrden = document.getElementById('select-recepcion-orden').value;
     if (!idOrden) return;
 
+    const numFormulario = document.getElementById('num-formulario-rec').value.trim();
     const remito = document.getElementById('rec-campo-1').value.trim();
     const cantRecibida = document.getElementById('rec-campo-2').value;
     const empaque = document.getElementById('rec-campo-3').value;
@@ -794,9 +823,12 @@ async function guardarRecepcion(e) {
     const obs = document.getElementById('rec-campo-6').value.trim();
     const fechaRecepcion = document.getElementById('rec-fecha')?.value || new Date().toISOString().split('T')[0];
 
+    localStorage.setItem('num_form_rec', numFormulario);
+
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
     const nuevaRec = {
+        numFormulario,
         idOrden,
         provNombre: orden ? orden.provNombre : '',
         remito,
@@ -815,6 +847,7 @@ async function guardarRecepcion(e) {
     });
 
     document.getElementById('form-recepcion').reset();
+    document.getElementById('num-formulario-rec').value = numFormulario;
     await cargarTodoDesdeServidor(true);
     actualizarSelectOrdenesPendientes();
 }
@@ -828,6 +861,7 @@ function renderizarTablaRecepciones() {
         const tr = document.createElement('tr');
         const fRec = r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : '';
         tr.innerHTML = `
+            <td><strong>${r.numFormulario || ''}</strong></td>
             <td><strong>${r.idOrden}</strong></td>
             <td>${r.provNombre}</td>
             <td>${r.remito}</td>
