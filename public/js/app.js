@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor();
 
     const formUsuarios = document.getElementById('form-usuarios');
@@ -7,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         formUsuarios.addEventListener('submit', guardarUsuario);
     }
 
+    // Sincronización continua sin sobreescribir campos activos
     setInterval(async () => {
         await cargarTodoDesdeServidor(false);
     }, 5000);
@@ -45,44 +45,34 @@ function showTab(tabId) {
     }
 }
 
-function restaurarNumerosFormularioMemoria() {
-    const valReq = localStorage.getItem('num_form_req');
-    const valProv = localStorage.getItem('num_form_prov');
-    const valStat = localStorage.getItem('num_form_stat');
-    const valComp = localStorage.getItem('num_form_comp');
-    const valRec = localStorage.getItem('num_form_rec');
-
-    if (valReq && document.getElementById('num-formulario-req')) document.getElementById('num-formulario-req').value = valReq;
-    if (valProv && document.getElementById('num-formulario-prov')) document.getElementById('num-formulario-prov').value = valProv;
-    if (valStat && document.getElementById('num-formulario')) document.getElementById('num-formulario').value = valStat;
-    if (valComp && document.getElementById('num-formulario-comp')) document.getElementById('num-formulario-comp').value = valComp;
-    if (valRec && document.getElementById('num-formulario-rec')) document.getElementById('num-formulario-rec').value = valRec;
-}
-
+// Carga los N° de Formulario registrados en la Base de Datos para todas las PCs
 function autocompletarNumerosFormularioDesdeBD() {
+    const activeEl = document.activeElement;
+
     if (requisitos.length > 0) {
-        const ultReq = requisitos[requisitos.length - 1];
-        if (ultReq.numFormulario && !document.getElementById('num-formulario-req').value) {
-            document.getElementById('num-formulario-req').value = ultReq.numFormulario;
-        }
+        const ult = requisitos[requisitos.length - 1];
+        const el = document.getElementById('num-formulario-req');
+        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
     }
     if (proveedores.length > 0) {
-        const ultProv = proveedores[proveedores.length - 1];
-        if (ultProv.numFormulario && !document.getElementById('num-formulario-prov').value) {
-            document.getElementById('num-formulario-prov').value = ultProv.numFormulario;
-        }
+        const ult = proveedores[proveedores.length - 1];
+        const el = document.getElementById('num-formulario-prov');
+        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
+    }
+    if (estadisticas.length > 0) {
+        const ult = estadisticas[estadisticas.length - 1];
+        const el = document.getElementById('num-formulario');
+        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
     }
     if (ordenesCompra.length > 0) {
-        const ultComp = ordenesCompra[ordenesCompra.length - 1];
-        if (ultComp.numFormulario && !document.getElementById('num-formulario-comp').value) {
-            document.getElementById('num-formulario-comp').value = ultComp.numFormulario;
-        }
+        const ult = ordenesCompra[ordenesCompra.length - 1];
+        const el = document.getElementById('num-formulario-comp');
+        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
     }
     if (recepciones.length > 0) {
-        const ultRec = recepciones[recepciones.length - 1];
-        if (ultRec.numFormulario && !document.getElementById('num-formulario-rec').value) {
-            document.getElementById('num-formulario-rec').value = ultRec.numFormulario;
-        }
+        const ult = recepciones[recepciones.length - 1];
+        const el = document.getElementById('num-formulario-rec');
+        if (el && activeEl !== el && ult.numFormulario) el.value = ult.numFormulario;
     }
 }
 
@@ -125,10 +115,9 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             renderizarTablaCompras();
             renderizarTablaRecepciones();
             renderizarTablaUsuarios();
-
-            restaurarNumerosFormularioMemoria();
-            autocompletarNumerosFormularioDesdeBD();
         }
+
+        autocompletarNumerosFormularioDesdeBD();
     } catch (e) {
         console.error("Error al cargar datos:", e);
     }
@@ -145,8 +134,6 @@ async function guardarRequisito(e) {
     const fecha = document.getElementById('fecha-requisito')?.value || new Date().toISOString().split('T')[0];
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
-    localStorage.setItem('num_form_req', numFormulario);
-
     await fetch('/api/requisitos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,7 +141,6 @@ async function guardarRequisito(e) {
     });
 
     document.getElementById('form-requisito').reset();
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -227,8 +213,6 @@ async function guardarProveedor(e) {
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
 
-    localStorage.setItem('num_form_prov', numFormulario);
-
     const criterios = [];
     for (let i = 1; i <= 6; i++) {
         criterios.push({
@@ -244,7 +228,6 @@ async function guardarProveedor(e) {
     });
 
     document.getElementById('form-proveedor').reset();
-    restaurarNumerosFormularioMemoria();
     cargarNombresCriteriosProveedores();
     await cargarTodoDesdeServidor(true);
 }
@@ -405,7 +388,9 @@ function cargarCalificacionExistente() {
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro) {
-        document.getElementById('num-formulario').value = registro.numFormulario || localStorage.getItem('num_form_stat') || 'FOR-CAL-002';
+        if (registro.numFormulario) {
+            document.getElementById('num-formulario').value = registro.numFormulario;
+        }
 
         if (registro.fechaEval) {
             document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
@@ -420,7 +405,6 @@ function cargarCalificacionExistente() {
             calcularPuntajeClase();
         }
     } else {
-        restaurarNumerosFormularioMemoria();
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
@@ -484,7 +468,6 @@ async function calcularEstadistica(e) {
     await guardarNombresCriteriosEstadisticas();
 
     const numFormulario = document.getElementById('num-formulario').value.trim();
-    localStorage.setItem('num_form_stat', numFormulario);
 
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
@@ -520,7 +503,6 @@ async function calcularEstadistica(e) {
     });
 
     document.getElementById('form-estadisticas').reset();
-    restaurarNumerosFormularioMemoria();
     document.getElementById('select-anio-estadistica').value = "2026";
     document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
     cargarNombresCriteriosEstadisticas();
@@ -702,8 +684,6 @@ async function iniciarCompra(e) {
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
 
-    localStorage.setItem('num_form_comp', numFormulario);
-
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
 
@@ -741,7 +721,6 @@ async function iniciarCompra(e) {
 
     generarPDFOrden(nuevaOrden);
     document.getElementById('form-compras').reset();
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -856,8 +835,6 @@ async function guardarRecepcion(e) {
     const obs = document.getElementById('rec-campo-6').value.trim();
     const fechaRecepcion = document.getElementById('rec-fecha')?.value || new Date().toISOString().split('T')[0];
 
-    localStorage.setItem('num_form_rec', numFormulario);
-
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
     const nuevaRec = {
@@ -880,7 +857,6 @@ async function guardarRecepcion(e) {
     });
 
     document.getElementById('form-recepcion').reset();
-    restaurarNumerosFormularioMemoria();
     await cargarTodoDesdeServidor(true);
     actualizarSelectOrdenesPendientes();
 }
