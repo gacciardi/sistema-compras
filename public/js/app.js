@@ -44,7 +44,6 @@ function showTab(tabId) {
     }
 }
 
-// Guardado directo de N° de Formulario en PostgreSQL
 async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
     const valor = document.getElementById(idInput).value.trim();
     if (!valor) {
@@ -91,7 +90,6 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
 
         const config = await resConfig.json();
 
-        // Aplicación global de N° de Formulario configurados
         const activeEl = document.activeElement;
 
         if (config.num_form_req && activeEl !== document.getElementById('num-formulario-req')) {
@@ -974,7 +972,7 @@ async function eliminarUsuario(nombre) {
 }
 
 
-// --- MODAL Y CONFIGURACIÓN ---
+// --- MODAL Y CONFIGURACIÓN MASTER ---
 function abrirModalMaster() {
     document.getElementById('modal-master').style.display = 'flex';
 }
@@ -1047,15 +1045,30 @@ async function cambiarColorBg(color, guardar = true) {
     }
 }
 
-async function cambiarLogo(nombreArchivo, guardar = true) {
-    if (nombreArchivo) {
-        document.getElementById('app-logo').src = nombreArchivo;
+function subirLogoDesdePC(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64Image = e.target.result;
+            cambiarLogo(base64Image, true);
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+async function cambiarLogo(srcImagen, guardar = true) {
+    if (srcImagen) {
+        const logoImg = document.getElementById('app-logo');
+        if (logoImg) logoImg.src = srcImagen;
+
         if (guardar) {
             await fetch('/api/configuraciones', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clave: 'sys_logo', valor: nombreArchivo })
+                body: JSON.stringify({ clave: 'sys_logo', valor: srcImagen })
             });
+            alert("✅ Logo actualizado y guardado correctamente en la Base de Datos PostgreSQL.");
         }
     }
 }
