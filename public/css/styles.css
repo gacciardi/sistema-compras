@@ -1,10 +1,12 @@
 :root {
-    --bg-primary: #f8f9fa;
+    --bg-primary: #fdf2f5;
     --primary-color: #d81b60;
-    --primary-hover: #b0124a;
-    --text-color: #333333;
+    --primary-hover: #ad1457;
+    --primary-light: #fce4ec;
+    --text-color: #2c2c2c;
     --card-bg: #ffffff;
-    --border-color: #e0e0e0;
+    --border-color: #f8bbd0;
+    --shadow-glow: 0 4px 15px rgba(216, 27, 96, 0.35);
 }
 
 * {
@@ -20,69 +22,87 @@ body {
     line-height: 1.5;
 }
 
-/* CABECERA Y RESPONSIVIDAD MÓVIL */
+/* CABECERA */
 .main-header {
     background-color: #ffffff;
-    padding: 12px 20px;
+    padding: 14px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 3px solid var(--primary-color);
+    box-shadow: 0 2px 10px rgba(216, 27, 96, 0.1);
     flex-wrap: wrap;
     gap: 10px;
 }
 
 .logo-container img {
-    max-height: 45px;
+    max-height: 48px;
     width: auto;
 }
 
 .header-title h1 {
-    font-size: 1.3rem;
+    font-size: 1.35rem;
     color: var(--primary-color);
     text-align: center;
+    font-weight: 700;
 }
 
 .btn-master {
-    background-color: #424242;
+    background: linear-gradient(135deg, #424242, #212121);
     color: white;
     border: none;
-    padding: 8px 14px;
-    border-radius: 6px;
+    padding: 9px 16px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-/* NAVEGACIÓN POR PESTAÑAS (SCROLL HORIZONTAL EN CELULARES) */
+.btn-master:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* NAVEGACIÓN POR PESTAÑAS */
 .nav-tabs {
     display: flex;
     background-color: #ffffff;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
     overflow-x: auto;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
-    padding: 12px 18px;
+    padding: 12px 20px;
     border: none;
     background: none;
     cursor: pointer;
     font-weight: 600;
-    font-size: 0.9rem;
-    color: #666666;
-    border-bottom: 3px solid transparent;
+    font-size: 0.92rem;
+    color: #880e4f;
+    border-bottom: 3.5px solid transparent;
     flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    color: var(--primary-color);
+    background-color: var(--primary-light);
 }
 
 .tab-btn.active {
     color: var(--primary-color);
     border-bottom-color: var(--primary-color);
+    background-color: #fff0f5;
+    font-weight: 700;
 }
 
-/* CONTENEDOR DE PESTAÑAS */
+/* CONTENEDOR PRINCIPAL Y TARJETAS ROSADAS */
 .content-container {
-    padding: 15px;
+    padding: 18px;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -97,25 +117,26 @@ body {
 
 .card {
     background-color: var(--card-bg);
-    border-radius: 8px;
-    padding: 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    margin-bottom: 20px;
+    border-radius: 10px;
+    padding: 22px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(216, 27, 96, 0.08);
+    margin-bottom: 22px;
 }
 
-/* FORMULARIOS Y GRILLAS ADAPTABLES */
+/* GRILLAS ADAPTABLES */
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 15px;
+    gap: 16px;
 }
 
 /* GRILLA DE CRITERIOS: 2 O 3 POR RENGLÓN EN PC, 1 EN CELULAR */
 .form-grid-6 {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    margin-top: 12px;
+    gap: 16px;
+    margin-top: 14px;
 }
 
 @media (min-width: 900px) {
@@ -126,7 +147,7 @@ body {
 
 @media (max-width: 580px) {
     .form-grid-6 {
-        grid-template-columns: 1fr; /* Una sola columna fluida para pantallas estrechas */
+        grid-template-columns: 1fr;
     }
 }
 
@@ -136,124 +157,145 @@ body {
 }
 
 .form-group label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: #444444;
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #880e4f;
 }
 
 .input-editable-label {
     border: none;
-    border-bottom: 1.5px dashed var(--primary-color);
+    border-bottom: 2px dashed var(--primary-color);
     font-weight: 700;
     color: var(--primary-color);
     background: transparent;
-    padding: 2px 4px;
-    font-size: 0.88rem;
-    margin-bottom: 4px;
+    padding: 3px 4px;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
     outline: none;
 }
 
+/* INPUTS CON BORDES ROSADOS */
 input[type="text"],
 input[type="number"],
 input[type="date"],
 input[type="password"],
 select,
 textarea {
-    padding: 9px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 0.9rem;
+    padding: 10px 14px;
+    border: 1.5px solid #f48fb1;
+    border-radius: 8px;
+    font-size: 0.92rem;
     width: 100%;
+    background-color: #fff;
+    transition: all 0.2s ease;
 }
 
 input:focus, select:focus, textarea:focus {
     border-color: var(--primary-color);
+    box-shadow: 0 0 8px rgba(216, 27, 96, 0.3);
     outline: none;
 }
 
-/* BOTONES */
+/* BOTONES ILUMINADOS (GLOW) */
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, #e91e63, #d81b60);
     color: white;
     border: none;
-    padding: 10px 18px;
-    border-radius: 6px;
+    padding: 11px 22px;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    box-shadow: var(--shadow-glow);
+    transition: all 0.2s ease-in-out;
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    background: linear-gradient(135deg, #d81b60, #c2185b);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(216, 27, 96, 0.5);
 }
 
 .btn-warning {
-    background-color: #f57c00;
+    background: linear-gradient(135deg, #ff9800, #f57c00);
     color: white;
     border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
+    padding: 6px 12px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(245, 124, 0, 0.3);
 }
 
 .btn-danger {
-    background-color: #d32f2f;
+    background: linear-gradient(135deg, #f44336, #d32f2f);
     color: white;
     border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
+    padding: 6px 12px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3);
 }
 
 .btn-info {
-    background-color: #0288d1;
+    background: linear-gradient(135deg, #0288d1, #01579b);
     color: white;
     border: none;
-    padding: 10px 18px;
-    border-radius: 6px;
+    padding: 11px 22px;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    box-shadow: 0 4px 15px rgba(2, 136, 209, 0.35);
+    transition: all 0.2s ease-in-out;
 }
 
-/* TABLAS RESPONSIVAS */
+.btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(2, 136, 209, 0.5);
+}
+
+/* TABLAS */
 .table-responsive {
     width: 100%;
     overflow-x: auto;
     background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    margin-top: 15px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 3px 10px rgba(216, 27, 96, 0.05);
+    margin-top: 16px;
     -webkit-overflow-scrolling: touch;
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px; /* Garantiza que la tabla mantenga formato legible con scroll horizontal en celulares */
+    min-width: 600px;
 }
 
 th, td {
-    padding: 10px 12px;
+    padding: 12px 14px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.88rem;
+    border-bottom: 1px solid #f8bbd0;
+    font-size: 0.9rem;
 }
 
 th {
-    background-color: #f1f3f5;
+    background-color: #fce4ec;
+    color: #880e4f;
     font-weight: 700;
 }
 
-/* BADGES Y RESULTADOS */
+/* BADGES DE CLASIFICACIÓN Y RESULTADOS ROSADOS */
 .clase-badge {
-    padding: 4px 10px;
-    border-radius: 12px;
+    padding: 5px 12px;
+    border-radius: 14px;
     font-weight: 700;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     display: inline-block;
 }
 
@@ -265,34 +307,38 @@ th {
 .status-badge-pending {
     background-color: #fff8e1;
     color: #f57f17;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
     font-weight: 600;
 }
 
 .status-badge-received {
     background-color: #e8f5e9;
     color: #2e7d32;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
     font-weight: 600;
 }
 
 .badge-dias-container {
-    background-color: #fce4ec;
-    padding: 10px 15px;
-    border-radius: 6px;
+    background-color: var(--primary-light);
+    border: 1px solid #f48fb1;
+    padding: 10px 16px;
+    border-radius: 8px;
     display: inline-block;
+    color: #880e4f;
 }
 
 .resultado-clasificacion-box {
-    background-color: #f5f5f5;
-    padding: 12px;
-    border-radius: 6px;
+    background-color: #fce4ec;
+    border: 1px solid #f48fb1;
+    padding: 14px;
+    border-radius: 8px;
     display: flex;
     gap: 20px;
     align-items: center;
     flex-wrap: wrap;
+    color: #880e4f;
 }
 
 /* MODALES */
@@ -302,7 +348,7 @@ th {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.55);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -312,12 +358,13 @@ th {
 
 .modal-content {
     background: white;
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: 10px;
+    padding: 22px;
     width: 100%;
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
+    border: 2px solid var(--border-color);
 }
 
 .modal-large {
@@ -328,25 +375,27 @@ th {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    margin-bottom: 16px;
+    color: var(--primary-color);
 }
 
 .btn-close {
     background: none;
     border: none;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     cursor: pointer;
+    color: #880e4f;
 }
 
-/* AJUSTES ESPECÍFICOS PARA DISPOSITIVOS MÓVILES PANTALLA PEQUEÑA */
+/* MÓVILES PANTALLAS PEQUEÑAS */
 @media (max-width: 480px) {
     .main-header {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .header-title h1 {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
     }
 
     .content-container {
@@ -354,11 +403,11 @@ th {
     }
 
     .card {
-        padding: 14px;
+        padding: 15px;
     }
 
     .btn-primary, .btn-info {
-        width: 100%; /* Botones de ancho completo en celulares para fácil pulsación */
+        width: 100%;
         text-align: center;
     }
 }
