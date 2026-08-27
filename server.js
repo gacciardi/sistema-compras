@@ -59,6 +59,8 @@ async function initDB() {
                 fecha_emision DATE,
                 fecha_req DATE,
                 observaciones TEXT,
+                pago_eval INT DEFAULT 0,
+                plazo_eval INT DEFAULT 0,
                 estado VARCHAR(20) DEFAULT 'Pendiente'
             );
 
@@ -93,6 +95,8 @@ async function initDB() {
             ALTER TABLE requisitos ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
             ALTER TABLE proveedores ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
             ALTER TABLE compras ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
+            ALTER TABLE compras ADD COLUMN IF NOT EXISTS pago_eval INT DEFAULT 0;
+            ALTER TABLE compras ADD COLUMN IF NOT EXISTS plazo_eval INT DEFAULT 0;
             ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS num_formulario VARCHAR(50);
         `);
 
@@ -242,19 +246,21 @@ app.get('/api/compras', async (req, res) => {
             fechaEmision: r.fecha_emision,
             fechaReq: r.fecha_req,
             observaciones: r.observaciones,
+            pagoEval: r.pago_eval || 0,
+            plazoEval: r.plazo_eval || 0,
             estado: r.estado
         })));
     } catch (e) { res.json([]); }
 });
 
 app.post('/api/compras', async (req, res) => {
-    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado } = req.body;
+    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, pagoEval, plazoEval, estado } = req.body;
     try {
         await pool.query(
-            `INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, observaciones, estado)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-             ON CONFLICT (id_orden) DO UPDATE SET num_formulario=$2, estado=$12`,
-            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, estado]
+            `INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, observaciones, pago_eval, plazo_eval, estado)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+             ON CONFLICT (id_orden) DO UPDATE SET num_formulario=$2, pago_eval=$12, plazo_eval=$13, estado=$14`,
+            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, pagoEval || 0, plazoEval || 0, estado]
         );
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }

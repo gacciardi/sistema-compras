@@ -228,20 +228,20 @@
                     <h4 style="margin-top: 20px;">Criterios de Calificación Anual (Puntajes de 0 a 100)</h4>
                     <div class="form-grid-6">
                         <div class="form-group">
-                            <input type="text" id="lbl-stat-1" class="input-editable-label" value="Cumplimiento de Entrega">
-                            <input type="number" id="stat-val-1" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
+                            <input type="text" id="lbl-stat-1" class="input-editable-label" value="Cumplimiento de Entrega (Auto)">
+                            <input type="number" id="stat-val-1" min="0" max="100" placeholder="Auto" readonly class="input-readonly">
                         </div>
                         <div class="form-group">
                             <input type="text" id="lbl-stat-2" class="input-editable-label" value="Calidad Insumos/Servicios">
                             <input type="number" id="stat-val-2" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
                         </div>
                         <div class="form-group">
-                            <input type="text" id="lbl-stat-3" class="input-editable-label" value="Condicion de Pago">
-                            <input type="number" id="stat-val-3" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
+                            <input type="text" id="lbl-stat-3" class="input-editable-label" value="Condicion de Pago (OC)">
+                            <input type="number" id="stat-val-3" min="0" max="100" placeholder="Auto OC" readonly class="input-readonly">
                         </div>
                         <div class="form-group">
-                            <input type="text" id="lbl-stat-4" class="input-editable-label" value="Plazo de Entrega (Auto)">
-                            <input type="number" id="stat-val-4" min="0" max="100" placeholder="Auto" readonly class="input-readonly">
+                            <input type="text" id="lbl-stat-4" class="input-editable-label" value="Plazo de Entrega (OC)">
+                            <input type="number" id="stat-val-4" min="0" max="100" placeholder="Auto OC" readonly class="input-readonly">
                         </div>
                         <div class="form-group">
                             <input type="text" id="lbl-stat-5" class="input-editable-label" value="Atencion">
@@ -337,6 +337,24 @@
                             <input type="date" id="compra-fecha-req" required>
                         </div>
                     </div>
+
+                    <!-- NUEVA SECCIÓN DE PRE-EVALUACIÓN DE DESEMPEÑO -->
+                    <div style="margin-top: 20px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
+                        <h4 style="margin: 0 0 10px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
+                        <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #5d4037;">Puntaje asignado por Compras para alimentarse automáticamente en la Pestaña 3 (No se imprime en el PDF).</p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="compra-pago-eval" style="color: #e65100; font-weight: bold;">Condición de Pago (0 - 100 pts) *</label>
+                                <input type="number" id="compra-pago-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="compra-plazo-eval" style="color: #e65100; font-weight: bold;">Plazo de Entrega (0 - 100 pts) *</label>
+                                <input type="number" id="compra-plazo-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-top: 15px;">
                         <label for="compra-observaciones">Observaciones / Condiciones de Entrega</label>
                         <textarea id="compra-observaciones" rows="2" placeholder="Lugar de entrega, horario, observaciones generales..."></textarea>

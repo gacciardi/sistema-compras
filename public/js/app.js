@@ -292,10 +292,10 @@ async function eliminarProveedor(num) {
 // --- PESTAÑA 3 ---
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
-    "Cumplimiento de Entrega",
+    "Cumplimiento de Entrega (Auto)",
     "Calidad Insumos/Servicios",
-    "Condicion de Pago",
-    "Plazo de Entrega (Auto)",
+    "Condicion de Pago (OC)",
+    "Plazo de Entrega (OC)",
     "Atencion",
     "Respuesta a Reclamos"
 ];
@@ -323,7 +323,7 @@ function calcularFechaProximaDesdeDias() {
     }
 }
 
-function calcularPuntajeTiemposReales(provNum) {
+function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const provObj = proveedores.find(p => p.num === provNum);
     const nombreProv = provObj ? provObj.nombre : '';
 
@@ -336,6 +336,9 @@ function calcularPuntajeTiemposReales(provNum) {
     recepcionesProv.forEach(rec => {
         const orden = ordenesCompra.find(oc => oc.idOrden === rec.idOrden);
         if (orden && orden.fechaReq && rec.fechaRecepcion) {
+            const anioOrden = orden.fechaEmision ? orden.fechaEmision.split('-')[0] : '';
+            if (anioTarget && anioOrden !== anioTarget) return;
+
             const fRequerida = new Date(orden.fechaReq.split('T')[0] + 'T00:00:00');
             const fReal = new Date(rec.fechaRecepcion.split('T')[0] + 'T00:00:00');
             
@@ -352,6 +355,33 @@ function calcularPuntajeTiemposReales(provNum) {
     });
 
     return contador > 0 ? Math.round(sumaPuntajes / contador) : null;
+}
+
+function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
+    const ordenesProv = ordenesCompra.filter(oc => oc.provNum === provNum);
+    if (ordenesProv.length === 0) return { pago: null, plazo: null };
+
+    let sumaPago = 0, contPago = 0;
+    let sumaPlazo = 0, contPlazo = 0;
+
+    ordenesProv.forEach(oc => {
+        const anioOrden = oc.fechaEmision ? oc.fechaEmision.split('-')[0] : '';
+        if (anioTarget && anioOrden !== anioTarget) return;
+
+        if (oc.pagoEval !== undefined && oc.pagoEval !== null) {
+            sumaPago += parseFloat(oc.pagoEval);
+            contPago++;
+        }
+        if (oc.plazoEval !== undefined && oc.plazoEval !== null) {
+            sumaPlazo += parseFloat(oc.plazoEval);
+            contPlazo++;
+        }
+    });
+
+    return {
+        pago: contPago > 0 ? Math.round(sumaPago / contPago) : null,
+        plazo: contPlazo > 0 ? Math.round(sumaPlazo / contPlazo) : null
+    };
 }
 
 async function guardarNombresCriteriosEstadisticas() {
@@ -412,7 +442,6 @@ function cargarCalificacionExistente() {
             for (let i = 1; i <= 6; i++) {
                 document.getElementById(`stat-val-${i}`).value = registro.puntajes[i - 1] || '';
             }
-            calcularPuntajeClase();
         }
     } else {
         document.getElementById('fecha-evaluacion').value = '';
@@ -422,14 +451,25 @@ function cargarCalificacionExistente() {
         for (let i = 1; i <= 6; i++) {
             document.getElementById(`stat-val-${i}`).value = '';
         }
+    }
 
-        const puntajeAuto = calcularPuntajeTiemposReales(provNum);
-        if (puntajeAuto !== null) {
-            document.getElementById('stat-val-4').value = puntajeAuto;
+    // Auto-completar valores automáticos/bloqueados
+    if (provNum) {
+        const puntajeCumplimiento = calcularPuntajeTiemposReales(provNum, anio);
+        if (puntajeCumplimiento !== null) {
+            document.getElementById('stat-val-1').value = puntajeCumplimiento;
         }
 
-        calcularPuntajeClase();
+        const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
+        if (promediosOC.pago !== null) {
+            document.getElementById('stat-val-3').value = promediosOC.pago;
+        }
+        if (promediosOC.plazo !== null) {
+            document.getElementById('stat-val-4').value = promediosOC.plazo;
+        }
     }
+
+    calcularPuntajeClase();
 }
 
 function calcularPuntajeClase() {
@@ -694,6 +734,9 @@ async function iniciarCompra(e) {
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
 
+    const pagoEval = parseInt(document.getElementById('compra-pago-eval').value) || 0;
+    const plazoEval = parseInt(document.getElementById('compra-plazo-eval').value) || 0;
+
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
 
@@ -720,6 +763,8 @@ async function iniciarCompra(e) {
         fechaEmision,
         fechaReq,
         observaciones,
+        pagoEval,
+        plazoEval,
         estado: 'Pendiente'
     };
 
