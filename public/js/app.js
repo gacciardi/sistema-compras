@@ -140,12 +140,12 @@ async function eliminarRequisito(num) {
 // --- PESTAÑA 2: SELECCIÓN DE PROVEEDORES ---
 let proveedores = [];
 let nombresCriteriosProveedores = [
-    "Calidad de Insumos/Servicios",
+    "Cumplimiento de Entrega",
     "Plazo de Entrega",
-    "Precios y Pagos",
-    "Soporte Técnico",
-    "Garantía",
-    "Cumplimiento Normativo"
+    "Condicion de Pago",
+    "Calidad Insumos/Servicios",
+    "Atencion",
+    "Respuesta a Reclamos"
 ];
 
 async function guardarNombresCriteriosProveedores() {
@@ -244,12 +244,12 @@ async function eliminarProveedor(num) {
 // --- PESTAÑA 3: EVALUACIÓN Y ESTADÍSTICAS ---
 let estadisticas = [];
 let nombresCriteriosEstadisticas = [
-    "Calidad de Insumos/Servicios",
+    "Cumplimiento de Entrega",
     "Plazo de Entrega (Auto)",
-    "Precios competitivos",
-    "Atención al Cliente",
-    "Garantías y Cambios",
-    "Condiciones de Pago"
+    "Condicion de Pago",
+    "Calidad Insumos/Servicios",
+    "Atencion",
+    "Respuesta a Reclamos"
 ];
 let chartEvolucionInstance = null;
 
