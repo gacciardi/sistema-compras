@@ -613,7 +613,6 @@ function cerrarModalPerformance() {
 
 // --- PESTAÑA 4: COMPRAS Y EMISIÓN DE PDF ---
 let ordenesCompra = [];
-let contadorOrdenes = 1001;
 
 function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
@@ -650,8 +649,20 @@ async function iniciarCompra(e) {
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
 
+    // CÁLCULO DINÁMICO DEL NÚMERO DE ORDEN PARA EVITAR DUPLICADOS
+    let nuevoNumero = 1001;
+    if (ordenesCompra.length > 0) {
+        const numerosExistentes = ordenesCompra.map(o => {
+            const num = parseInt(o.idOrden.replace('OC-', ''));
+            return isNaN(num) ? 0 : num;
+        });
+        nuevoNumero = Math.max(...numerosExistentes) + 1;
+    }
+
+    const idOrden = `OC-${nuevoNumero}`;
+
     const nuevaOrden = {
-        idOrden: `OC-${contadorOrdenes++}`,
+        idOrden,
         provNum,
         provNombre: provObj ? provObj.nombre : provNum,
         reqNum,
