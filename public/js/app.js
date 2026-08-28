@@ -698,9 +698,24 @@ function cerrarModalPerformance() {
     document.getElementById('modal-performance').style.display = 'none';
 }
 
-// --- MODAL GRÁFICOS DINÁMICOS ---
+// --- MODAL GRÁFICOS DINÁMICOS CORREGIDO ---
 function abrirModalGraficos() {
     document.getElementById('modal-graficos').style.display = 'flex';
+    
+    // Poblado dinámico asegurado del selector de proveedores
+    const select = document.getElementById('select-grafico-prov');
+    if (select) {
+        select.innerHTML = '<option value="TODOS">-- Todos los Proveedores --</option>';
+        if (Array.isArray(proveedores) && proveedores.length > 0) {
+            proveedores.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.num;
+                opt.innerText = `${p.num} - ${p.nombre}`;
+                select.appendChild(opt);
+            });
+        }
+    }
+
     renderizarGraficoTortaClases();
     renderizarGraficoPerformanceProveedores();
 }
@@ -709,16 +724,19 @@ function cerrarModalGraficos() {
     document.getElementById('modal-graficos').style.display = 'none';
 }
 
+// 1. Gráfico de Dona Moderno con Sombra, Bordes Redondeados y Paleta Vibrante
 function renderizarGraficoTortaClases() {
     const conteo = { 'Clase A': 0, 'Clase B': 0, 'Clase C': 0, 'Clase D': 0 };
 
-    estadisticas.forEach(est => {
-        if (conteo[est.clase] !== undefined) {
-            conteo[est.clase]++;
-        } else {
-            conteo['Clase D']++;
-        }
-    });
+    if (Array.isArray(estadisticas)) {
+        estadisticas.forEach(est => {
+            if (conteo[est.clase] !== undefined) {
+                conteo[est.clase]++;
+            } else {
+                conteo['Clase D']++;
+            }
+        });
+    }
 
     const total = Object.values(conteo).reduce((a, b) => a + b, 0);
 
@@ -726,7 +744,7 @@ function renderizarGraficoTortaClases() {
     if (chartTortaInstance) chartTortaInstance.destroy();
 
     chartTortaInstance = new Chart(ctx, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
             labels: ['Clase A (>=91)', 'Clase B (76-90)', 'Clase C (61-75)', 'Clase D (<61)'],
             datasets: [{
@@ -736,14 +754,38 @@ function renderizarGraficoTortaClases() {
                     conteo['Clase C'],
                     conteo['Clase D']
                 ],
-                backgroundColor: ['#2e7d32', '#0288d1', '#f57c00', '#c62828']
+                backgroundColor: [
+                    '#10b981', // Verde Esmeralda Moderno
+                    '#3b82f6', // Azul Royal
+                    '#f59e0b', // Naranja Ámbar
+                    '#ef4444'  // Rojo Coral
+                ],
+                borderColor: '#ffffff',
+                borderWidth: 4,
+                hoverOffset: 10,
+                borderRadius: 8
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '65%',
             plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 15,
+                        font: { size: 12, family: "'Segoe UI', sans-serif", weight: '600' }
+                    }
+                },
                 tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleFont: { size: 13, weight: 'bold' },
+                    bodyFont: { size: 12 },
+                    padding: 10,
+                    cornerRadius: 6,
                     callbacks: {
                         label: function(context) {
                             const val = context.raw || 0;
@@ -757,14 +799,22 @@ function renderizarGraficoTortaClases() {
     });
 }
 
+// 2. Gráfico Filtrable por Proveedor Único o Todos (Con lectura de ID y Nombre)
 function renderizarGraficoPerformanceProveedores() {
+    const provSeleccionado = document.getElementById('select-grafico-prov')?.value || 'TODOS';
+    
+    let provsAProcesar = proveedores || [];
+    if (provSeleccionado !== 'TODOS') {
+        provsAProcesar = proveedores.filter(p => p.num === provSeleccionado);
+    }
+
     const labels = [];
     const datosRecepcion = []; 
     const datosPlazo = [];     
     const datosPago = [];      
     const datosCalidad = [];   
 
-    proveedores.forEach(prov => {
+    provsAProcesar.forEach(prov => {
         const evals = estadisticas.filter(e => e.provNum === prov.num);
         if (evals.length > 0) {
             const ultimaEval = evals[evals.length - 1]; 
@@ -784,40 +834,54 @@ function renderizarGraficoPerformanceProveedores() {
     chartPerfProvInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labels,
+            labels: labels.length > 0 ? labels : ['Sin Datos'],
             datasets: [
                 {
                     label: 'Cumplimiento de Entrega',
-                    data: datosRecepcion,
-                    backgroundColor: '#0288d1'
+                    data: datosRecepcion.length > 0 ? datosRecepcion : [0],
+                    backgroundColor: '#0288d1',
+                    borderRadius: 4
                 },
                 {
                     label: 'Plazo de Entrega',
-                    data: datosPlazo,
-                    backgroundColor: '#7b1fa2'
+                    data: datosPlazo.length > 0 ? datosPlazo : [0],
+                    backgroundColor: '#8e24aa',
+                    borderRadius: 4
                 },
                 {
                     label: 'Condición de Pago',
-                    data: datosPago,
-                    backgroundColor: '#f57c00'
+                    data: datosPago.length > 0 ? datosPago : [0],
+                    backgroundColor: '#f57c00',
+                    borderRadius: 4
                 },
                 {
                     label: 'Calidad de Insumos',
-                    data: datosCalidad,
-                    backgroundColor: '#2e7d32'
+                    data: datosCalidad.length > 0 ? datosCalidad : [0],
+                    backgroundColor: '#2e7d32',
+                    borderRadius: 4
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 12,
+                        font: { size: 11 }
+                    }
+                }
+            },
             scales: {
-                y: { min: 0, max: 100, ticks: { stepSize: 20 } }
+                y: { min: 0, max: 100, ticks: { stepSize: 20 } },
+                x: { grid: { display: false } }
             }
         }
     });
 }
-
 
 // --- PESTAÑA 4 ---
 let ordenesCompra = [];
