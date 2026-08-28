@@ -1383,6 +1383,29 @@ async function guardarNuevaPasswordMaster() {
     alert("🔐 Contraseña del Panel Master actualizada y guardada correctamente.");
 }
 
+async function limpiarBaseDeDatosMaster() {
+    const confirmacion1 = confirm("⚠️ ¿Estás SEGURO de que deseas eliminar TODAS las transacciones, requisitos, proveedores, órdenes y recepciones de la base de datos?");
+    if (!confirmacion1) return;
+
+    const confirmacion2 = confirm("🚨 ¡Esta acción NO se puede deshacer! ¿Confirmas que quieres vaciar todas las pruebas?");
+    if (!confirmacion2) return;
+
+    try {
+        const res = await fetch('/api/master/limpiar-bd', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert("✅ " + data.message);
+            await cargarTodoDesdeServidor(true);
+        } else {
+            alert("❌ " + (data.error || "Ocurrió un error al limpiar la base de datos."));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("❌ Error de conexión al servidor.");
+    }
+}
+
 function renderizarMatrizPermisos() {
     const container = document.getElementById('matriz-permisos-container');
     if (!container) return;
