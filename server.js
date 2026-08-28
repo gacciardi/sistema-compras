@@ -294,14 +294,14 @@ app.delete('/api/usuarios/:nombre', async (req, res) => {
     }
 });
 
-// --- RUTA MASTER PARA REINICIAR / VACIAR LA BASE DE DATOS ---
+// --- RUTA MASTER PARA VACIAR ÚNICAMENTE ÓRDENES DE COMPRA Y RECEPCIONES ---
 app.post('/api/master/limpiar-bd', async (req, res) => {
     try {
-        await pool.query('TRUNCATE TABLE requisitos, proveedores, estadisticas, compras, recepciones RESTART IDENTITY CASCADE;');
-        res.json({ success: true, message: 'Base de datos limpiada correctamente. Todas las transacciones de prueba han sido eliminadas.' });
+        await pool.query('TRUNCATE TABLE compras, recepciones RESTART IDENTITY CASCADE;');
+        res.json({ success: true, message: 'Se eliminaron únicamente todas las Órdenes de Compra y Recepciones creadas.' });
     } catch (err) {
-        console.error("Error al limpiar BD:", err);
-        res.status(500).json({ error: 'Error al intentar vaciar la base de datos.' });
+        console.error("Error al limpiar compras y recepciones:", err);
+        res.status(500).json({ error: 'Error al intentar vaciar Órdenes de Compra y Recepciones.' });
     }
 });
 
