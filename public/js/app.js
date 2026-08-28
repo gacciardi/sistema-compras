@@ -698,33 +698,7 @@ function cerrarModalPerformance() {
     document.getElementById('modal-performance').style.display = 'none';
 }
 
-// --- MODAL GRÁFICOS DINÁMICOS CORREGIDO ---
-function abrirModalGraficos() {
-    document.getElementById('modal-graficos').style.display = 'flex';
-    
-    // Poblado dinámico asegurado del selector de proveedores
-    const select = document.getElementById('select-grafico-prov');
-    if (select) {
-        select.innerHTML = '<option value="TODOS">-- Todos los Proveedores --</option>';
-        if (Array.isArray(proveedores) && proveedores.length > 0) {
-            proveedores.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.num;
-                opt.innerText = `${p.num} - ${p.nombre}`;
-                select.appendChild(opt);
-            });
-        }
-    }
-
-    renderizarGraficoTortaClases();
-    renderizarGraficoPerformanceProveedores();
-}
-
-function cerrarModalGraficos() {
-    document.getElementById('modal-graficos').style.display = 'none';
-}
-
-// 1. Gráfico de Dona Moderno con Sombra, Bordes Redondeados y Paleta Vibrante
+// 1. Gráfico de Torta / 3D Separado estilo la imagen de referencia
 function renderizarGraficoTortaClases() {
     const conteo = { 'Clase A': 0, 'Clase B': 0, 'Clase C': 0, 'Clase D': 0 };
 
@@ -743,8 +717,23 @@ function renderizarGraficoTortaClases() {
     const ctx = document.getElementById('chartTortaClases').getContext('2d');
     if (chartTortaInstance) chartTortaInstance.destroy();
 
+    // Plugin personalizado para simular el borde y grosor 3D inferior
+    const pluginSombra3D = {
+        id: 'efecto3D',
+        beforeDatasetsDraw(chart) {
+            const { ctx } = chart;
+            ctx.save();
+            ctx.shadowColor = 'rgba(15, 23, 42, 0.25)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetY = 10;
+        },
+        afterDatasetsDraw(chart) {
+            chart.ctx.restore();
+        }
+    };
+
     chartTortaInstance = new Chart(ctx, {
-        type: 'doughnut',
+        type: 'pie',
         data: {
             labels: ['Clase A (>=91)', 'Clase B (76-90)', 'Clase C (61-75)', 'Clase D (<61)'],
             datasets: [{
@@ -755,37 +744,36 @@ function renderizarGraficoTortaClases() {
                     conteo['Clase D']
                 ],
                 backgroundColor: [
-                    '#10b981', // Verde Esmeralda Moderno
-                    '#3b82f6', // Azul Royal
-                    '#f59e0b', // Naranja Ámbar
-                    '#ef4444'  // Rojo Coral
+                    '#b522b0', // Magenta / Violeta (como STAT 01)
+                    '#00c9b7', // Turquesa (como STAT 02)
+                    '#2934d0', // Azul Oscuro (como STAT 03)
+                    '#5e17eb'  // Púrpura Intenso (como STAT 04)
                 ],
                 borderColor: '#ffffff',
                 borderWidth: 4,
-                hoverOffset: 10,
-                borderRadius: 8
+                // Offset que separa cada porción recreando el diseño infográfico 3D
+                offset: [12, 12, 12, 12],
+                hoverOffset: 18
             }]
         },
+        plugins: [pluginSombra3D],
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '65%',
+            layout: {
+                padding: 20
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
                         usePointStyle: true,
-                        pointStyle: 'circle',
+                        pointStyle: 'rectRounded',
                         padding: 15,
-                        font: { size: 12, family: "'Segoe UI', sans-serif", weight: '600' }
+                        font: { size: 12, weight: 'bold' }
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    titleFont: { size: 13, weight: 'bold' },
-                    bodyFont: { size: 12 },
-                    padding: 10,
-                    cornerRadius: 6,
                     callbacks: {
                         label: function(context) {
                             const val = context.raw || 0;
@@ -799,7 +787,7 @@ function renderizarGraficoTortaClases() {
     });
 }
 
-// 2. Gráfico Filtrable por Proveedor Único o Todos (Con lectura de ID y Nombre)
+// 2. Gráfico de Barras por Criterio con Sombras Proyectadas
 function renderizarGraficoPerformanceProveedores() {
     const provSeleccionado = document.getElementById('select-grafico-prov')?.value || 'TODOS';
     
@@ -831,6 +819,22 @@ function renderizarGraficoPerformanceProveedores() {
     const ctx = document.getElementById('chartPerformanceProveedores').getContext('2d');
     if (chartPerfProvInstance) chartPerfProvInstance.destroy();
 
+    // Plugin para aplicar sombra paralela a cada barra
+    const pluginSombraBarras = {
+        id: 'sombraBarras',
+        beforeDatasetDraw(chart, args) {
+            const { ctx } = chart;
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 4;
+        },
+        afterDatasetDraw(chart) {
+            chart.ctx.restore();
+        }
+    };
+
     chartPerfProvInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -840,28 +844,29 @@ function renderizarGraficoPerformanceProveedores() {
                     label: 'Cumplimiento de Entrega',
                     data: datosRecepcion.length > 0 ? datosRecepcion : [0],
                     backgroundColor: '#0288d1',
-                    borderRadius: 4
+                    borderRadius: 6
                 },
                 {
                     label: 'Plazo de Entrega',
                     data: datosPlazo.length > 0 ? datosPlazo : [0],
-                    backgroundColor: '#8e24aa',
-                    borderRadius: 4
+                    backgroundColor: '#5e17eb',
+                    borderRadius: 6
                 },
                 {
                     label: 'Condición de Pago',
                     data: datosPago.length > 0 ? datosPago : [0],
                     backgroundColor: '#f57c00',
-                    borderRadius: 4
+                    borderRadius: 6
                 },
                 {
                     label: 'Calidad de Insumos',
                     data: datosCalidad.length > 0 ? datosCalidad : [0],
-                    backgroundColor: '#2e7d32',
-                    borderRadius: 4
+                    backgroundColor: '#00c9b7',
+                    borderRadius: 6
                 }
             ]
         },
+        plugins: [pluginSombraBarras],
         options: {
             responsive: true,
             maintainAspectRatio: false,
