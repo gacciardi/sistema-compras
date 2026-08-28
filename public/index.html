@@ -1,3 +1,11 @@
+Para permitir cambiar la contraseña del Panel Master, añadiremos la opción de modificar esa clave y guardarla dinámicamente en la base de datos PostgreSQL.
+
+Así, la clave por defecto seguirá siendo 1234 hasta que la cambies desde la interfaz por la que tú elijas.
+
+1. Archivo Completo: public/index.html
+Se agrega un bloque en la parte superior del Panel Master para cambiar la contraseña Master actual.
+
+HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -30,7 +38,7 @@
                 <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-weight: bold; border-radius: 6px;">Ingresar al Sistema</button>
             </form>
 
-            <!-- <div style="margin-top: 25px; border-top: 1px solid #eee; pt: 15px;"> -->
+            <div style="margin-top: 25px; border-top: 1px solid #eee; pt: 15px;">
                 <button class="btn-master" onclick="abrirModalMaster()" style="font-size: 0.85em;">⚙️ Panel Master</button>
             </div>
         </div>
@@ -586,6 +594,17 @@
                 </div>
 
                 <div id="master-panel" style="display: none;">
+                    <h4>Seguridad del Panel Master</h4>
+                    <div class="form-group" style="background: #e3f2fd; padding: 15px; border-radius: 8px; border: 1px solid #90caf9;">
+                        <label for="master-new-pass" style="font-weight: bold; color: #0d47a1;">Cambiar Contraseña del Panel Master (admin):</label>
+                        <div style="display: flex; gap: 10px; margin-top: 8px;">
+                            <input type="password" id="master-new-pass" placeholder="Nueva Contraseña Master" style="flex: 1; padding: 8px;">
+                            <button class="btn-primary" onclick="guardarNuevaPasswordMaster()">🔐 Cambiar Clave Master</button>
+                        </div>
+                    </div>
+
+                    <hr style="margin: 20px 0;">
+
                     <h4>Personalización del Sistema y Título</h4>
                     
                     <div class="form-group">
@@ -622,6 +641,40 @@
 
                     <hr style="margin: 20px 0;">
 
+                    <h4>Crear / Editar Usuarios Directo desde Master</h4>
+                    <div class="card" style="padding: 15px; margin-bottom: 20px; background: #fff3e0;">
+                        <form id="form-master-usuario" onsubmit="guardarUsuarioMaster(event)">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Usuario *</label>
+                                    <input type="text" id="master-usr-nombre" placeholder="Ej: admin" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Contraseña *</label>
+                                    <input type="password" id="master-usr-pass" placeholder="••••••••" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Sector *</label>
+                                    <select id="master-usr-sector" required>
+                                        <option value="Administración">Administración</option>
+                                        <option value="Compras">Compras</option>
+                                        <option value="Almacén">Almacén / Depósito</option>
+                                        <option value="Calidad">Calidad</option>
+                                        <option value="Expedición">Expedición</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Estado *</label>
+                                    <select id="master-usr-estado" required>
+                                        <option value="Activo">Activo</option>
+                                        <option value="Inactivo">Inactivo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary" style="margin-top: 10px;">💾 Guardar / Crear Usuario en la BD</button>
+                        </form>
+                    </div>
+
                     <h4>Control Global de Usuarios</h4>
                     <div class="table-responsive">
                         <table>
@@ -630,7 +683,7 @@
                                     <th>Usuario</th>
                                     <th>Sector</th>
                                     <th>Estado</th>
-                                    <th>Acción</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-master-usuarios-body"></tbody>

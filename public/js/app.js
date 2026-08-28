@@ -1,4 +1,6 @@
 let usuarioActual = null;
+let masterPasswordActual = '1234';
+
 let permisosPorSector = {
     'Compras': [1, 2, 3, 4, 5],
     'Almacén': [1, 5],
@@ -26,6 +28,17 @@ async function iniciarSesionUsuario(e) {
     const usrName = document.getElementById('login-user').value.trim();
     const pass = document.getElementById('login-pass').value;
 
+    // 1. Acceso Admin Master (con clave dinámica guardada en BD)
+    if (usrName.toLowerCase() === 'admin' && pass === masterPasswordActual) {
+        usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'block';
+        document.getElementById('user-session-info').innerText = `👤 admin (Administración)`;
+        aplicarPermisosUsuario('Administración');
+        return;
+    }
+
+    // 2. Acceso por Usuarios Creados en BD
     const usrObj = usuarios.find(u => u.nombre.toLowerCase() === usrName.toLowerCase() && u.pass === pass);
 
     if (!usrObj) {
@@ -179,6 +192,10 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         }
         if (config.num_form_rec && activeEl !== document.getElementById('num-formulario-rec')) {
             document.getElementById('num-formulario-rec').value = config.num_form_rec;
+        }
+
+        if (config.master_password) {
+            masterPasswordActual = config.master_password;
         }
 
         if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) {
@@ -1338,7 +1355,7 @@ function autenticarMaster() {
     const usr = document.getElementById('master-user').value;
     const pass = document.getElementById('master-pass').value;
 
-    if (usr === 'admin' && pass === '1234') {
+    if (usr === 'admin' && pass === masterPasswordActual) {
         document.getElementById('master-auth').style.display = 'none';
         document.getElementById('master-panel').style.display = 'block';
         renderizarMatrizPermisos();
@@ -1346,6 +1363,24 @@ function autenticarMaster() {
     } else {
         alert('Credenciales de Administrador Master incorrectas.');
     }
+}
+
+async function guardarNuevaPasswordMaster() {
+    const nuevaPass = document.getElementById('master-new-pass').value.trim();
+    if (!nuevaPass) {
+        alert("Por favor ingrese una contraseña válida.");
+        return;
+    }
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'master_password', valor: nuevaPass })
+    });
+
+    masterPasswordActual = nuevaPass;
+    document.getElementById('master-new-pass').value = '';
+    alert("🔐 Contraseña del Panel Master actualizada y guardada correctamente.");
 }
 
 function renderizarMatrizPermisos() {
@@ -1432,6 +1467,27 @@ async function guardarTituloSistema() {
     alert("✅ Título del sistema actualizado.");
 }
 
+async function guardarUsuarioMaster(e) {
+    e.preventDefault();
+    const nombre = document.getElementById('master-usr-nombre').value.trim();
+    const pass = document.getElementById('master-usr-pass').value;
+    const sector = document.getElementById('master-usr-sector').value;
+    const estado = document.getElementById('master-usr-estado').value;
+
+    if (!nombre) return;
+
+    await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, pass, sector, estado })
+    });
+
+    document.getElementById('form-master-usuario').reset();
+    await cargarTodoDesdeServidor(true);
+    renderizarTablaMasterUsuarios();
+    alert(`✅ Usuario "${nombre}" guardado correctamente.`);
+}
+
 function renderizarTablaMasterUsuarios() {
     const tbody = document.getElementById('tabla-master-usuarios-body');
     if (!tbody) return;
@@ -1452,10 +1508,24 @@ function renderizarTablaMasterUsuarios() {
             <td><strong>${u.nombre}</strong></td>
             <td>${u.sector}</td>
             <td>${u.estado}</td>
-            <td>${btnAccion}</td>
+            <td>
+                ${btnAccion}
+                <button class="btn-warning" onclick="editarUsuarioMaster('${u.nombre}')">Editar</button>
+                <button class="btn-danger" onclick="eliminarUsuario('${u.nombre}')">Eliminar</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function editarUsuarioMaster(nombre) {
+    const u = usuarios.find(usr => usr.nombre === nombre);
+    if (!u) return;
+
+    document.getElementById('master-usr-nombre').value = u.nombre;
+    document.getElementById('master-usr-pass').value = u.pass || '';
+    document.getElementById('master-usr-sector').value = u.sector;
+    document.getElementById('master-usr-estado').value = u.estado;
 }
 
 async function alternarEstadoUsuario(nombre) {
