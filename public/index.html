@@ -1,10 +1,3 @@
-Para permitir cambiar la contraseña del Panel Master, añadiremos la opción de modificar esa clave y guardarla dinámicamente en la base de datos PostgreSQL.
-
-Así, la clave por defecto seguirá siendo 1234 hasta que la cambies desde la interfaz por la que tú elijas.
-
-1. Archivo Completo: public/index.html
-Se agrega un bloque en la parte superior del Panel Master para cambiar la contraseña Master actual.
-
 HTML
 <!DOCTYPE html>
 <html lang="es">
@@ -38,7 +31,7 @@ HTML
                 <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-weight: bold; border-radius: 6px;">Ingresar al Sistema</button>
             </form>
 
-            <div style="margin-top: 25px; border-top: 1px solid #eee; pt: 15px;">
+           <div style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;"></div>
                 <button class="btn-master" onclick="abrirModalMaster()" style="font-size: 0.85em;">⚙️ Panel Master</button>
             </div>
         </div>
