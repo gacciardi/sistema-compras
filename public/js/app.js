@@ -827,23 +827,43 @@ function generarPDFOrden(orden) {
     doc.setFont("helvetica", "bold");
     doc.text("DETALLE DEL PEDIDO:", 20, 85);
     doc.setFont("helvetica", "normal");
-    doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, 93);
-    doc.text(`Cantidad Solicitada: ${orden.cantidad}`, 20, 101);
-    doc.text(`Fecha Requerida de Entrega: ${orden.fechaReq}`, 20, 109);
+    
+    // Coordenada Y dinámica para que los textos se empujen hacia abajo
+    let currentY = 93;
+    
+    doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY);
+    currentY += 8;
+    
+    doc.text(`Cantidad Solicitada: ${orden.cantidad}`, 20, currentY);
+    currentY += 8;
+    
+    doc.text(`Fecha Requerida de Entrega: ${orden.fechaReq}`, 20, currentY);
+    currentY += 10;
 
+    // Ajuste automático de saltos de línea para Especificaciones
     if (orden.reqDetalle) {
-        doc.text(`Especificaciones Técnicas: ${orden.reqDetalle}`, 20, 117);
+        const textoReq = `Especificaciones Técnicas: ${orden.reqDetalle}`;
+        const lineasReq = doc.splitTextToSize(textoReq, 170); // Evita que se salga del ancho de hoja
+        doc.text(lineasReq, 20, currentY);
+        currentY += (lineasReq.length * 6) + 4; // Multiplica por cantidad de renglones generados
     }
 
+    // Ajuste automático de saltos de línea para Observaciones
     if (orden.observaciones) {
-        doc.text(`Observaciones: ${orden.observaciones}`, 20, 127);
+        const textoObs = `Observaciones: ${orden.observaciones}`;
+        const lineasObs = doc.splitTextToSize(textoObs, 170);
+        doc.text(lineasObs, 20, currentY);
+        currentY += (lineasObs.length * 6) + 4;
     }
 
+    // Línea separadora y pie de página empujados dinámicamente
+    currentY += 5;
     doc.setDrawColor(216, 27, 96);
-    doc.line(20, 140, 190, 140);
+    doc.line(20, currentY, 190, currentY);
 
+    currentY += 10;
     doc.setFontSize(10);
-    doc.text("Favor de confirmar la recepción de la presente orden de compra.", 105, 150, null, null, "center");
+    doc.text("Favor de confirmar la recepción de la presente orden de compra.", 105, currentY, null, null, "center");
 
     doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
 }
