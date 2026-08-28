@@ -1,3 +1,12 @@
+let usuarioActual = null;
+let permisosPorSector = {
+    'Compras': [1, 2, 3, 4, 5],
+    'Almacén': [1, 5],
+    'Calidad': [1, 3, 5],
+    'Expedición': [1, 5],
+    'Administración': [1, 2, 3, 4, 5, 6]
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarTodoDesdeServidor();
 
@@ -10,6 +19,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         await cargarTodoDesdeServidor(false);
     }, 5000);
 });
+
+// LOGIN Y CONTROL DE ACCESO
+async function iniciarSesionUsuario(e) {
+    e.preventDefault();
+    const usrName = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value;
+
+    const usrObj = usuarios.find(u => u.nombre.toLowerCase() === usrName.toLowerCase() && u.pass === pass);
+
+    if (!usrObj) {
+        alert("Usuario o contraseña incorrectos.");
+        return;
+    }
+
+    if (usrObj.estado !== 'Activo') {
+        alert("Su usuario está Inactivo. Consulte con el Administrador.");
+        return;
+    }
+
+    usuarioActual = usrObj;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('user-session-info').innerText = `👤 ${usrObj.nombre} (${usrObj.sector})`;
+
+    aplicarPermisosUsuario(usrObj.sector);
+}
+
+function cerrarSesionUsuario() {
+    usuarioActual = null;
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('form-login').reset();
+}
+
+function aplicarPermisosUsuario(sector) {
+    const pestañasPermitidas = permisosPorSector[sector] || [1];
+
+    const mapaPestañas = {
+        1: { id: 'tab-requisitos', btn: 'btn-tab-requisitos' },
+        2: { id: 'tab-proveedores', btn: 'btn-tab-proveedores' },
+        3: { id: 'tab-estadisticas', btn: 'btn-tab-estadisticas' },
+        4: { id: 'tab-compras', btn: 'btn-tab-compras' },
+        5: { id: 'tab-recepcion', btn: 'btn-tab-recepcion' },
+        6: { id: 'tab-usuarios', btn: 'btn-tab-usuarios' }
+    };
+
+    let primeraDisponible = null;
+
+    for (let num = 1; num <= 6; num++) {
+        const p = mapaPestañas[num];
+        const btnEl = document.getElementById(p.btn);
+        
+        if (pestañasPermitidas.includes(num)) {
+            if (btnEl) btnEl.style.display = 'inline-block';
+            if (!primeraDisponible) primeraDisponible = p.id;
+        } else {
+            if (btnEl) btnEl.style.display = 'none';
+        }
+    }
+
+    if (primeraDisponible) {
+        showTab(primeraDisponible);
+    }
+}
 
 function showTab(tabId) {
     const sections = document.querySelectorAll('.tab-content');
@@ -114,6 +187,16 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) {
             nombresCriteriosEstadisticas = config.crit_stat_labels;
         }
+        if (config.permisos_sectores) {
+            permisosPorSector = config.permisos_sectores;
+        }
+        if (config.sys_title) {
+            document.getElementById('header-system-title').innerText = config.sys_title;
+            document.getElementById('login-title').innerText = config.sys_title;
+            document.getElementById('page-title').innerText = config.sys_title;
+            document.getElementById('master-system-title').value = config.sys_title;
+        }
+
         if (config.sys_bg_color) cambiarColorBg(config.sys_bg_color, false);
         if (config.sys_logo) cambiarLogo(config.sys_logo, false);
 
@@ -698,7 +781,31 @@ function cerrarModalPerformance() {
     document.getElementById('modal-performance').style.display = 'none';
 }
 
-// 1. Gráfico de Torta / 3D Separado estilo la imagen de referencia
+// --- MODAL GRÁFICOS DINÁMICOS ---
+function abrirModalGraficos() {
+    document.getElementById('modal-graficos').style.display = 'flex';
+    
+    const select = document.getElementById('select-grafico-prov');
+    if (select) {
+        select.innerHTML = '<option value="TODOS">-- Todos los Proveedores --</option>';
+        if (Array.isArray(proveedores) && proveedores.length > 0) {
+            proveedores.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.num;
+                opt.innerText = `${p.num} - ${p.nombre}`;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    renderizarGraficoTortaClases();
+    renderizarGraficoPerformanceProveedores();
+}
+
+function cerrarModalGraficos() {
+    document.getElementById('modal-graficos').style.display = 'none';
+}
+
 function renderizarGraficoTortaClases() {
     const conteo = { 'Clase A': 0, 'Clase B': 0, 'Clase C': 0, 'Clase D': 0 };
 
@@ -717,7 +824,6 @@ function renderizarGraficoTortaClases() {
     const ctx = document.getElementById('chartTortaClases').getContext('2d');
     if (chartTortaInstance) chartTortaInstance.destroy();
 
-    // Plugin personalizado para simular el borde y grosor 3D inferior
     const pluginSombra3D = {
         id: 'efecto3D',
         beforeDatasetsDraw(chart) {
@@ -744,14 +850,13 @@ function renderizarGraficoTortaClases() {
                     conteo['Clase D']
                 ],
                 backgroundColor: [
-                    '#b522b0', // Magenta / Violeta (como STAT 01)
-                    '#00c9b7', // Turquesa (como STAT 02)
-                    '#2934d0', // Azul Oscuro (como STAT 03)
-                    '#5e17eb'  // Púrpura Intenso (como STAT 04)
+                    '#b522b0', 
+                    '#00c9b7', 
+                    '#2934d0', 
+                    '#5e17eb'  
                 ],
                 borderColor: '#ffffff',
                 borderWidth: 4,
-                // Offset que separa cada porción recreando el diseño infográfico 3D
                 offset: [12, 12, 12, 12],
                 hoverOffset: 18
             }]
@@ -760,9 +865,7 @@ function renderizarGraficoTortaClases() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: {
-                padding: 20
-            },
+            layout: { padding: 20 },
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -787,7 +890,6 @@ function renderizarGraficoTortaClases() {
     });
 }
 
-// 2. Gráfico de Barras por Criterio con Sombras Proyectadas
 function renderizarGraficoPerformanceProveedores() {
     const provSeleccionado = document.getElementById('select-grafico-prov')?.value || 'TODOS';
     
@@ -819,10 +921,9 @@ function renderizarGraficoPerformanceProveedores() {
     const ctx = document.getElementById('chartPerformanceProveedores').getContext('2d');
     if (chartPerfProvInstance) chartPerfProvInstance.destroy();
 
-    // Plugin para aplicar sombra paralela a cada barra
     const pluginSombraBarras = {
         id: 'sombraBarras',
-        beforeDatasetDraw(chart, args) {
+        beforeDatasetDraw(chart) {
             const { ctx } = chart;
             ctx.save();
             ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
@@ -887,6 +988,7 @@ function renderizarGraficoPerformanceProveedores() {
         }
     });
 }
+
 
 // --- PESTAÑA 4 ---
 let ordenesCompra = [];
@@ -1239,10 +1341,95 @@ function autenticarMaster() {
     if (usr === 'admin' && pass === '1234') {
         document.getElementById('master-auth').style.display = 'none';
         document.getElementById('master-panel').style.display = 'block';
+        renderizarMatrizPermisos();
         renderizarTablaMasterUsuarios();
     } else {
         alert('Credenciales de Administrador Master incorrectas.');
     }
+}
+
+function renderizarMatrizPermisos() {
+    const container = document.getElementById('matriz-permisos-container');
+    if (!container) return;
+
+    const sectores = ['Compras', 'Almacén', 'Calidad', 'Expedición', 'Administración'];
+    const pestañas = [
+        { id: 1, nombre: 'P1: Requisitos' },
+        { id: 2, nombre: 'P2: Proveedores' },
+        { id: 3, nombre: 'P3: Evaluación' },
+        { id: 4, nombre: 'P4: Órdenes Compra' },
+        { id: 5, nombre: 'P5: Recepción' },
+        { id: 6, nombre: 'P6: Usuarios' }
+    ];
+
+    let html = '<table><thead><tr><th>Sector</th>';
+    pestañas.forEach(p => { html += `<th style="text-align:center;">${p.nombre}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    sectores.forEach(sec => {
+        html += `<tr><td><strong>${sec}</strong></td>`;
+        const permitidas = permisosPorSector[sec] || [];
+
+        pestañas.forEach(p => {
+            const checked = permitidas.includes(p.id) ? 'checked' : '';
+            html += `<td style="text-align:center;"><input type="checkbox" data-sector="${sec}" data-pestaña="${p.id}" ${checked}></td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function guardarPermisosSectores() {
+    const checkboxes = document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]');
+    const nuevosPermisos = {
+        'Compras': [],
+        'Almacén': [],
+        'Calidad': [],
+        'Expedición': [],
+        'Administración': []
+    };
+
+    checkboxes.forEach(chk => {
+        const sec = chk.getAttribute('data-sector');
+        const pId = parseInt(chk.getAttribute('data-pestaña'));
+        if (chk.checked) {
+            if (!nuevosPermisos[sec]) nuevosPermisos[sec] = [];
+            nuevosPermisos[sec].push(pId);
+        }
+    });
+
+    permisosPorSector = nuevosPermisos;
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'permisos_sectores', valor: permisosPorSector })
+    });
+
+    alert("✅ Matriz de permisos actualizada correctamente.");
+
+    if (usuarioActual) {
+        aplicarPermisosUsuario(usuarioActual.sector);
+    }
+}
+
+async function guardarTituloSistema() {
+    const titulo = document.getElementById('master-system-title').value.trim();
+    if (!titulo) return;
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'sys_title', valor: titulo })
+    });
+
+    document.getElementById('header-system-title').innerText = titulo;
+    document.getElementById('login-title').innerText = titulo;
+    document.getElementById('page-title').innerText = titulo;
+
+    alert("✅ Título del sistema actualizado.");
 }
 
 function renderizarTablaMasterUsuarios() {
@@ -1311,7 +1498,9 @@ function subirLogoDesdePC(event) {
 async function cambiarLogo(srcImagen, guardar = true) {
     if (srcImagen) {
         const logoImg = document.getElementById('app-logo');
+        const loginLogo = document.getElementById('login-logo');
         if (logoImg) logoImg.src = srcImagen;
+        if (loginLogo) loginLogo.src = srcImagen;
 
         if (guardar) {
             await fetch('/api/configuraciones', {

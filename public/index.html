@@ -3,540 +3,570 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gestión de Compras y Proveedores</title>
+    <title id="page-title">Sistema Integrado de Compras y Selección de Proveedores</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-    <header class="main-header">
-        <div class="logo-container">
-            <img id="app-logo" src="img/logo.png" alt="Logo Empresa" onerror="this.src='https://via.placeholder.com/150x50?text=LOGO'">
+    <!-- PANTALLA PRINCIPAL DE LOGIN -->
+    <div id="login-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-primary, #f8f9fa); padding: 20px;">
+        <div class="card" style="width: 100%; max-width: 420px; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; background: #ffffff;">
+            <div style="margin-bottom: 20px;">
+                <img id="login-logo" src="img/logo.png" alt="Logo Empresa" style="max-height: 80px; max-width: 100%; object-fit: contain;" onerror="this.src='https://via.placeholder.com/150x50?text=LOGO'">
+            </div>
+            <h2 id="login-title" style="margin-bottom: 25px; color: #37474f; font-size: 1.3em;">Sistema Integrado de Compras y Selección de Proveedores</h2>
+            
+            <form id="form-login" onsubmit="iniciarSesionUsuario(event)">
+                <div class="form-group" style="text-align: left; margin-bottom: 15px;">
+                    <label for="login-user">Usuario:</label>
+                    <input type="text" id="login-user" placeholder="Ingrese su usuario" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                </div>
+                <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                    <label for="login-pass">Contraseña:</label>
+                    <input type="password" id="login-pass" placeholder="••••••••" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-weight: bold; border-radius: 6px;">Ingresar al Sistema</button>
+            </form>
+
+            <!-- <div style="margin-top: 25px; border-top: 1px solid #eee; pt: 15px;"> -->
+                <button class="btn-master" onclick="abrirModalMaster()" style="font-size: 0.85em;">⚙️ Panel Master</button>
+            </div>
         </div>
-        <div class="header-title">
-            <h1>Sistema Integrado de Compras y Selección de Proveedores</h1>
-        </div>
-        <div class="header-actions">
-            <button class="btn-master" onclick="abrirModalMaster()">⚙️ Panel Master</button>
-        </div>
-    </header>
+    </div>
 
-    <nav class="nav-tabs">
-        <button class="tab-btn active" onclick="showTab('tab-requisitos')">1. Requisitos Técnicos</button>
-        <button class="tab-btn" onclick="showTab('tab-proveedores')">2. Selección de proveedores</button>
-        <button class="tab-btn" onclick="showTab('tab-estadisticas')">3. Evaluación y Estadísticas</button>
-        <button class="tab-btn" onclick="showTab('tab-compras')">4. Órdenes de Compra</button>
-        <button class="tab-btn" onclick="showTab('tab-recepcion')">5. Recepción Mercadería</button>
-        <button class="tab-btn" onclick="showTab('tab-usuarios')">6. Gestión Usuarios</button>
-    </nav>
+    <!-- APLICACIÓN PRINCIPAL (OCULTA HASTA LOGUEARSE) -->
+    <div id="app-screen" style="display: none;">
+        <header class="main-header">
+            <div class="logo-container">
+                <img id="app-logo" src="img/logo.png" alt="Logo Empresa" onerror="this.src='https://via.placeholder.com/150x50?text=LOGO'">
+            </div>
+            <div class="header-title">
+                <h1 id="header-system-title">Sistema Integrado de Compras y Selección de Proveedores</h1>
+            </div>
+            <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
+                <span id="user-session-info" style="font-size: 0.9em; font-weight: bold; color: #fff; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 4px;"></span>
+                <button class="btn-danger" onclick="cerrarSesionUsuario()" style="padding: 6px 12px;">Cerrar Sesión</button>
+                <button class="btn-master" onclick="abrirModalMaster()">⚙️ Panel Master</button>
+            </div>
+        </header>
 
-    <main class="content-container">
+        <nav class="nav-tabs" id="main-nav-tabs">
+            <button class="tab-btn active" id="btn-tab-requisitos" onclick="showTab('tab-requisitos')">1. Requisitos Técnicos</button>
+            <button class="tab-btn" id="btn-tab-proveedores" onclick="showTab('tab-proveedores')">2. Selección de proveedores</button>
+            <button class="tab-btn" id="btn-tab-estadisticas" onclick="showTab('tab-estadisticas')">3. Evaluación y Estadísticas</button>
+            <button class="tab-btn" id="btn-tab-compras" onclick="showTab('tab-compras')">4. Órdenes de Compra</button>
+            <button class="tab-btn" id="btn-tab-recepcion" onclick="showTab('tab-recepcion')">5. Recepción Mercadería</button>
+            <button class="tab-btn" id="btn-tab-usuarios" onclick="showTab('tab-usuarios')">6. Gestión Usuarios</button>
+        </nav>
 
-        <!-- PESTAÑA 1 -->
-        <section id="tab-requisitos" class="tab-content active">
-            <h2>Gestión de Requisitos Técnicos</h2>
-            <div class="card">
-                <form id="form-requisito" onsubmit="guardarRequisito(event)">
-                    <div class="control-documental-grid">
-                        <div class="form-group">
-                            <label for="num-formulario-req">N° de Formulario *</label>
-                            <div style="display: flex; gap: 10px;">
-                                <input type="text" id="num-formulario-req" placeholder="Ej: F: 740-02 R:2" required>
-                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_req', 'num-formulario-req')">💾 Guardar N°</button>
+        <main class="content-container">
+
+            <!-- PESTAÑA 1 -->
+            <section id="tab-requisitos" class="tab-content active">
+                <h2>Gestión de Requisitos Técnicos</h2>
+                <div class="card">
+                    <form id="form-requisito" onsubmit="guardarRequisito(event)">
+                        <div class="control-documental-grid">
+                            <div class="form-group">
+                                <label for="num-formulario-req">N° de Formulario *</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="num-formulario-req" placeholder="Ej: F: 740-02 R:2" required>
+                                    <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_req', 'num-formulario-req')">💾 Guardar N°</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-grid" style="margin-top: 15px;">
-                        <div class="form-group">
-                            <label for="num-requisito">N° de Requisito *</label>
-                            <input type="text" id="num-requisito" placeholder="Ej: REQ-001" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="nombre-requisito">Nombre / Insumo *</label>
-                            <input type="text" id="nombre-requisito" placeholder="Ej: Acero Inoxidable 304" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="fecha-requisito">Fecha de Registro *</label>
-                            <input type="date" id="fecha-requisito" required>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="detalle-requisito">Especificaciones Técnicas / Detalle</label>
-                        <textarea id="detalle-requisito" rows="3" placeholder="Especifique tolerancias, medidas, norma ISO, etc."></textarea>
-                    </div>
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Requisito</button>
-                </form>
-            </div>
-
-            <h3>Listado de Requisitos Guardados</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>N° Formulario</th>
-                            <th>N° Requisito</th>
-                            <th>Nombre / Insumo</th>
-                            <th>Fecha</th>
-                            <th>Detalle / Especificación</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-requisitos-body"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- PESTAÑA 2 -->
-        <section id="tab-proveedores" class="tab-content">
-            <h2>Selección de Proveedores y Criterios Iniciales</h2>
-            <div class="card">
-                <form id="form-proveedor" onsubmit="guardarProveedor(event)">
-                    <div class="control-documental-grid">
-                        <div class="form-group">
-                            <label for="num-formulario-prov">N° de Formulario *</label>
-                            <div style="display: flex; gap: 10px;">
-                                <input type="text" id="num-formulario-prov" placeholder="Ej: FOR-PROV-001" required>
-                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_prov', 'num-formulario-prov')">💾 Guardar N°</button>
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="num-requisito">N° de Requisito *</label>
+                                <input type="text" id="num-requisito" placeholder="Ej: REQ-001" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="nombre-requisito">Nombre / Insumo *</label>
+                                <input type="text" id="nombre-requisito" placeholder="Ej: Acero Inoxidable 304" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="fecha-requisito">Fecha de Registro *</label>
+                                <input type="date" id="fecha-requisito" required>
                             </div>
                         </div>
-                    </div>
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label for="detalle-requisito">Especificaciones Técnicas / Detalle</label>
+                            <textarea id="detalle-requisito" rows="3" placeholder="Especifique tolerancias, medidas, norma ISO, etc."></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar Requisito</button>
+                    </form>
+                </div>
 
-                    <div class="form-grid" style="margin-top: 15px;">
-                        <div class="form-group">
-                            <label for="num-proveedor">N° de Proveedor *</label>
-                            <input type="text" id="num-proveedor" placeholder="Ej: PROV-102" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="nombre-proveedor">Razón Social / Nombre *</label>
-                            <input type="text" id="nombre-proveedor" placeholder="Ej: Metalúrgica del Sur S.A." required>
-                        </div>
-                    </div>
+                <h3>Listado de Requisitos Guardados</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N° Formulario</th>
+                                <th>N° Requisito</th>
+                                <th>Nombre / Insumo</th>
+                                <th>Fecha</th>
+                                <th>Detalle / Especificación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-requisitos-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-                    <h4 style="margin-top: 20px;">Criterios de Selección (Editable para todos los usuarios)</h4>
-                    <div class="form-grid-6">
-                        <div class="form-group">
-                            <input type="text" id="crit-nombre-1" class="input-editable-label" value="Cumplimiento de Entrega">
-                            <input type="number" id="crit-cant-1" min="0" max="100" placeholder="0-100">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="crit-nombre-2" class="input-editable-label" value="Plazo de Entrega">
-                            <input type="number" id="crit-cant-2" min="0" max="100" placeholder="0-100">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="crit-nombre-3" class="input-editable-label" value="Condicion de Pago">
-                            <input type="number" id="crit-cant-3" min="0" max="100" placeholder="0-100">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="crit-nombre-4" class="input-editable-label" value="Calidad Insumos/Servicios">
-                            <input type="number" id="crit-cant-4" min="0" max="100" placeholder="0-100">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="crit-nombre-5" class="input-editable-label" value="Atencion">
-                            <input type="number" id="crit-cant-5" min="0" max="100" placeholder="0-100">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="crit-nombre-6" class="input-editable-label" value="Respuesta a Reclamos">
-                            <input type="number" id="crit-cant-6" min="0" max="100" placeholder="0-100">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-primary" style="margin-top: 20px;">Guardar Proveedor</button>
-                </form>
-            </div>
-
-            <h3>Proveedores Registrados</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>N° Formulario</th>
-                            <th>N° Proveedor</th>
-                            <th>Nombre / Razón Social</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-proveedores-body"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- PESTAÑA 3 -->
-        <section id="tab-estadisticas" class="tab-content">
-            <h2>Evaluación y Estadísticas de Proveedores</h2>
-            <div class="card">
-                <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
-                    
-                    <div class="control-documental-grid">
-                        <div class="form-group">
-                            <label for="num-formulario">N° de Formulario *</label>
-                            <div style="display: flex; gap: 10px;">
-                                <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" required>
-                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_stat', 'num-formulario')">💾 Guardar N°</button>
+            <!-- PESTAÑA 2 -->
+            <section id="tab-proveedores" class="tab-content">
+                <h2>Selección de Proveedores y Criterios Iniciales</h2>
+                <div class="card">
+                    <form id="form-proveedor" onsubmit="guardarProveedor(event)">
+                        <div class="control-documental-grid">
+                            <div class="form-group">
+                                <label for="num-formulario-prov">N° de Formulario *</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="num-formulario-prov" placeholder="Ej: FOR-PROV-001" required>
+                                    <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_prov', 'num-formulario-prov')">💾 Guardar N°</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-grid" style="margin-top: 15px;">
-                        <div class="form-group">
-                            <label for="select-prov-estadistica">Seleccionar Proveedor *</label>
-                            <select id="select-prov-estadistica" onchange="cargarCalificacionExistente()" required>
-                                <option value="">-- Seleccione un Proveedor --</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="select-anio-estadistica">Año Evaluado *</label>
-                            <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()" required>
-                                <option value="2026">2026</option>
-                                <option value="2025">2025</option>
-                                <option value="2024">2024</option>
-                                <option value="2023">2023</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <h4 style="margin-top: 20px;">Programación de Evaluación</h4>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="fecha-evaluacion">Fecha de Evaluación *</label>
-                            <input type="date" id="fecha-evaluacion" onchange="calcularFechaProximaDesdeDias()" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="dias-proxima-eval">Plazo para Próxima Eval. (Días) *</label>
-                            <input type="number" id="dias-proxima-eval" min="1" placeholder="Ej: 30" oninput="calcularFechaProximaDesdeDias()" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha Calculada Próxima Evaluación:</label>
-                            <div class="badge-dias-container" style="margin-top: 5px;">
-                                <strong id="fecha-calculada-prox" style="font-size: 1.1em; color: #880e4f;">-- / -- / ----</strong>
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="num-proveedor">N° de Proveedor *</label>
+                                <input type="text" id="num-proveedor" placeholder="Ej: PROV-102" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="nombre-proveedor">Razón Social / Nombre *</label>
+                                <input type="text" id="nombre-proveedor" placeholder="Ej: Metalúrgica del Sur S.A." required>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="regla-calculo-box">
-                        <h5>📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
-                        <p>El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
-                        <ul>
-                            <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
-                            <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
-                            <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
-                            <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
-                        </ul>
-                    </div>
-
-                    <h4 style="margin-top: 20px;">Criterios de Calificación Anual (Puntajes de 0 a 100)</h4>
-                    <div class="form-grid-6">
-                        <div class="form-group">
-                            <input type="text" id="lbl-stat-1" class="input-editable-label" value="Cumplimiento de Entrega (Auto)">
-                            <input type="number" id="stat-val-1" min="0" max="100" placeholder="Auto" readonly class="input-readonly">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="lbl-stat-2" class="input-editable-label" value="Calidad Insumos/Servicios">
-                            <input type="number" id="stat-val-2" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="lbl-stat-3" class="input-editable-label" value="Condicion de Pago (OC)">
-                            <input type="number" id="stat-val-3" min="0" max="100" placeholder="Auto OC" readonly class="input-readonly">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="lbl-stat-4" class="input-editable-label" value="Plazo de Entrega (OC)">
-                            <input type="number" id="stat-val-4" min="0" max="100" placeholder="Auto OC" readonly class="input-readonly">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="lbl-stat-5" class="input-editable-label" value="Atencion">
-                            <input type="number" id="stat-val-5" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="lbl-stat-6" class="input-editable-label" value="Respuesta a Reclamos">
-                            <input type="number" id="stat-val-6" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
-                        </div>
-                    </div>
-
-                    <div class="resultado-clasificacion-box" style="margin-top:20px;">
-                        <div>Promedio Anual: <strong id="stat-promedio">0 pts</strong></div>
-                        <div>Clasificación Obtenida: <span id="stat-clase" class="clase-badge badge-d">Clase D</span></div>
-                    </div>
-
-                    <div style="margin-top: 20px; display: flex; gap: 10px;">
-                        <button type="submit" class="btn-primary">Guardar Calificación y Fechas</button>
-                        <button type="button" class="btn-info" onclick="abrirModalPerformance()">📊 Ver Índice de Performance Histórico</button>
-                        <button type="button" class="btn-info" onclick="abrirModalGraficos()">📊 Gráficos</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="filter-bar">
-                <label for="filtro-tabla-anio">Filtrar Tabla por Año: </label>
-                <select id="filtro-tabla-anio" onchange="renderizarTablaEstadisticas()">
-                    <option value="TODOS">Todos los años</option>
-                    <option value="2026">2026</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                </select>
-            </div>
-
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>N° Formulario</th>
-                            <th>Año</th>
-                            <th>N° Proveedor</th>
-                            <th>Nombre Proveedor</th>
-                            <th>Fecha Eval.</th>
-                            <th>Días Plazo</th>
-                            <th>Próx. Eval.</th>
-                            <th>Promedio</th>
-                            <th>Clasificación</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-estadisticas-body"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- PESTAÑA 4 -->
-        <section id="tab-compras" class="tab-content">
-            <h2>Gestión de Órdenes de Compra</h2>
-            <div class="card">
-                <form id="form-compras" onsubmit="iniciarCompra(event)">
-                    <div class="control-documental-grid">
-                        <div class="form-group">
-                            <label for="num-formulario-comp">N° de Formulario *</label>
-                            <div style="display: flex; gap: 10px;">
-                                <input type="text" id="num-formulario-comp" placeholder="Ej: FOR-OC-001" required>
-                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_comp', 'num-formulario-comp')">💾 Guardar N°</button>
+                        <h4 style="margin-top: 20px;">Criterios de Selección (Editable para todos los usuarios)</h4>
+                        <div class="form-grid-6">
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-1" class="input-editable-label" value="Cumplimiento de Entrega">
+                                <input type="number" id="crit-cant-1" min="0" max="100" placeholder="0-100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-2" class="input-editable-label" value="Plazo de Entrega">
+                                <input type="number" id="crit-cant-2" min="0" max="100" placeholder="0-100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-3" class="input-editable-label" value="Condicion de Pago">
+                                <input type="number" id="crit-cant-3" min="0" max="100" placeholder="0-100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-4" class="input-editable-label" value="Calidad Insumos/Servicios">
+                                <input type="number" id="crit-cant-4" min="0" max="100" placeholder="0-100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-5" class="input-editable-label" value="Atencion">
+                                <input type="number" id="crit-cant-5" min="0" max="100" placeholder="0-100">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="crit-nombre-6" class="input-editable-label" value="Respuesta a Reclamos">
+                                <input type="number" id="crit-cant-6" min="0" max="100" placeholder="0-100">
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-grid" style="margin-top: 15px;">
-                        <div class="form-group">
-                            <label for="select-compra-prov">Seleccionar Proveedor *</label>
-                            <select id="select-compra-prov" required>
-                                <option value="">-- Seleccione Proveedor --</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="select-compra-req">Requisito Técnico Asociado *</label>
-                            <select id="select-compra-req" required>
-                                <option value="">-- Seleccione Requisito --</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="compra-cantidad">Cantidad Solicitada *</label>
-                            <input type="number" id="compra-cantidad" min="1" placeholder="Ej: 50" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="compra-fecha-emision">Fecha Emisión Orden *</label>
-                            <input type="date" id="compra-fecha-emision" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="compra-fecha-req">Fecha Requerida de Entrega *</label>
-                            <input type="date" id="compra-fecha-req" required>
-                        </div>
-                    </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 20px;">Guardar Proveedor</button>
+                    </form>
+                </div>
 
-                    <!-- RECUADRO DE ESCALA DE PUNTAJES -->
-                    <div class="regla-calculo-box" style="margin-top: 20px;">
-                        <h5>📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
-                        <p>El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
-                        <ul>
-                            <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
-                            <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
-                            <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
-                            <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
-                        </ul>
-                    </div>
+                <h3>Proveedores Registrados</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N° Formulario</th>
+                                <th>N° Proveedor</th>
+                                <th>Nombre / Razón Social</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-proveedores-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-                    <!-- PRE-EVALUACIÓN DE DESEMPEÑO -->
-                    <div style="margin-top: 20px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
-                        <h4 style="margin: 0 0 10px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
-                        <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #5d4037;">Puntaje asignado por Compras para alimentarse automáticamente en la Pestaña 3 (No se imprime en el PDF).</p>
+            <!-- PESTAÑA 3 -->
+            <section id="tab-estadisticas" class="tab-content">
+                <h2>Evaluación y Estadísticas de Proveedores</h2>
+                <div class="card">
+                    <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
                         
+                        <div class="control-documental-grid">
+                            <div class="form-group">
+                                <label for="num-formulario">N° de Formulario *</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="num-formulario" placeholder="Ej: FOR-CAL-002" required>
+                                    <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_stat', 'num-formulario')">💾 Guardar N°</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="select-prov-estadistica">Seleccionar Proveedor *</label>
+                                <select id="select-prov-estadistica" onchange="cargarCalificacionExistente()" required>
+                                    <option value="">-- Seleccione un Proveedor --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="select-anio-estadistica">Año Evaluado *</label>
+                                <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()" required>
+                                    <option value="2026">2026</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h4 style="margin-top: 20px;">Programación de Evaluación</h4>
                         <div class="form-grid">
                             <div class="form-group">
-                                <label for="compra-pago-eval" style="color: #e65100; font-weight: bold;">Condición de Pago (0 - 100 pts) *</label>
-                                <input type="number" id="compra-pago-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                                <label for="fecha-evaluacion">Fecha de Evaluación *</label>
+                                <input type="date" id="fecha-evaluacion" onchange="calcularFechaProximaDesdeDias()" required>
                             </div>
                             <div class="form-group">
-                                <label for="compra-plazo-eval" style="color: #e65100; font-weight: bold;">Plazo de Entrega (0 - 100 pts) *</label>
-                                <input type="number" id="compra-plazo-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                                <label for="dias-proxima-eval">Plazo para Próxima Eval. (Días) *</label>
+                                <input type="number" id="dias-proxima-eval" min="1" placeholder="Ej: 30" oninput="calcularFechaProximaDesdeDias()" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha Calculada Próxima Evaluación:</label>
+                                <div class="badge-dias-container" style="margin-top: 5px;">
+                                    <strong id="fecha-calculada-prox" style="font-size: 1.1em; color: #880e4f;">-- / -- / ----</strong>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="compra-observaciones">Observaciones / Condiciones de Entrega</label>
-                        <textarea id="compra-observaciones" rows="2" placeholder="Lugar de entrega, horario, observaciones generales..."></textarea>
-                    </div>
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Emitir Orden y Descargar PDF</button>
-                </form>
-            </div>
+                        <div class="regla-calculo-box">
+                            <h5>📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
+                            <p>El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
+                            <ul>
+                                <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
+                                <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
+                                <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
+                                <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
+                            </ul>
+                        </div>
 
-            <h3>Órdenes de Compra Emitidas</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>N° Formulario</th>
-                            <th>N° Orden</th>
-                            <th>Proveedor</th>
-                            <th>Requisito</th>
-                            <th>Cantidad</th>
-                            <th>Fecha Emisión</th>
-                            <th>Fecha Requerida</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-compras-body"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- PESTAÑA 5 -->
-        <section id="tab-recepcion" class="tab-content">
-            <h2>Recepción e Inspección de Mercadería</h2>
-            <div class="card">
-                <form id="form-recepcion" onsubmit="guardarRecepcion(event)">
-                    <div class="control-documental-grid">
-                        <div class="form-group">
-                            <label for="num-formulario-rec">N° de Formulario *</label>
-                            <div style="display: flex; gap: 10px;">
-                                <input type="text" id="num-formulario-rec" placeholder="Ej: FOR-REC-001" required>
-                                <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_rec', 'num-formulario-rec')">💾 Guardar N°</button>
+                        <h4 style="margin-top: 20px;">Criterios de Calificación Anual (Puntajes de 0 a 100)</h4>
+                        <div class="form-grid-6">
+                            <div class="form-group">
+                                <input type="text" id="lbl-stat-1" class="input-editable-label" value="Cumplimiento de Entrega (Auto)">
+                                <input type="number" id="stat-val-1" min="0" max="100" placeholder="Auto" readonly class="input-readonly">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="lbl-stat-2" class="input-editable-label" value="Calidad Insumos/Servicios">
+                                <input type="number" id="stat-val-2" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="lbl-stat-3" class="input-editable-label" value="Condicion de Pago (OC)">
+                                <input type="number" id="stat-val-3" min="0" max="100" placeholder="Auto OC" readonly class="input-readonly">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="lbl-stat-4" class="input-editable-label" value="Plazo de Entrega (OC)">
+                                <input type="number" id="stat-val-4" min="0" max="100" placeholder="Auto OC" readonly class="input-readonly">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="lbl-stat-5" class="input-editable-label" value="Atencion">
+                                <input type="number" id="stat-val-5" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="lbl-stat-6" class="input-editable-label" value="Respuesta a Reclamos">
+                                <input type="number" id="stat-val-6" min="0" max="100" placeholder="0-100" oninput="calcularPuntajeClase()">
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-grid" style="margin-top: 15px;">
-                        <div class="form-group">
-                            <label for="select-recepcion-orden">Seleccionar Orden Pendiente *</label>
-                            <select id="select-recepcion-orden" onchange="cargarDetalleOrdenPendiente()" required>
-                                <option value="">-- Seleccione Orden Pendiente --</option>
-                            </select>
+                        <div class="resultado-clasificacion-box" style="margin-top:20px;">
+                            <div>Promedio Anual: <strong id="stat-promedio">0 pts</strong></div>
+                            <div>Clasificación Obtenida: <span id="stat-clase" class="clase-badge badge-d">Clase D</span></div>
                         </div>
-                        <div class="form-group">
-                            <label for="rec-campo-1">N° de Remito del Proveedor *</label>
-                            <input type="text" id="rec-campo-1" placeholder="Ej: R-0001-0004512" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="rec-fecha">Fecha de Recepción *</label>
-                            <input type="date" id="rec-fecha" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="rec-campo-2">Cantidad Recibida *</label>
-                            <input type="number" id="rec-campo-2" min="1" required>
-                        </div>
-                    </div>
 
-                    <div class="form-grid" style="margin-top: 15px;">
-                        <div class="form-group">
-                            <label for="rec-campo-3">Estado de Empaque / Bulto</label>
-                            <select id="rec-campo-3">
-                                <option value="Conforme">Conforme</option>
-                                <option value="Dañado">Dañado</option>
-                                <option value="Abierto">Abierto / Incompleto</option>
-                            </select>
+                        <div style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button type="submit" class="btn-primary">Guardar Calificación y Fechas</button>
+                            <button type="button" class="btn-info" onclick="abrirModalPerformance()">📊 Ver Índice de Performance Histórico</button>
+                            <button type="button" class="btn-info" onclick="abrirModalGraficos()">📊 Gráficos</button>
                         </div>
-                        <div class="form-group">
-                            <label for="rec-campo-5">Control de Calidad Visual</label>
-                            <select id="rec-campo-5">
-                                <option value="Aprobado">Aprobado</option>
-                                <option value="Rechazado">Rechazado</option>
-                                <option value="Aprobado Condicional">Aprobado Condicional</option>
-                            </select>
+                    </form>
+                </div>
+
+                <div class="filter-bar">
+                    <label for="filtro-tabla-anio">Filtrar Tabla por Año: </label>
+                    <select id="filtro-tabla-anio" onchange="renderizarTablaEstadisticas()">
+                        <option value="TODOS">Todos los años</option>
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N° Formulario</th>
+                                <th>Año</th>
+                                <th>N° Proveedor</th>
+                                <th>Nombre Proveedor</th>
+                                <th>Fecha Eval.</th>
+                                <th>Días Plazo</th>
+                                <th>Próx. Eval.</th>
+                                <th>Promedio</th>
+                                <th>Clasificación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-estadisticas-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- PESTAÑA 4 -->
+            <section id="tab-compras" class="tab-content">
+                <h2>Gestión de Órdenes de Compra</h2>
+                <div class="card">
+                    <form id="form-compras" onsubmit="iniciarCompra(event)">
+                        <div class="control-documental-grid">
+                            <div class="form-group">
+                                <label for="num-formulario-comp">N° de Formulario *</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="num-formulario-comp" placeholder="Ej: FOR-OC-001" required>
+                                    <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_comp', 'num-formulario-comp')">💾 Guardar N°</button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="rec-campo-6">Observaciones de Recepción</label>
-                        <textarea id="rec-campo-6" rows="2" placeholder="Detalle cualquier desvío o aclaración del remito..."></textarea>
-                    </div>
-
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Registrar Recepción</button>
-                </form>
-            </div>
-
-            <h3>Histórico de Mercadería Recibida</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>N° Formulario</th>
-                            <th>N° Orden</th>
-                            <th>Proveedor</th>
-                            <th>N° Remito</th>
-                            <th>Cant. Recibida</th>
-                            <th>Calidad</th>
-                            <th>Fecha Recepción</th>
-                            <th>Observaciones</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-recepcion-body"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- PESTAÑA 6 -->
-        <section id="tab-usuarios" class="tab-content">
-            <h2>Administración de Usuarios del Sistema</h2>
-            <div class="card">
-                <form id="form-usuarios">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="usr-nombre">Nombre de Usuario *</label>
-                            <input type="text" id="usr-nombre" placeholder="Ej: jperez" required>
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="select-compra-prov">Seleccionar Proveedor *</label>
+                                <select id="select-compra-prov" required>
+                                    <option value="">-- Seleccione Proveedor --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="select-compra-req">Requisito Técnico Asociado *</label>
+                                <select id="select-compra-req" required>
+                                    <option value="">-- Seleccione Requisito --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="compra-cantidad">Cantidad Solicitada *</label>
+                                <input type="number" id="compra-cantidad" min="1" placeholder="Ej: 50" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="compra-fecha-emision">Fecha Emisión Orden *</label>
+                                <input type="date" id="compra-fecha-emision" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="compra-fecha-req">Fecha Requerida de Entrega *</label>
+                                <input type="date" id="compra-fecha-req" required>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="usr-pass">Contraseña *</label>
-                            <input type="password" id="usr-pass" placeholder="••••••••" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="usr-sector">Sector / Área *</label>
-                            <select id="usr-sector" required>
-                                <option value="Compras">Compras</option>
-                                <option value="Almacén">Almacén / Depósito</option>
-                                <option value="Calidad">Calidad</option>
-                                <option value="Administración">Administración</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="usr-estado">Estado *</label>
-                            <select id="usr-estado" required>
-                                <option value="Activo">Activo</option>
-                                <option value="Inactivo">Inactivo</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar / Actualizar Usuario</button>
-                </form>
-            </div>
 
-            <h3>Usuarios Registrados</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nombre Usuario</th>
-                            <th>Sector</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-usuarios-body"></tbody>
-                </table>
-            </div>
-        </section>
+                        <div class="regla-calculo-box" style="margin-top: 20px;">
+                            <h5>📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
+                            <p>El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
+                            <ul>
+                                <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
+                                <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
+                                <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
+                                <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
+                            </ul>
+                        </div>
 
-    </main>
+                        <div style="margin-top: 20px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
+                            <h4 style="margin: 0 0 10px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
+                            <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #5d4037;">Puntaje asignado por Compras para alimentarse automáticamente en la Pestaña 3 (No se imprime en el PDF).</p>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="compra-pago-eval" style="color: #e65100; font-weight: bold;">Condición de Pago (0 - 100 pts) *</label>
+                                    <input type="number" id="compra-pago-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="compra-plazo-eval" style="color: #e65100; font-weight: bold;">Plazo de Entrega (0 - 100 pts) *</label>
+                                    <input type="number" id="compra-plazo-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label for="compra-observaciones">Observaciones / Condiciones de Entrega</label>
+                            <textarea id="compra-observaciones" rows="2" placeholder="Lugar de entrega, horario, observaciones generales..."></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Emitir Orden y Descargar PDF</button>
+                    </form>
+                </div>
+
+                <h3>Órdenes de Compra Emitidas</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N° Formulario</th>
+                                <th>N° Orden</th>
+                                <th>Proveedor</th>
+                                <th>Requisito</th>
+                                <th>Cantidad</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Requerida</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-compras-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- PESTAÑA 5 -->
+            <section id="tab-recepcion" class="tab-content">
+                <h2>Recepción e Inspección de Mercadería</h2>
+                <div class="card">
+                    <form id="form-recepcion" onsubmit="guardarRecepcion(event)">
+                        <div class="control-documental-grid">
+                            <div class="form-group">
+                                <label for="num-formulario-rec">N° de Formulario *</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="num-formulario-rec" placeholder="Ej: FOR-REC-001" required>
+                                    <button type="button" class="btn-info" onclick="guardarNumeroFormularioDirecto('num_form_rec', 'num-formulario-rec')">💾 Guardar N°</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="select-recepcion-orden">Seleccionar Orden Pendiente *</label>
+                                <select id="select-recepcion-orden" onchange="cargarDetalleOrdenPendiente()" required>
+                                    <option value="">-- Seleccione Orden Pendiente --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="rec-campo-1">N° de Remito del Proveedor *</label>
+                                <input type="text" id="rec-campo-1" placeholder="Ej: R-0001-0004512" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="rec-fecha">Fecha de Recepción *</label>
+                                <input type="date" id="rec-fecha" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="rec-campo-2">Cantidad Recibida *</label>
+                                <input type="number" id="rec-campo-2" min="1" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="rec-campo-3">Estado de Empaque / Bulto</label>
+                                <select id="rec-campo-3">
+                                    <option value="Conforme">Conforme</option>
+                                    <option value="Dañado">Dañado</option>
+                                    <option value="Abierto">Abierto / Incompleto</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="rec-campo-5">Control de Calidad Visual</label>
+                                <select id="rec-campo-5">
+                                    <option value="Aprobado">Aprobado</option>
+                                    <option value="Rechazado">Rechazado</option>
+                                    <option value="Aprobado Condicional">Aprobado Condicional</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label for="rec-campo-6">Observaciones de Recepción</label>
+                            <textarea id="rec-campo-6" rows="2" placeholder="Detalle cualquier desvío o aclaración del remito..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Registrar Recepción</button>
+                    </form>
+                </div>
+
+                <h3>Histórico de Mercadería Recibida</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N° Formulario</th>
+                                <th>N° Orden</th>
+                                <th>Proveedor</th>
+                                <th>N° Remito</th>
+                                <th>Cant. Recibida</th>
+                                <th>Calidad</th>
+                                <th>Fecha Recepción</th>
+                                <th>Observaciones</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-recepcion-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- PESTAÑA 6 -->
+            <section id="tab-usuarios" class="tab-content">
+                <h2>Administración de Usuarios del Sistema</h2>
+                <div class="card">
+                    <form id="form-usuarios">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="usr-nombre">Nombre de Usuario *</label>
+                                <input type="text" id="usr-nombre" placeholder="Ej: jperez" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="usr-pass">Contraseña *</label>
+                                <input type="password" id="usr-pass" placeholder="••••••••" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="usr-sector">Sector / Área *</label>
+                                <select id="usr-sector" required>
+                                    <option value="Compras">Compras</option>
+                                    <option value="Almacén">Almacén / Depósito</option>
+                                    <option value="Calidad">Calidad</option>
+                                    <option value="Expedición">Expedición</option>
+                                    <option value="Administración">Administración</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="usr-estado">Estado *</label>
+                                <select id="usr-estado" required>
+                                    <option value="Activo">Activo</option>
+                                    <option value="Inactivo">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">Guardar / Actualizar Usuario</button>
+                    </form>
+                </div>
+
+                <h3>Usuarios Registrados</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre Usuario</th>
+                                <th>Sector</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-usuarios-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
 
     <!-- MODAL DE PANEL MASTER -->
     <div id="modal-master" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content modal-large">
             <div class="modal-header">
                 <h3>⚙️ Panel de Configuración Master</h3>
                 <button class="btn-close" onclick="cerrarModalMaster()">✕</button>
@@ -556,9 +586,17 @@
                 </div>
 
                 <div id="master-panel" style="display: none;">
-                    <h4>Personalización de Sistema</h4>
+                    <h4>Personalización del Sistema y Título</h4>
                     
                     <div class="form-group">
+                        <label for="master-system-title">Título del Sistema:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="master-system-title" placeholder="Ej: Sistema Integrado de Compras">
+                            <button class="btn-info" onclick="guardarTituloSistema()">💾 Guardar Título</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
                         <label for="master-color-bg">Color de Fondo Principal:</label>
                         <input type="color" id="master-color-bg" value="#f8f9fa" onchange="cambiarColorBg(this.value)">
                     </div>
@@ -573,7 +611,18 @@
                         <input type="text" id="master-logo-url" placeholder="https://ejemplo.com/logo.jpg" onchange="cambiarLogo(this.value)">
                     </div>
 
-                    <h4 style="margin-top: 20px;">Control Global de Usuarios</h4>
+                    <hr style="margin: 20px 0;">
+
+                    <h4>Matriz de Permisos por Sector</h4>
+                    <p style="font-size: 0.85em; color: #555;">Seleccione las pestañas a las que cada sector tendrá permiso de acceso:</p>
+                    <div id="matriz-permisos-container" class="table-responsive">
+                        <!-- Matriz cargada dinámicamente -->
+                    </div>
+                    <button class="btn-primary" onclick="guardarPermisosSectores()" style="margin-top: 10px;">💾 Guardar Permisos de Sectores</button>
+
+                    <hr style="margin: 20px 0;">
+
+                    <h4>Control Global de Usuarios</h4>
                     <div class="table-responsive">
                         <table>
                             <thead>
