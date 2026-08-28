@@ -300,6 +300,8 @@ let nombresCriteriosEstadisticas = [
     "Respuesta a Reclamos"
 ];
 let chartEvolucionInstance = null;
+let chartTortaInstance = null;
+let chartPerfProvInstance = null;
 
 function calcularFechaProximaDesdeDias() {
     const fEvalVal = document.getElementById('fecha-evaluacion').value;
@@ -453,7 +455,6 @@ function cargarCalificacionExistente() {
         }
     }
 
-    // Auto-completar valores automáticos/bloqueados
     if (provNum) {
         const puntajeCumplimiento = calcularPuntajeTiemposReales(provNum, anio);
         if (puntajeCumplimiento !== null) {
@@ -697,6 +698,126 @@ function cerrarModalPerformance() {
     document.getElementById('modal-performance').style.display = 'none';
 }
 
+// --- MODAL GRÁFICOS DINÁMICOS ---
+function abrirModalGraficos() {
+    document.getElementById('modal-graficos').style.display = 'flex';
+    renderizarGraficoTortaClases();
+    renderizarGraficoPerformanceProveedores();
+}
+
+function cerrarModalGraficos() {
+    document.getElementById('modal-graficos').style.display = 'none';
+}
+
+function renderizarGraficoTortaClases() {
+    const conteo = { 'Clase A': 0, 'Clase B': 0, 'Clase C': 0, 'Clase D': 0 };
+
+    estadisticas.forEach(est => {
+        if (conteo[est.clase] !== undefined) {
+            conteo[est.clase]++;
+        } else {
+            conteo['Clase D']++;
+        }
+    });
+
+    const total = Object.values(conteo).reduce((a, b) => a + b, 0);
+
+    const ctx = document.getElementById('chartTortaClases').getContext('2d');
+    if (chartTortaInstance) chartTortaInstance.destroy();
+
+    chartTortaInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Clase A (>=91)', 'Clase B (76-90)', 'Clase C (61-75)', 'Clase D (<61)'],
+            datasets: [{
+                data: [
+                    conteo['Clase A'],
+                    conteo['Clase B'],
+                    conteo['Clase C'],
+                    conteo['Clase D']
+                ],
+                backgroundColor: ['#2e7d32', '#0288d1', '#f57c00', '#c62828']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const val = context.raw || 0;
+                            const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                            return ` ${context.label}: ${val} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderizarGraficoPerformanceProveedores() {
+    const labels = [];
+    const datosRecepcion = []; 
+    const datosPlazo = [];     
+    const datosPago = [];      
+    const datosCalidad = [];   
+
+    proveedores.forEach(prov => {
+        const evals = estadisticas.filter(e => e.provNum === prov.num);
+        if (evals.length > 0) {
+            const ultimaEval = evals[evals.length - 1]; 
+            labels.push(prov.nombre);
+
+            const p = ultimaEval.puntajes || [0, 0, 0, 0, 0, 0];
+            datosRecepcion.push(p[0] || 0); 
+            datosCalidad.push(p[1] || 0);   
+            datosPago.push(p[2] || 0);      
+            datosPlazo.push(p[3] || 0);     
+        }
+    });
+
+    const ctx = document.getElementById('chartPerformanceProveedores').getContext('2d');
+    if (chartPerfProvInstance) chartPerfProvInstance.destroy();
+
+    chartPerfProvInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Cumplimiento de Entrega',
+                    data: datosRecepcion,
+                    backgroundColor: '#0288d1'
+                },
+                {
+                    label: 'Plazo de Entrega',
+                    data: datosPlazo,
+                    backgroundColor: '#7b1fa2'
+                },
+                {
+                    label: 'Condición de Pago',
+                    data: datosPago,
+                    backgroundColor: '#f57c00'
+                },
+                {
+                    label: 'Calidad de Insumos',
+                    data: datosCalidad,
+                    backgroundColor: '#2e7d32'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { min: 0, max: 100, ticks: { stepSize: 20 } }
+            }
+        }
+    });
+}
+
 
 // --- PESTAÑA 4 ---
 let ordenesCompra = [];
@@ -828,7 +949,6 @@ function generarPDFOrden(orden) {
     doc.text("DETALLE DEL PEDIDO:", 20, 85);
     doc.setFont("helvetica", "normal");
     
-    // Coordenada Y dinámica para que los textos se empujen hacia abajo
     let currentY = 93;
     
     doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY);
@@ -840,15 +960,13 @@ function generarPDFOrden(orden) {
     doc.text(`Fecha Requerida de Entrega: ${orden.fechaReq}`, 20, currentY);
     currentY += 10;
 
-    // Ajuste automático de saltos de línea para Especificaciones
     if (orden.reqDetalle) {
         const textoReq = `Especificaciones Técnicas: ${orden.reqDetalle}`;
-        const lineasReq = doc.splitTextToSize(textoReq, 170); // Evita que se salga del ancho de hoja
+        const lineasReq = doc.splitTextToSize(textoReq, 170);
         doc.text(lineasReq, 20, currentY);
-        currentY += (lineasReq.length * 6) + 4; // Multiplica por cantidad de renglones generados
+        currentY += (lineasReq.length * 6) + 4;
     }
 
-    // Ajuste automático de saltos de línea para Observaciones
     if (orden.observaciones) {
         const textoObs = `Observaciones: ${orden.observaciones}`;
         const lineasObs = doc.splitTextToSize(textoObs, 170);
@@ -856,7 +974,6 @@ function generarPDFOrden(orden) {
         currentY += (lineasObs.length * 6) + 4;
     }
 
-    // Línea separadora y pie de página empujados dinámicamente
     currentY += 5;
     doc.setDrawColor(216, 27, 96);
     doc.line(20, currentY, 190, currentY);
