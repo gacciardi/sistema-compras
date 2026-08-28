@@ -294,14 +294,14 @@ app.delete('/api/usuarios/:nombre', async (req, res) => {
     }
 });
 
-// --- RUTA MASTER PARA VACIAR ÚNICAMENTE ÓRDENES DE COMPRA Y RECEPCIONES ---
+// --- RUTA MASTER PARA VACIAR EVALUACIONES, COMPRAS Y RECEPCIONES ---
 app.post('/api/master/limpiar-bd', async (req, res) => {
     try {
-        await pool.query('TRUNCATE TABLE compras, recepciones RESTART IDENTITY CASCADE;');
-        res.json({ success: true, message: 'Se eliminaron únicamente todas las Órdenes de Compra y Recepciones creadas.' });
+        await pool.query('TRUNCATE TABLE estadisticas, compras, recepciones RESTART IDENTITY CASCADE;');
+        res.json({ success: true, message: 'Se eliminaron correctamente todas las Evaluaciones (Pest. 3), Órdenes de Compra (Pest. 4) y Recepciones (Pest. 5).' });
     } catch (err) {
-        console.error("Error al limpiar compras y recepciones:", err);
-        res.status(500).json({ error: 'Error al intentar vaciar Órdenes de Compra y Recepciones.' });
+        console.error("Error al limpiar datos de pruebas:", err);
+        res.status(500).json({ error: 'Error al intentar vaciar Evaluaciones, Órdenes y Recepciones.' });
     }
 });
 
