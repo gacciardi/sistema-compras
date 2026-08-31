@@ -269,6 +269,7 @@ function renderizarTablaRequisitos() {
             <td>${fReq}</td>
             <td>${req.detalle || ''}</td>
             <td>
+                <button class="btn-warning" onclick="editarRequisito('${req.num}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarRequisito('${req.num}')">Eliminar</button>
             </td>
         `;
@@ -276,11 +277,26 @@ function renderizarTablaRequisitos() {
     });
 }
 
+function editarRequisito(num) {
+    const req = requisitos.find(r => r.num === num);
+    if (!req) return;
+
+    document.getElementById('num-formulario-req').value = req.numFormulario || '';
+    document.getElementById('num-requisito').value = req.num;
+    document.getElementById('nombre-requisito').value = req.nombre;
+    if (req.fecha) {
+        document.getElementById('fecha-requisito').value = req.fecha.split('T')[0];
+    }
+    document.getElementById('detalle-requisito').value = req.detalle || '';
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function eliminarRequisito(num) {
+    if (!confirm(`¿Estás seguro de eliminar el requisito "${num}"?`)) return;
     await fetch(`/api/requisitos/${num}`, { method: 'DELETE' });
     await cargarTodoDesdeServidor(true);
 }
-
 
 // --- PESTAÑA 2 ---
 let proveedores = [];
