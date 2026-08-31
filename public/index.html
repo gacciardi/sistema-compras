@@ -326,8 +326,7 @@
                     </table>
                 </div>
             </section>
-
-            <!-- PESTAÑA 4 -->
+<!-- PESTAÑA 4 -->
             <section id="tab-compras" class="tab-content">
                 <h2>Gestión de Órdenes de Compra</h2>
                 <div class="card">
@@ -378,8 +377,21 @@
                             </div>
                         </div>
 
+                        <!-- REGLA 1: CÁLCULO DE ENTREGA REAL -->
                         <div class="regla-calculo-box" style="margin-top: 20px;">
-                            <h5>📌 Tabla de Valoración de Condición de Pago:</h5>
+                            <h5>📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
+                            <p>El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
+                            <ul>
+                                <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
+                                <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
+                                <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
+                                <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
+                            </ul>
+                        </div>
+
+                        <!-- REGLA 2: VALORACIÓN DE CONDICIÓN DE PAGO -->
+                        <div class="regla-calculo-box" style="margin-top: 15px; border-left-color: #0288d1; background: #e1f5fe;">
+                            <h5 style="color: #01579b;">📌 Tabla de Valoración de Condición de Pago:</h5>
                             <p>El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
                             <ul id="lista-reglas-pago-ui">
                                 <li><strong>Prepago:</strong> 10 Puntos</li>
@@ -433,7 +445,8 @@
                     </table>
                 </div>
             </section>
-
+            
+                       
             <!-- PESTAÑA 5 -->
             <section id="tab-recepcion" class="tab-content">
                 <h2>Recepción e Inspección de Mercadería</h2>
@@ -603,15 +616,6 @@
                             <input type="password" id="master-new-pass" placeholder="Nueva Contraseña Master" style="flex: 1; padding: 8px;">
                             <button class="btn-primary" onclick="guardarNuevaPasswordMaster()">🔐 Cambiar Clave Master</button>
                         </div>
-                    </div>
-
-                    <hr style="margin: 20px 0;">
-
-                    <!-- CONFIGURACIÓN DE TABLA DE VALORACIÓN DE PAGOS -->
-                    <h4>⚙️ Configuración de Escala de Valoración (Condiciones de Pago)</h4>
-                    <p style="font-size: 0.85em; color: #555;">Define la puntuación (0 a 100 pts) que asigna automáticamente cada condición de pago en la Pre-Evaluación:</p>
-                    <div id="config-pago-puntos-container" class="table-responsive" style="margin-bottom: 15px;">
-                        <!-- Tabla cargada dinámicamente -->
                     </div>
 
                     <hr style="margin: 20px 0;">
