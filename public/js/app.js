@@ -1,6 +1,15 @@
 let usuarioActual = null;
 let masterPasswordActual = '1234';
-let opcionesCondicionPago = ['Contado', 'Cuenta Corriente', 'Plazos'];
+
+// Matriz dinámica de Condición de Pago -> Puntaje Asignado (0 a 100)
+let tablaCondicionPagoPuntos = {
+    'Prepago': 10,
+    'Contado': 35,
+    'Cuenta corriente': 70,
+    'Plazos': 95
+};
+
+let opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
 
 let permisosPorSector = {
     'Compras': [1, 2, 3, 4, 5],
@@ -197,8 +206,9 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             masterPasswordActual = config.master_password;
         }
 
-        if (config.opciones_condicion_pago && Array.isArray(config.opciones_condicion_pago)) {
-            opcionesCondicionPago = config.opciones_condicion_pago;
+        if (config.tabla_condicion_pago_puntos) {
+            tablaCondicionPagoPuntos = config.tabla_condicion_pago_puntos;
+            opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
         }
 
         if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) {
@@ -300,6 +310,7 @@ async function eliminarRequisito(num) {
     await fetch(`/api/requisitos/${num}`, { method: 'DELETE' });
     await cargarTodoDesdeServidor(true);
 }
+
 
 // --- PESTAÑA 2 ---
 let proveedores = [];
@@ -1062,25 +1073,60 @@ function actualizarSelectsCompras() {
             selectCondPago.appendChild(opt);
         });
     }
+
+    renderizarReglasPagoUI();
+}
+
+function autoCompletarPuntajePago() {
+    const condicionSelect = document.getElementById('select-compra-condicion-pago').value;
+    const inputPagoEval = document.getElementById('compra-pago-eval');
+
+    if (condicionSelect && tablaCondicionPagoPuntos[condicionSelect] !== undefined) {
+        inputPagoEval.value = tablaCondicionPagoPuntos[condicionSelect];
+    } else {
+        inputPagoEval.value = '';
+    }
+}
+
+function renderizarReglasPagoUI() {
+    const ul = document.getElementById('lista-reglas-pago-ui');
+    if (!ul) return;
+    ul.innerHTML = '';
+
+    Object.keys(tablaCondicionPagoPuntos).forEach(cond => {
+        const pts = tablaCondicionPagoPuntos[cond];
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${cond}:</strong> ${pts} Puntos`;
+        ul.appendChild(li);
+    });
 }
 
 async function agregarNuevaCondicionPago() {
-    const nuevaOp = prompt("Ingrese la nueva Condición de Pago:");
+    const nuevaOp = prompt("Ingrese el nombre de la nueva Condición de Pago:");
     if (nuevaOp && nuevaOp.trim()) {
         const valFormateado = nuevaOp.trim();
-        if (!opcionesCondicionPago.includes(valFormateado)) {
-            opcionesCondicionPago.push(valFormateado);
+        
+        const puntosStr = prompt(`Ingrese los puntos asignados a "${valFormateado}" (0 a 100):`, "50");
+        const puntos = parseInt(puntosStr);
 
-            await fetch('/api/configuraciones', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clave: 'opciones_condicion_pago', valor: opcionesCondicionPago })
-            });
-
-            actualizarSelectsCompras();
-            document.getElementById('select-compra-condicion-pago').value = valFormateado;
-            alert(`✅ Opción "${valFormateado}" guardada correctamente.`);
+        if (isNaN(puntos) || puntos < 0 || puntos > 100) {
+            alert("El puntaje ingresado no es válido. Debe ser un número entre 0 y 100.");
+            return;
         }
+
+        tablaCondicionPagoPuntos[valFormateado] = puntos;
+        opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
+
+        await fetch('/api/configuraciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clave: 'tabla_condicion_pago_puntos', valor: tablaCondicionPagoPuntos })
+        });
+
+        actualizarSelectsCompras();
+        document.getElementById('select-compra-condicion-pago').value = valFormateado;
+        autoCompletarPuntajePago();
+        alert(`✅ Condición "${valFormateado}" asignada con ${puntos} puntos guardada correctamente.`);
     }
 }
 
@@ -1416,11 +1462,74 @@ function autenticarMaster() {
     if (usr === 'admin' && pass === masterPasswordActual) {
         document.getElementById('master-auth').style.display = 'none';
         document.getElementById('master-panel').style.display = 'block';
+        renderizarTablaConfigPagoPuntos();
         renderizarMatrizPermisos();
         renderizarTablaMasterUsuarios();
     } else {
         alert('Credenciales de Administrador Master incorrectas.');
     }
+}
+
+function renderizarTablaConfigPagoPuntos() {
+    const container = document.getElementById('config-pago-puntos-container');
+    if (!container) return;
+
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Condición de Pago</th>
+                <th>Puntaje Asignado (0-100)</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    Object.keys(tablaCondicionPagoPuntos).forEach(cond => {
+        html += `<tr>
+            <td><strong>${cond}</strong></td>
+            <td><input type="number" min="0" max="100" id="master-pts-${cond}" value="${tablaCondicionPagoPuntos[cond]}" style="width: 80px; padding: 4px;"> pts</td>
+            <td><button class="btn-danger" onclick="eliminarCondicionPagoMaster('${cond}')">Eliminar</button></td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>
+    <button class="btn-primary" onclick="guardarCambiosPuntajesPagoMaster()" style="margin-top: 10px;">💾 Guardar Escala de Puntos</button>`;
+
+    container.innerHTML = html;
+}
+
+async function guardarCambiosPuntajesPagoMaster() {
+    Object.keys(tablaCondicionPagoPuntos).forEach(cond => {
+        const input = document.getElementById(`master-pts-${cond}`);
+        if (input) {
+            tablaCondicionPagoPuntos[cond] = parseInt(input.value) || 0;
+        }
+    });
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'tabla_condicion_pago_puntos', valor: tablaCondicionPagoPuntos })
+    });
+
+    actualizarSelectsCompras();
+    alert("✅ Escala de puntos por Condición de Pago guardada correctamente.");
+}
+
+async function eliminarCondicionPagoMaster(cond) {
+    if (!confirm(`¿Desea eliminar la condición de pago "${cond}"?`)) return;
+
+    delete tablaCondicionPagoPuntos[cond];
+    opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'tabla_condicion_pago_puntos', valor: tablaCondicionPagoPuntos })
+    });
+
+    renderizarTablaConfigPagoPuntos();
+    actualizarSelectsCompras();
 }
 
 async function guardarNuevaPasswordMaster() {

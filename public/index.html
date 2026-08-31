@@ -367,11 +367,10 @@
                                 <label for="compra-fecha-req">Fecha Requerida de Entrega *</label>
                                 <input type="date" id="compra-fecha-req" required>
                             </div>
-                            <!-- CAMPO 6 AGREGADO: CONDICIÓN DE PAGO -->
                             <div class="form-group">
                                 <label for="select-compra-condicion-pago">Condición de Pago *</label>
                                 <div style="display: flex; gap: 5px;">
-                                    <select id="select-compra-condicion-pago" required style="flex: 1;">
+                                    <select id="select-compra-condicion-pago" onchange="autoCompletarPuntajePago()" required style="flex: 1;">
                                         <!-- Carga dinámicamente -->
                                     </select>
                                     <button type="button" class="btn-info" onclick="agregarNuevaCondicionPago()" title="Agregar nueva opción de pago">➕</button>
@@ -380,24 +379,24 @@
                         </div>
 
                         <div class="regla-calculo-box" style="margin-top: 20px;">
-                            <h5>📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
-                            <p>El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
-                            <ul>
-                                <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
-                                <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
-                                <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
-                                <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
+                            <h5>📌 Tabla de Valoración de Condición de Pago:</h5>
+                            <p>El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
+                            <ul id="lista-reglas-pago-ui">
+                                <li><strong>Prepago:</strong> 10 Puntos</li>
+                                <li><strong>Contado:</strong> 35 Puntos</li>
+                                <li><strong>Cuenta corriente:</strong> 70 Puntos</li>
+                                <li><strong>Plazos:</strong> 95 Puntos</li>
                             </ul>
                         </div>
 
                         <div style="margin-top: 20px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
                             <h4 style="margin: 0 0 10px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
-                            <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #5d4037;">Puntaje asignado por Compras para alimentarse automáticamente en la Pestaña 3 (No se imprime en el PDF).</p>
+                            <p style="margin: 0 0 15px 0; font-size: 0.9em; color: #5d4037;">Puntajes asignados automáticamente por Compras para la Pestaña 3 (No se imprimen en el PDF).</p>
                             
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label for="compra-pago-eval" style="color: #e65100; font-weight: bold;">Condición de Pago (0 - 100 pts) *</label>
-                                    <input type="number" id="compra-pago-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                                    <label for="compra-pago-eval" style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado 0-100 pts) *</label>
+                                    <input type="number" id="compra-pago-eval" min="0" max="100" placeholder="Puntaje Auto" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required readonly class="input-readonly">
                                 </div>
                                 <div class="form-group">
                                     <label for="compra-plazo-eval" style="color: #e65100; font-weight: bold;">Plazo de Entrega (0 - 100 pts) *</label>
@@ -604,6 +603,15 @@
                             <input type="password" id="master-new-pass" placeholder="Nueva Contraseña Master" style="flex: 1; padding: 8px;">
                             <button class="btn-primary" onclick="guardarNuevaPasswordMaster()">🔐 Cambiar Clave Master</button>
                         </div>
+                    </div>
+
+                    <hr style="margin: 20px 0;">
+
+                    <!-- CONFIGURACIÓN DE TABLA DE VALORACIÓN DE PAGOS -->
+                    <h4>⚙️ Configuración de Escala de Valoración (Condiciones de Pago)</h4>
+                    <p style="font-size: 0.85em; color: #555;">Define la puntuación (0 a 100 pts) que asigna automáticamente cada condición de pago en la Pre-Evaluación:</p>
+                    <div id="config-pago-puntos-container" class="table-responsive" style="margin-bottom: 15px;">
+                        <!-- Tabla cargada dinámicamente -->
                     </div>
 
                     <hr style="margin: 20px 0;">
