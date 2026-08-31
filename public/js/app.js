@@ -1101,33 +1101,112 @@ function renderizarReglasPagoUI() {
     });
 }
 
-async function agregarNuevaCondicionPago() {
-    const nuevaOp = prompt("Ingrese el nombre de la nueva Condición de Pago:");
-    if (nuevaOp && nuevaOp.trim()) {
-        const valFormateado = nuevaOp.trim();
-        
-        const puntosStr = prompt(`Ingrese los puntos asignados a "${valFormateado}" (0 a 100):`, "50");
-        const puntos = parseInt(puntosStr);
+// GESTIÓN DINÁMICA DE CONDICIONES DE PAGO Y EDICIÓN
+function abrirModalGestionPago() {
+    document.getElementById('modal-gestion-pago').style.display = 'flex';
+    renderizarTablaModalGestionPago();
+}
 
-        if (isNaN(puntos) || puntos < 0 || puntos > 100) {
-            alert("El puntaje ingresado no es válido. Debe ser un número entre 0 y 100.");
-            return;
-        }
+function cerrarModalGestionPago() {
+    document.getElementById('modal-gestion-pago').style.display = 'none';
+}
 
-        tablaCondicionPagoPuntos[valFormateado] = puntos;
-        opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
+function renderizarTablaModalGestionPago() {
+    const container = document.getElementById('tabla-gestion-pago-container');
+    if (!container) return;
 
-        await fetch('/api/configuraciones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clave: 'tabla_condicion_pago_puntos', valor: tablaCondicionPagoPuntos })
-        });
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Nombre Condición de Pago</th>
+                <th>Puntaje (0-100 pts)</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>`;
 
-        actualizarSelectsCompras();
-        document.getElementById('select-compra-condicion-pago').value = valFormateado;
-        autoCompletarPuntajePago();
-        alert(`✅ Condición "${valFormateado}" asignada con ${puntos} puntos guardada correctamente.`);
+    Object.keys(tablaCondicionPagoPuntos).forEach((cond, idx) => {
+        const pts = tablaCondicionPagoPuntos[cond];
+        html += `<tr>
+            <td><input type="text" id="modal-cond-nombre-${idx}" value="${cond}" style="width: 100%; padding: 4px;"></td>
+            <td><input type="number" min="0" max="100" id="modal-cond-pts-${idx}" value="${pts}" style="width: 80px; padding: 4px;"> pts</td>
+            <td><button class="btn-danger" onclick="eliminarCondicionPagoModal('${cond}')">Eliminar</button></td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+function eliminarCondicionPagoModal(cond) {
+    if (Object.keys(tablaCondicionPagoPuntos).length <= 1) {
+        alert("Debe quedar al menos una condición de pago registrada.");
+        return;
     }
+    delete tablaCondicionPagoPuntos[cond];
+    renderizarTablaModalGestionPago();
+}
+
+function agregarNuevaCondicionDirecta() {
+    const nombreInput = document.getElementById('nuevo-pago-nombre');
+    const puntosInput = document.getElementById('nuevo-pago-puntos');
+
+    const nombre = nombreInput.value.trim();
+    const puntos = parseInt(puntosInput.value);
+
+    if (!nombre) {
+        alert("Por favor ingresa un nombre para la nueva condición.");
+        return;
+    }
+    if (isNaN(puntos) || puntos < 0 || puntos > 100) {
+        alert("Por favor ingresa un puntaje válido entre 0 y 100.");
+        return;
+    }
+
+    tablaCondicionPagoPuntos[nombre] = puntos;
+    nombreInput.value = '';
+    puntosInput.value = '';
+
+    renderizarTablaModalGestionPago();
+}
+
+async function guardarCambiosModalPago() {
+    const nuevaTabla = {};
+    const keysOriginales = Object.keys(tablaCondicionPagoPuntos);
+
+    for (let i = 0; i < keysOriginales.length; i++) {
+        const inputNombre = document.getElementById(`modal-cond-nombre-${i}`);
+        const inputPts = document.getElementById(`modal-cond-pts-${i}`);
+
+        if (inputNombre && inputPts) {
+            const nombreVal = inputNombre.value.trim();
+            const ptsVal = parseInt(inputPts.value);
+
+            if (nombreVal && !isNaN(ptsVal)) {
+                nuevaTabla[nombreVal] = Math.min(100, Math.max(0, ptsVal));
+            }
+        }
+    }
+
+    if (Object.keys(nuevaTabla).length === 0) {
+        alert("La tabla no puede estar vacía.");
+        return;
+    }
+
+    tablaCondicionPagoPuntos = nuevaTabla;
+    opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'tabla_condicion_pago_puntos', valor: tablaCondicionPagoPuntos })
+    });
+
+    actualizarSelectsCompras();
+    autoCompletarPuntajePago();
+    cerrarModalGestionPago();
+
+    alert("✅ Escala de valoración y condiciones de pago actualizadas correctamente.");
 }
 
 async function iniciarCompra(e) {

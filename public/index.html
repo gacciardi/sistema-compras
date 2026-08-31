@@ -326,7 +326,8 @@
                     </table>
                 </div>
             </section>
-<!-- PESTAÑA 4 -->
+
+            <!-- PESTAÑA 4 -->
             <section id="tab-compras" class="tab-content">
                 <h2>Gestión de Órdenes de Compra</h2>
                 <div class="card">
@@ -372,7 +373,7 @@
                                     <select id="select-compra-condicion-pago" onchange="autoCompletarPuntajePago()" required style="flex: 1;">
                                         <!-- Carga dinámicamente -->
                                     </select>
-                                    <button type="button" class="btn-info" onclick="agregarNuevaCondicionPago()" title="Agregar nueva opción de pago">➕</button>
+                                    <button type="button" class="btn-info" onclick="abrirModalGestionPago()" title="Gestionar opciones y puntajes de pago">⚙️ Editar Escala</button>
                                 </div>
                             </div>
                         </div>
@@ -389,15 +390,15 @@
                             </ul>
                         </div>
 
-                        <!-- REGLA 2: VALORACIÓN DE CONDICIÓN DE PAGO -->
+                        <!-- REGLA 2: VALORACIÓN DE CONDICIÓN DE PAGO (DINÁMICA) -->
                         <div class="regla-calculo-box" style="margin-top: 15px; border-left-color: #0288d1; background: #e1f5fe;">
-                            <h5 style="color: #01579b;">📌 Tabla de Valoración de Condición de Pago:</h5>
-                            <p>El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h5 style="color: #01579b; margin: 0;">📌 Tabla de Valoración de Condición de Pago:</h5>
+                                <button type="button" class="btn-info" onclick="abrirModalGestionPago()" style="font-size: 0.8em; padding: 4px 8px;">✏️ Modificar Tabla</button>
+                            </div>
+                            <p style="margin-top: 8px;">El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
                             <ul id="lista-reglas-pago-ui">
-                                <li><strong>Prepago:</strong> 10 Puntos</li>
-                                <li><strong>Contado:</strong> 35 Puntos</li>
-                                <li><strong>Cuenta corriente:</strong> 70 Puntos</li>
-                                <li><strong>Plazos:</strong> 95 Puntos</li>
+                                <!-- Se renderiza dinámicamente según la BD -->
                             </ul>
                         </div>
 
@@ -445,8 +446,7 @@
                     </table>
                 </div>
             </section>
-            
-                       
+
             <!-- PESTAÑA 5 -->
             <section id="tab-recepcion" class="tab-content">
                 <h2>Recepción e Inspección de Mercadería</h2>
@@ -798,5 +798,36 @@
     </div>
 
     <script src="js/app.js"></script>
+
+    <!-- MODAL GESTIÓN DE CONDICIONES Y PUNTAJES DE PAGO -->
+    <div id="modal-gestion-pago" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>⚙️ Gestión Dinámica de Condiciones de Pago</h3>
+                <button class="btn-close" onclick="cerrarModalGestionPago()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9em; color: #555;">Puedes modificar los nombres de las condiciones existentes, ajustar sus puntajes (0 a 100) o agregar/eliminar opciones:</p>
+                
+                <div id="tabla-gestion-pago-container" class="table-responsive" style="margin-bottom: 15px;">
+                    <!-- Se carga dinámicamente -->
+                </div>
+
+                <div style="background: #f1f8e9; padding: 12px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 15px;">
+                    <h5 style="margin: 0 0 10px 0; color: #2e7d32;">➕ Agregar Nueva Condición de Pago:</h5>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="nuevo-pago-nombre" placeholder="Ej: Cheque 60 días" style="flex: 2; padding: 6px;">
+                        <input type="number" id="nuevo-pago-puntos" min="0" max="100" placeholder="Pts (0-100)" style="flex: 1; padding: 6px;">
+                        <button class="btn-success" onclick="agregarNuevaCondicionDirecta()">Agregar</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button class="btn-primary" onclick="guardarCambiosModalPago()">💾 Guardar y Aplicar Cambios</button>
+                    <button class="btn-danger" onclick="cerrarModalGestionPago()">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
