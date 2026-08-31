@@ -367,6 +367,16 @@
                                 <label for="compra-fecha-req">Fecha Requerida de Entrega *</label>
                                 <input type="date" id="compra-fecha-req" required>
                             </div>
+                            <!-- CAMPO 6 AGREGADO: CONDICIÓN DE PAGO -->
+                            <div class="form-group">
+                                <label for="select-compra-condicion-pago">Condición de Pago *</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <select id="select-compra-condicion-pago" required style="flex: 1;">
+                                        <!-- Carga dinámicamente -->
+                                    </select>
+                                    <button type="button" class="btn-info" onclick="agregarNuevaCondicionPago()" title="Agregar nueva opción de pago">➕</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="regla-calculo-box" style="margin-top: 20px;">
@@ -414,6 +424,7 @@
                                 <th>Proveedor</th>
                                 <th>Requisito</th>
                                 <th>Cantidad</th>
+                                <th>Condición Pago</th>
                                 <th>Fecha Emisión</th>
                                 <th>Fecha Requerida</th>
                                 <th>Estado</th>
@@ -597,16 +608,16 @@
 
                     <hr style="margin: 20px 0;">
 
- <!-- REINICIO Y BORRADO DE EVALUACIONES, COMPRAS Y RECEPCIONES -->
-<div class="card" style="padding: 15px; background: #ffebee; border-left: 5px solid #f44336; margin-bottom: 20px;">
-    <h4 style="margin: 0 0 10px 0; color: #c62828;">🚨 Limpieza de Transacciones de Prueba</h4>
-    <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #b71c1c;">
-        Elimina únicamente las <strong>Evaluaciones y Estadísticas (Pest. 3)</strong>, <strong>Órdenes de Compra (Pest. 4)</strong> y <strong>Recepciones (Pest. 5)</strong>. Mantiene intactos tus Requisitos (Pest. 1), Proveedores (Pest. 2) y Usuarios (Pest. 6).
-    </p>
-    <button class="btn-danger" onclick="limpiarBaseDeDatosMaster()" style="font-weight: bold; padding: 10px 15px;">
-        🗑️ Borrar Evaluaciones, Órdenes y Recepciones
-    </button>
-</div>
+                    <!-- REINICIO Y BORRADO DE EVALUACIONES, COMPRAS Y RECEPCIONES -->
+                    <div class="card" style="padding: 15px; background: #ffebee; border-left: 5px solid #f44336; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 10px 0; color: #c62828;">🚨 Limpieza de Transacciones de Prueba</h4>
+                        <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #b71c1c;">
+                            Elimina únicamente las <strong>Evaluaciones y Estadísticas (Pest. 3)</strong>, <strong>Órdenes de Compra (Pest. 4)</strong> y <strong>Recepciones (Pest. 5)</strong>. Mantiene intactos tus Requisitos (Pest. 1), Proveedores (Pest. 2) y Usuarios (Pest. 6).
+                        </p>
+                        <button class="btn-danger" onclick="limpiarBaseDeDatosMaster()" style="font-weight: bold; padding: 10px 15px;">
+                            🗑️ Borrar Evaluaciones, Órdenes y Recepciones
+                        </button>
+                    </div>
 
                     <hr style="margin: 20px 0;">
 

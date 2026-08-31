@@ -1,5 +1,6 @@
 let usuarioActual = null;
 let masterPasswordActual = '1234';
+let opcionesCondicionPago = ['Contado', 'Cuenta Corriente', 'Plazos'];
 
 let permisosPorSector = {
     'Compras': [1, 2, 3, 4, 5],
@@ -28,7 +29,6 @@ async function iniciarSesionUsuario(e) {
     const usrName = document.getElementById('login-user').value.trim();
     const pass = document.getElementById('login-pass').value;
 
-    // 1. Acceso Admin Master (con clave dinámica guardada en BD)
     if (usrName.toLowerCase() === 'admin' && pass === masterPasswordActual) {
         usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
         document.getElementById('login-screen').style.display = 'none';
@@ -38,7 +38,6 @@ async function iniciarSesionUsuario(e) {
         return;
     }
 
-    // 2. Acceso por Usuarios Creados en BD
     const usrObj = usuarios.find(u => u.nombre.toLowerCase() === usrName.toLowerCase() && u.pass === pass);
 
     if (!usrObj) {
@@ -145,7 +144,7 @@ async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
         });
 
         if (res.ok) {
-            alert(`✅ N° de Formulario "${valor}" guardado correctamente en la Base de Datos PostgreSQL para todas las PCs.`);
+            alert(`✅ N° de Formulario "${valor}" guardado correctamente en la Base de Datos PostgreSQL.`);
         } else {
             alert("❌ Ocurrió un error al guardar en la base de datos.");
         }
@@ -196,6 +195,10 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
 
         if (config.master_password) {
             masterPasswordActual = config.master_password;
+        }
+
+        if (config.opciones_condicion_pago && Array.isArray(config.opciones_condicion_pago)) {
+            opcionesCondicionPago = config.opciones_condicion_pago;
         }
 
         if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) {
@@ -1028,24 +1031,57 @@ let ordenesCompra = [];
 
 function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
-    if (!selectProv) return;
-    selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
-    proveedores.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.num;
-        opt.innerText = `${p.num} - ${p.nombre}`;
-        selectProv.appendChild(opt);
-    });
+    if (selectProv) {
+        selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
+        proveedores.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.num;
+            opt.innerText = `${p.num} - ${p.nombre}`;
+            selectProv.appendChild(opt);
+        });
+    }
 
     const selectReq = document.getElementById('select-compra-req');
-    if (!selectReq) return;
-    selectReq.innerHTML = '<option value="">-- Seleccione Requisito --</option>';
-    requisitos.forEach(r => {
-        const opt = document.createElement('option');
-        opt.value = r.num;
-        opt.innerText = `${r.num} - ${r.nombre}`;
-        selectReq.appendChild(opt);
-    });
+    if (selectReq) {
+        selectReq.innerHTML = '<option value="">-- Seleccione Requisito --</option>';
+        requisitos.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.num;
+            opt.innerText = `${r.num} - ${r.nombre}`;
+            selectReq.appendChild(opt);
+        });
+    }
+
+    const selectCondPago = document.getElementById('select-compra-condicion-pago');
+    if (selectCondPago) {
+        selectCondPago.innerHTML = '<option value="">-- Seleccione Condición --</option>';
+        opcionesCondicionPago.forEach(optVal => {
+            const opt = document.createElement('option');
+            opt.value = optVal;
+            opt.innerText = optVal;
+            selectCondPago.appendChild(opt);
+        });
+    }
+}
+
+async function agregarNuevaCondicionPago() {
+    const nuevaOp = prompt("Ingrese la nueva Condición de Pago:");
+    if (nuevaOp && nuevaOp.trim()) {
+        const valFormateado = nuevaOp.trim();
+        if (!opcionesCondicionPago.includes(valFormateado)) {
+            opcionesCondicionPago.push(valFormateado);
+
+            await fetch('/api/configuraciones', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clave: 'opciones_condicion_pago', valor: opcionesCondicionPago })
+            });
+
+            actualizarSelectsCompras();
+            document.getElementById('select-compra-condicion-pago').value = valFormateado;
+            alert(`✅ Opción "${valFormateado}" guardada correctamente.`);
+        }
+    }
 }
 
 async function iniciarCompra(e) {
@@ -1057,6 +1093,7 @@ async function iniciarCompra(e) {
     const cantidad = document.getElementById('compra-cantidad').value;
     const fechaEmision = document.getElementById('compra-fecha-emision')?.value || new Date().toISOString().split('T')[0];
     const fechaReq = document.getElementById('compra-fecha-req').value;
+    const condicionPago = document.getElementById('select-compra-condicion-pago').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
 
     const pagoEval = parseInt(document.getElementById('compra-pago-eval').value) || 0;
@@ -1087,6 +1124,7 @@ async function iniciarCompra(e) {
         cantidad,
         fechaEmision,
         fechaReq,
+        condicionPago,
         observaciones,
         pagoEval,
         plazoEval,
@@ -1121,6 +1159,7 @@ function renderizarTablaCompras() {
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
             <td>${oc.cantidad}</td>
+            <td><strong>${oc.condicionPago || '-'}</strong></td>
             <td>${fEmis}</td>
             <td>${fReq}</td>
             <td><span class="${badgeClass}">${oc.estado}</span></td>
@@ -1161,6 +1200,9 @@ function generarPDFOrden(orden) {
     doc.text(`Cantidad Solicitada: ${orden.cantidad}`, 20, currentY);
     currentY += 8;
     
+    doc.text(`Condición de Pago: ${orden.condicionPago || 'No especificada'}`, 20, currentY);
+    currentY += 8;
+
     doc.text(`Fecha Requerida de Entrega: ${orden.fechaReq}`, 20, currentY);
     currentY += 10;
 
@@ -1400,10 +1442,10 @@ async function guardarNuevaPasswordMaster() {
 }
 
 async function limpiarBaseDeDatosMaster() {
-    const confirmacion1 = confirm("⚠️ ¿Estás SEGURO de que deseas eliminar TODAS las transacciones, requisitos, proveedores, órdenes y recepciones de la base de datos?");
+    const confirmacion1 = confirm("⚠️ ¿Estás SEGURO de que deseas eliminar las Evaluaciones, Órdenes y Recepciones?");
     if (!confirmacion1) return;
 
-    const confirmacion2 = confirm("🚨 ¡Esta acción NO se puede deshacer! ¿Confirmas que quieres vaciar todas las pruebas?");
+    const confirmacion2 = confirm("🚨 ¡Esta acción NO se puede deshacer! ¿Confirmas el borrado?");
     if (!confirmacion2) return;
 
     try {

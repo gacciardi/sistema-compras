@@ -67,6 +67,7 @@ async function initDB() {
                 cantidad INT,
                 fecha_emision DATE,
                 fecha_req DATE,
+                condicion_pago VARCHAR(255),
                 observaciones TEXT,
                 pago_eval INT,
                 plazo_eval INT,
@@ -94,6 +95,17 @@ async function initDB() {
                 estado VARCHAR(50)
             );
         `);
+
+        // Migración automática por si la columna condicion_pago no existe
+        await pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='condicion_pago') THEN
+                    ALTER TABLE compras ADD COLUMN condicion_pago VARCHAR(255);
+                END IF;
+            END $$;
+        `);
+
         console.log("✅ Tablas de PostgreSQL verificadas/creadas correctamente.");
     } catch (err) {
         console.error("❌ Error al inicializar tablas en PostgreSQL:", err);
@@ -218,7 +230,7 @@ app.post('/api/estadisticas', async (req, res) => {
 // --- RUTAS COMPRAS ---
 app.get('/api/compras', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT id_orden AS "idOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
+        const { rows } = await pool.query('SELECT id_orden AS "idOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -226,11 +238,11 @@ app.get('/api/compras', async (req, res) => {
 });
 
 app.post('/api/compras', async (req, res) => {
-    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, observaciones, pagoEval, plazoEval, estado } = req.body;
+    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, condicionPago, observaciones, pagoEval, plazoEval, estado } = req.body;
     try {
         await pool.query(
-            'INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) ON CONFLICT (id_orden) DO UPDATE SET num_formulario = $2, prov_num = $3, prov_nombre = $4, req_num = $5, req_nombre = $6, req_detalle = $7, cantidad = $8, fecha_emision = $9, fecha_req = $10, observaciones = $11, pago_eval = $12, plazo_eval = $13, estado = $14',
-            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision || null, fechaReq || null, observaciones, pagoEval, plazoEval, estado]
+            'INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, condicion_pago, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) ON CONFLICT (id_orden) DO UPDATE SET num_formulario = $2, prov_num = $3, prov_nombre = $4, req_num = $5, req_nombre = $6, req_detalle = $7, cantidad = $8, fecha_emision = $9, fecha_req = $10, condicion_pago = $11, observaciones = $12, pago_eval = $13, plazo_eval = $14, estado = $15',
+            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision || null, fechaReq || null, condicionPago, observaciones, pagoEval, plazoEval, estado]
         );
         res.json({ success: true });
     } catch (err) {
