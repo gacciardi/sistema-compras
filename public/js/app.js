@@ -1,6 +1,15 @@
 let usuarioActual = null;
 let masterPasswordActual = '1234';
 
+// Lista dinámica de Sectores / Áreas de la empresa
+let listaSectoresGlobal = [
+    'Compras',
+    'Almacén / Depósito',
+    'Calidad',
+    'Expedición',
+    'Administración'
+];
+
 // Matriz dinámica de Condición de Pago -> Puntaje Asignado (0 a 100)
 let tablaCondicionPagoPuntos = {
     'Prepago': 10,
@@ -13,13 +22,13 @@ let opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
 
 let permisosPorSector = {
     'Compras': [1, 2, 3, 4, 5],
-    'Almacén': [1, 5],
+    'Almacén / Depósito': [1, 5],
     'Calidad': [1, 3, 5],
     'Expedición': [1, 5],
     'Administración': [1, 2, 3, 4, 5, 6]
 };
 
-// Permisos individuales de Proveedores por Usuario (Estructura: { "nombreUsuario": ["PROV-101", "PROV-102"] })
+// Permisos individuales de Proveedores por Usuario
 let permisosProveedoresPorUsuario = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -139,6 +148,9 @@ function showTab(tabId) {
     if (tabId === 'tab-recepcion') {
         actualizarSelectOrdenesPendientes();
     }
+    if (tabId === 'tab-usuarios') {
+        actualizarSelectSectoresUsuarios();
+    }
 }
 
 async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
@@ -209,6 +221,10 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             masterPasswordActual = config.master_password;
         }
 
+        if (config.lista_sectores && Array.isArray(config.lista_sectores)) {
+            listaSectoresGlobal = config.lista_sectores;
+        }
+
         if (config.tabla_condicion_pago_puntos) {
             tablaCondicionPagoPuntos = config.tabla_condicion_pago_puntos;
             opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
@@ -238,6 +254,7 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.sys_logo) cambiarLogo(config.sys_logo, false);
 
         if (renderCompleto) {
+            actualizarSelectSectoresUsuarios();
             cargarNombresCriteriosProveedores();
             cargarNombresCriteriosEstadisticas();
 
@@ -251,6 +268,29 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
     } catch (e) {
         console.error("Error al cargar datos:", e);
     }
+}
+
+// CARGAR DESPLEGABLES DE SECTORES
+function actualizarSelectSectoresUsuarios() {
+    const selects = [
+        document.getElementById('usr-sector'),
+        document.getElementById('master-usr-sector')
+    ];
+
+    selects.forEach(select => {
+        if (!select) return;
+        const valActual = select.value;
+        select.innerHTML = '';
+        listaSectoresGlobal.forEach(sec => {
+            const opt = document.createElement('option');
+            opt.value = sec;
+            opt.innerText = sec;
+            select.appendChild(opt);
+        });
+        if (valActual && listaSectoresGlobal.includes(valActual)) {
+            select.value = valActual;
+        }
+    });
 }
 
 // --- PESTAÑA 1 ---
@@ -1052,7 +1092,6 @@ function actualizarSelectsCompras() {
     if (selectProv) {
         selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
 
-        // FILTRADO DE PROVEEDORES SEGÚN PERMISOS DEL USUARIOS
         let proveedoresPermitidos = proveedores;
 
         if (usuarioActual && usuarioActual.nombre !== 'admin') {
@@ -1559,6 +1598,7 @@ function autenticarMaster() {
     if (usr === 'admin' && pass === masterPasswordActual) {
         document.getElementById('master-auth').style.display = 'none';
         document.getElementById('master-panel').style.display = 'block';
+        renderizarTablaSectoresMaster();
         renderizarTablaConfigPagoPuntos();
         renderizarMatrizPermisos();
         renderizarMatrizPermisosProveedores();
@@ -1568,7 +1608,129 @@ function autenticarMaster() {
     }
 }
 
-// RENDERIZAR MATRIZ DE PERMISOS DE PROVEEDORES POR USUARIO
+// GESTIÓN DINÁMICA DE SECTORES EN PANEL MASTER
+function renderizarTablaSectoresMaster() {
+    const container = document.getElementById('lista-sectores-master-container');
+    if (!container) return;
+
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Nombre del Sector / Área</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    listaSectoresGlobal.forEach((sec, idx) => {
+        html += `<tr>
+            <td><input type="text" id="input-sector-name-${idx}" value="${sec}" style="width: 100%; padding: 4px;"></td>
+            <td>
+                <button class="btn-warning" onclick="guardarNombreSectorMaster(${idx})">Guardar</button>
+                <button class="btn-danger" onclick="eliminarSectorMaster(${idx})">Eliminar</button>
+            </td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+async function agregarNuevoSectorMaster() {
+    const input = document.getElementById('nuevo-sector-nombre');
+    const val = input.value.trim();
+
+    if (!val) {
+        alert("Ingresa un nombre de sector válido.");
+        return;
+    }
+
+    if (listaSectoresGlobal.includes(val)) {
+        alert("Ese sector ya existe.");
+        return;
+    }
+
+    listaSectoresGlobal.push(val);
+    if (!permisosPorSector[val]) {
+        permisosPorSector[val] = [1];
+    }
+
+    await guardarSectoresBaseDatos();
+    input.value = '';
+    renderizarTablaSectoresMaster();
+    renderizarMatrizPermisos();
+    actualizarSelectSectoresUsuarios();
+}
+
+async function guardarNombreSectorMaster(index) {
+    const input = document.getElementById(`input-sector-name-${index}`);
+    if (!input) return;
+
+    const nuevoNombre = input.value.trim();
+    const viejoNombre = listaSectoresGlobal[index];
+
+    if (!nuevoNombre) {
+        alert("El nombre del sector no puede estar vacío.");
+        return;
+    }
+
+    listaSectoresGlobal[index] = nuevoNombre;
+
+    if (permisosPorSector[viejoNombre]) {
+        permisosPorSector[nuevoNombre] = permisosPorSector[viejoNombre];
+        delete permisosPorSector[viejoNombre];
+    }
+
+    // Actualizar usuarios que pertenecían al viejo sector
+    usuarios.forEach(async u => {
+        if (u.sector === viejoNombre) {
+            u.sector = nuevoNombre;
+            await fetch('/api/usuarios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(u)
+            });
+        }
+    });
+
+    await guardarSectoresBaseDatos();
+    renderizarTablaSectoresMaster();
+    renderizarMatrizPermisos();
+    actualizarSelectSectoresUsuarios();
+    alert(`✅ Sector renombrado a "${nuevoNombre}".`);
+}
+
+async function eliminarSectorMaster(index) {
+    if (listaSectoresGlobal.length <= 1) {
+        alert("Debe existir al menos un sector registrado.");
+        return;
+    }
+
+    const sec = listaSectoresGlobal[index];
+    if (!confirm(`¿Estás seguro de eliminar el sector "${sec}"?`)) return;
+
+    listaSectoresGlobal.splice(index, 1);
+    delete permisosPorSector[sec];
+
+    await guardarSectoresBaseDatos();
+    renderizarTablaSectoresMaster();
+    renderizarMatrizPermisos();
+    actualizarSelectSectoresUsuarios();
+}
+
+async function guardarSectoresBaseDatos() {
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'lista_sectores', valor: listaSectoresGlobal })
+    });
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'permisos_sectores', valor: permisosPorSector })
+    });
+}
+
 function renderizarMatrizPermisosProveedores() {
     const container = document.getElementById('matriz-permisos-proveedores-container');
     if (!container) return;
@@ -1731,7 +1893,6 @@ function renderizarMatrizPermisos() {
     const container = document.getElementById('matriz-permisos-container');
     if (!container) return;
 
-    const sectores = ['Compras', 'Almacén', 'Calidad', 'Expedición', 'Administración'];
     const pestañas = [
         { id: 1, nombre: 'P1: Requisitos' },
         { id: 2, nombre: 'P2: Proveedores' },
@@ -1745,7 +1906,7 @@ function renderizarMatrizPermisos() {
     pestañas.forEach(p => { html += `<th style="text-align:center;">${p.nombre}</th>`; });
     html += '</tr></thead><tbody>';
 
-    sectores.forEach(sec => {
+    listaSectoresGlobal.forEach(sec => {
         html += `<tr><td><strong>${sec}</strong></td>`;
         const permitidas = permisosPorSector[sec] || [];
 
@@ -1762,13 +1923,9 @@ function renderizarMatrizPermisos() {
 
 async function guardarPermisosSectores() {
     const checkboxes = document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]');
-    const nuevosPermisos = {
-        'Compras': [],
-        'Almacén': [],
-        'Calidad': [],
-        'Expedición': [],
-        'Administración': []
-    };
+    const nuevosPermisos = {};
+
+    listaSectoresGlobal.forEach(s => { nuevosPermisos[s] = []; });
 
     checkboxes.forEach(chk => {
         const sec = chk.getAttribute('data-sector');
