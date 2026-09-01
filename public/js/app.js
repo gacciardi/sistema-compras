@@ -19,6 +19,9 @@ let permisosPorSector = {
     'Administración': [1, 2, 3, 4, 5, 6]
 };
 
+// Permisos individuales de Proveedores por Usuario (Estructura: { "nombreUsuario": ["PROV-101", "PROV-102"] })
+let permisosProveedoresPorUsuario = {};
+
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarTodoDesdeServidor();
 
@@ -209,6 +212,10 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.tabla_condicion_pago_puntos) {
             tablaCondicionPagoPuntos = config.tabla_condicion_pago_puntos;
             opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
+        }
+
+        if (config.permisos_proveedores_usuarios) {
+            permisosProveedoresPorUsuario = config.permisos_proveedores_usuarios;
         }
 
         if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) {
@@ -1044,7 +1051,18 @@ function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
     if (selectProv) {
         selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
-        proveedores.forEach(p => {
+
+        // FILTRADO DE PROVEEDORES SEGÚN PERMISOS DEL USUARIOS
+        let proveedoresPermitidos = proveedores;
+
+        if (usuarioActual && usuarioActual.nombre !== 'admin') {
+            const provsAsignados = permisosProveedoresPorUsuario[usuarioActual.nombre];
+            if (Array.isArray(provsAsignados) && provsAsignados.length > 0) {
+                proveedoresPermitidos = proveedores.filter(p => provsAsignados.includes(p.num));
+            }
+        }
+
+        proveedoresPermitidos.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.num;
             opt.innerText = `${p.num} - ${p.nombre}`;
@@ -1543,10 +1561,67 @@ function autenticarMaster() {
         document.getElementById('master-panel').style.display = 'block';
         renderizarTablaConfigPagoPuntos();
         renderizarMatrizPermisos();
+        renderizarMatrizPermisosProveedores();
         renderizarTablaMasterUsuarios();
     } else {
         alert('Credenciales de Administrador Master incorrectas.');
     }
+}
+
+// RENDERIZAR MATRIZ DE PERMISOS DE PROVEEDORES POR USUARIO
+function renderizarMatrizPermisosProveedores() {
+    const container = document.getElementById('matriz-permisos-proveedores-container');
+    if (!container) return;
+
+    if (!usuarios || usuarios.length === 0 || !proveedores || proveedores.length === 0) {
+        container.innerHTML = '<p style="color:#777;">Debe registrar usuarios y proveedores para configurar los permisos.</p>';
+        return;
+    }
+
+    let html = '<table><thead><tr><th>Usuario</th>';
+    proveedores.forEach(p => { 
+        html += `<th style="text-align:center;">${p.nombre}<br><small style="color:#666;">(${p.num})</small></th>`; 
+    });
+    html += '</tr></thead><tbody>';
+
+    usuarios.forEach(u => {
+        html += `<tr><td><strong>${u.nombre}</strong> <small>(${u.sector})</small></td>`;
+        const asignados = permisosProveedoresPorUsuario[u.nombre] || [];
+
+        proveedores.forEach(p => {
+            const checked = asignados.includes(p.num) ? 'checked' : '';
+            html += `<td style="text-align:center;"><input type="checkbox" data-usuario-prov="${u.nombre}" data-prov-num="${p.num}" ${checked}></td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function guardarPermisosProveedoresMaster() {
+    const checkboxes = document.querySelectorAll('#matriz-permisos-proveedores-container input[type="checkbox"]');
+    const nuevosPermisos = {};
+
+    checkboxes.forEach(chk => {
+        const usrName = chk.getAttribute('data-usuario-prov');
+        const provNum = chk.getAttribute('data-prov-num');
+        if (chk.checked) {
+            if (!nuevosPermisos[usrName]) nuevosPermisos[usrName] = [];
+            nuevosPermisos[usrName].push(provNum);
+        }
+    });
+
+    permisosProveedoresPorUsuario = nuevosPermisos;
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'permisos_proveedores_usuarios', valor: permisosProveedoresPorUsuario })
+    });
+
+    actualizarSelectsCompras();
+    alert("✅ Permisos de proveedores por usuario guardados correctamente.");
 }
 
 function renderizarTablaConfigPagoPuntos() {
@@ -1754,6 +1829,7 @@ async function guardarUsuarioMaster(e) {
     document.getElementById('form-master-usuario').reset();
     await cargarTodoDesdeServidor(true);
     renderizarTablaMasterUsuarios();
+    renderizarMatrizPermisosProveedores();
     alert(`✅ Usuario "${nombre}" guardado correctamente.`);
 }
 
