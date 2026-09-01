@@ -389,7 +389,7 @@
                             </ul>
                         </div>
 
-                        <!-- REGLA 2: VALORACIÓN DE CONDICIÓN DE PAGO (DINÁMICA) -->
+                        <!-- REGLA 2: VALORACIÓN DE CONDICIÓN DE PAGO -->
                         <div class="regla-calculo-box" style="margin-top: 15px; border-left-color: #0288d1; background: #e1f5fe;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <h5 style="color: #01579b; margin: 0;">📌 Tabla de Valoración de Condición de Pago:</h5>
@@ -548,11 +548,7 @@
                             <div class="form-group">
                                 <label for="usr-sector">Sector / Área *</label>
                                 <select id="usr-sector" required>
-                                    <option value="Compras">Compras</option>
-                                    <option value="Almacén">Almacén / Depósito</option>
-                                    <option value="Calidad">Calidad</option>
-                                    <option value="Expedición">Expedición</option>
-                                    <option value="Administración">Administración</option>
+                                    <!-- Se llena dinámicamente -->
                                 </select>
                             </div>
                             <div class="form-group">
@@ -619,22 +615,39 @@
 
                     <hr style="margin: 20px 0;">
 
-                    <!-- NUEVA MATRIZ DE PERMISOS DE PROVEEDORES POR USUARIO -->
-                    <h4>🏬 Matriz de Permisos de Proveedores por Usuario (Limitador de Compras)</h4>
-                    <p style="font-size: 0.85em; color: #555;">Seleccione a qué proveedores específicos tiene acceso para realizar compras cada usuario. Si no se marca ninguno, el usuario podrá ver <strong>Todos</strong> los proveedores.</p>
-                    <div id="matriz-permisos-proveedores-container" class="table-responsive" style="margin-bottom: 15px;">
-                        <!-- Matriz cargada dinámicamente -->
+                    <!-- NUEVA GESTIÓN DINÁMICA DE SECTORES / ÁREAS -->
+                    <h4>📁 Gestión Dinámica de Sectores / Áreas de la Empresa</h4>
+                    <p style="font-size: 0.85em; color: #555;">Agregue, edite o elimine los sectores de la empresa. Al modificar un sector, la Matriz de Permisos de Pestañas se actualizará automáticamente.</p>
+                    <div id="lista-sectores-master-container" class="table-responsive" style="margin-bottom: 15px;">
+                        <!-- Se llena dinámicamente -->
                     </div>
-                    <button class="btn-primary" onclick="guardarPermisosProveedoresMaster()" style="margin-bottom: 20px;">💾 Guardar Permisos de Proveedores</button>
+                    <div style="background: #e8f5e9; padding: 12px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 20px;">
+                        <h5 style="margin: 0 0 10px 0; color: #2e7d32;">➕ Agregar Nuevo Sector / Área:</h5>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="nuevo-sector-nombre" placeholder="Ej: Mantenimiento" style="flex: 1; padding: 8px;">
+                            <button class="btn-success" onclick="agregarNuevoSectorMaster()">Crear Sector</button>
+                        </div>
+                    </div>
 
                     <hr style="margin: 20px 0;">
 
+                    <!-- MATRIZ DE PERMISOS POR SECTOR (DINÁMICA) -->
                     <h4>Matriz de Permisos por Sector (Pestañas)</h4>
                     <p style="font-size: 0.85em; color: #555;">Seleccione las pestañas a las que cada sector tendrá permiso de acceso:</p>
                     <div id="matriz-permisos-container" class="table-responsive">
                         <!-- Matriz cargada dinámicamente -->
                     </div>
                     <button class="btn-primary" onclick="guardarPermisosSectores()" style="margin-top: 10px;">💾 Guardar Permisos de Sectores</button>
+
+                    <hr style="margin: 20px 0;">
+
+                    <!-- MATRIZ DE PERMISOS DE PROVEEDORES POR USUARIO -->
+                    <h4>🏬 Matriz de Permisos de Proveedores por Usuario (Limitador de Compras)</h4>
+                    <p style="font-size: 0.85em; color: #555;">Seleccione a qué proveedores específicos tiene acceso para realizar compras cada usuario. Si no se marca ninguno, el usuario podrá ver <strong>Todos</strong> los proveedores.</p>
+                    <div id="matriz-permisos-proveedores-container" class="table-responsive" style="margin-bottom: 15px;">
+                        <!-- Matriz cargada dinámicamente -->
+                    </div>
+                    <button class="btn-primary" onclick="guardarPermisosProveedoresMaster()" style="margin-bottom: 20px;">💾 Guardar Permisos de Proveedores</button>
 
                     <hr style="margin: 20px 0;">
 
@@ -702,11 +715,7 @@
                                 <div class="form-group">
                                     <label>Sector *</label>
                                     <select id="master-usr-sector" required>
-                                        <option value="Administración">Administración</option>
-                                        <option value="Compras">Compras</option>
-                                        <option value="Almacén">Almacén / Depósito</option>
-                                        <option value="Calidad">Calidad</option>
-                                        <option value="Expedición">Expedición</option>
+                                        <!-- Se llena dinámicamente -->
                                     </select>
                                 </div>
                                 <div class="form-group">
