@@ -1614,6 +1614,7 @@ function autenticarMaster() {
     if (usr === 'admin' && pass === masterPasswordActual) {
         document.getElementById('master-auth').style.display = 'none';
         document.getElementById('master-panel').style.display = 'block';
+        renderizarTablaCorreccionVencimientosMaster();
         renderizarTablaSectoresMaster();
         renderizarTablaConfigPagoPuntos();
         renderizarMatrizPermisos();
@@ -1622,6 +1623,70 @@ function autenticarMaster() {
     } else {
         alert('Credenciales de Administrador Master incorrectas.');
     }
+}
+
+// CORRECCIÓN Y AJUSTE DE VENCIMIENTOS HISTÓRICOS EN PANEL MASTER
+function renderizarTablaCorreccionVencimientosMaster() {
+    const container = document.getElementById('tabla-correccion-vencimientos-container');
+    if (!container) return;
+
+    if (!estadisticas || estadisticas.length === 0) {
+        container.innerHTML = '<p style="color:#777;">No hay evaluaciones registradas para modificar vencimientos.</p>';
+        return;
+    }
+
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Año Eval.</th>
+                <th>Proveedor</th>
+                <th>Fecha Eval. Real</th>
+                <th>Fecha Próxima Calculada / Actual</th>
+                <th>Nueva Fecha Próx. Eval.</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    estadisticas.forEach((est, idx) => {
+        const fEval = est.fechaEval ? est.fechaEval.split('T')[0] : '-';
+        const fProxActual = est.fechaProx ? est.fechaProx.split('T')[0] : '-';
+
+        html += `<tr>
+            <td><strong>${est.anio}</strong></td>
+            <td>${est.provNombre} (${est.provNum})</td>
+            <td>${fEval}</td>
+            <td><strong style="color: #c62828;">${fProxActual}</strong></td>
+            <td><input type="date" id="input-master-fprox-${idx}" value="${fProxActual}" style="padding: 4px;"></td>
+            <td>
+                <button class="btn-primary" onclick="guardarNuevaFechaProxMaster(${idx})">💾 Actualizar Vencimiento</button>
+            </td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+async function guardarNuevaFechaProxMaster(index) {
+    const inputFecha = document.getElementById(`input-master-fprox-${index}`);
+    if (!inputFecha || !inputFecha.value) {
+        alert("Por favor selecciona una fecha válida.");
+        return;
+    }
+
+    const estTarget = estadisticas[index];
+    estTarget.fechaProx = inputFecha.value;
+
+    await fetch('/api/estadisticas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(estTarget)
+    });
+
+    await cargarTodoDesdeServidor(true);
+    renderizarTablaCorreccionVencimientosMaster();
+    alert(`✅ Fecha de Próxima Evaluación actualizada a ${inputFecha.value} para ${estTarget.provNombre}.`);
 }
 
 // GESTIÓN DINÁMICA DE SECTORES EN PANEL MASTER
@@ -1697,7 +1762,6 @@ async function guardarNombreSectorMaster(index) {
         delete permisosPorSector[viejoNombre];
     }
 
-    // Actualizar usuarios que pertenecían al viejo sector
     usuarios.forEach(async u => {
         if (u.sector === viejoNombre) {
             u.sector = nuevoNombre;
@@ -2012,11 +2076,11 @@ function renderizarTablaMasterUsuarios() {
     tbody.innerHTML = '';
 
     if (!usuarios || usuarios.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay usuarios registrados</td></tr>';
         return;
     }
 
-    usuarios.forEach(u => {
+    usuarios.forEach((u, idx) => {
         const tr = document.createElement('tr');
         const btnAccion = u.estado === 'Activo' 
             ? `<button class="btn-warning" onclick="alternarEstadoUsuario('${u.nombre}')">Deshabilitar</button>`
@@ -2024,6 +2088,10 @@ function renderizarTablaMasterUsuarios() {
 
         tr.innerHTML = `
             <td><strong>${u.nombre}</strong></td>
+            <td>
+                <span id="pass-text-${idx}" style="font-family: monospace;">••••••••</span>
+                <button type="button" class="btn-info" style="padding: 2px 6px; margin-left: 6px; font-size: 0.8em;" onclick="toggleMostrarPasswordMaster(${idx}, '${u.pass || ''}')">👁️</button>
+            </td>
             <td>${u.sector}</td>
             <td>${u.estado}</td>
             <td>
@@ -2034,6 +2102,21 @@ function renderizarTablaMasterUsuarios() {
         `;
         tbody.appendChild(tr);
     });
+}
+
+function toggleMostrarPasswordMaster(index, password) {
+    const el = document.getElementById(`pass-text-${index}`);
+    if (!el) return;
+
+    if (el.innerText === '••••••••') {
+        el.innerText = password || '(Sin clave)';
+        el.style.fontWeight = 'bold';
+        el.style.color = '#d81b60';
+    } else {
+        el.innerText = '••••••••';
+        el.style.fontWeight = 'normal';
+        el.style.color = 'inherit';
+    }
 }
 
 function editarUsuarioMaster(nombre) {
