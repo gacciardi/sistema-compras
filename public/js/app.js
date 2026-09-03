@@ -92,8 +92,29 @@ function cerrarSesionUsuario() {
     if (formLogin) formLogin.reset();
 }
 
-function aplicarPermisosUsuario(sector) {
-    const pestañasPermitidas = permisosPorSector[sector] || [1];
+// CORRECCIÓN DE APLICACIÓN DE PERMISOS FLEXIBLE Y TOLERANTE A TILDES / NOMBRES LARGOS
+function aplicarPermisosUsuario(sectorUsuario) {
+    if (!sectorUsuario) return;
+
+    // Normalizar texto (quitar tildes, espacios extras y pasar a minúsculas)
+    const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+    const sectorBuscadoNorm = normalizar(sectorUsuario);
+    let pestañasPermitidas = null;
+
+    // Buscar coincidencia exacta o parcial en las claves de permisosPorSector
+    for (const secKey of Object.keys(permisosPorSector)) {
+        const secKeyNorm = normalizar(secKey);
+        if (secKeyNorm === sectorBuscadoNorm || secKeyNorm.includes(sectorBuscadoNorm) || sectorBuscadoNorm.includes(secKeyNorm)) {
+            pestañasPermitidas = permisosPorSector[secKey];
+            break;
+        }
+    }
+
+    // Si no encuentra coincidencia, asigna por defecto la pestaña 1
+    if (!pestañasPermitidas) {
+        pestañasPermitidas = [1];
+    }
 
     const mapaPestañas = {
         1: { id: 'tab-requisitos', btn: 'btn-tab-requisitos' },
@@ -1696,7 +1717,6 @@ async function limpiarBaseDeDatosMaster() {
     }
 }
 
-// RENDRERIZADO SEGURO DE MATRIZ DE PERMISOS
 function renderizarMatrizPermisos() {
     const container = document.getElementById('matriz-permisos-container');
     if (!container) return;
@@ -1729,7 +1749,6 @@ function renderizarMatrizPermisos() {
     container.innerHTML = html;
 }
 
-// GUARDAR PERMISOS DE SECTORES SEGURO
 async function guardarPermisosSectores() {
     const checkboxes = document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]');
     const nuevosPermisos = {};
