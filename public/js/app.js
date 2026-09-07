@@ -96,13 +96,11 @@ function cerrarSesionUsuario() {
 function aplicarPermisosUsuario(sectorUsuario) {
     if (!sectorUsuario) return;
 
-    // Normalizar texto (quitar tildes, espacios extras y pasar a minúsculas)
     const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
     const sectorBuscadoNorm = normalizar(sectorUsuario);
     let pestañasPermitidas = null;
 
-    // Buscar coincidencia exacta o parcial en las claves de permisosPorSector
     for (const secKey of Object.keys(permisosPorSector)) {
         const secKeyNorm = normalizar(secKey);
         if (secKeyNorm === sectorBuscadoNorm || secKeyNorm.includes(sectorBuscadoNorm) || sectorBuscadoNorm.includes(secKeyNorm)) {
@@ -111,7 +109,6 @@ function aplicarPermisosUsuario(sectorUsuario) {
         }
     }
 
-    // Si no encuentra coincidencia, asigna por defecto la pestaña 1
     if (!pestañasPermitidas) {
         pestañasPermitidas = [1];
     }
@@ -1031,6 +1028,7 @@ async function iniciarCompra(e) {
     if (e) e.preventDefault();
 
     const numFormulario = document.getElementById('num-formulario-comp').value.trim();
+    const tipoOrden = document.getElementById('select-compra-tipo')?.value || 'Normal';
     const provNum = document.getElementById('select-compra-prov').value;
     const reqNum = document.getElementById('select-compra-req').value;
     const cantidad = document.getElementById('compra-cantidad').value;
@@ -1059,6 +1057,7 @@ async function iniciarCompra(e) {
 
     const nuevaOrden = {
         idOrden,
+        tipoOrden,
         numFormulario,
         provNum,
         provNombre: provObj ? provObj.nombre : provNum,
@@ -1094,12 +1093,14 @@ function renderizarTablaCompras() {
     ordenesCompra.forEach(oc => {
         const tr = document.createElement('tr');
         const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
+        const tipoText = oc.tipoOrden === 'Abierta' ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
         const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
         tr.innerHTML = `
             <td><strong>${oc.numFormulario || ''}</strong></td>
             <td><strong>${oc.idOrden}</strong></td>
+            <td>${tipoText}</td>
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
             <td>${oc.cantidad}</td>
@@ -1117,38 +1118,42 @@ function generarPDFOrden(orden) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
+    const esAbierta = orden.tipoOrden === 'Abierta';
+    const tituloPDF = esAbierta ? "ORDEN DE COMPRA ABIERTA" : "ORDEN DE COMPRA";
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(216, 27, 96);
-    doc.text("ORDEN DE COMPRA", 105, 20, null, null, "center");
+    doc.text(tituloPDF, 105, 20, null, null, "center");
 
     doc.setFontSize(12);
     doc.setTextColor(51, 51, 51);
     doc.text(`N° Formulario: ${orden.numFormulario || ''}`, 20, 32);
     doc.text(`N° Orden: ${orden.idOrden}`, 20, 40);
-    doc.text(`Fecha Emisión: ${orden.fechaEmision || new Date().toLocaleDateString()}`, 20, 48);
+    doc.text(`Modalidad: ${orden.tipoOrden || 'Normal'}`, 20, 48);
+    doc.text(`Fecha Emisión: ${orden.fechaEmision || new Date().toLocaleDateString()}`, 20, 56);
 
     doc.setFont("helvetica", "bold");
-    doc.text("DATOS DEL PROVEEDOR:", 20, 62);
+    doc.text("DATOS DEL PROVEEDOR:", 20, 70);
     doc.setFont("helvetica", "normal");
-    doc.text(`Proveedor: ${orden.provNombre} (${orden.provNum})`, 20, 70);
+    doc.text(`Proveedor: ${orden.provNombre} (${orden.provNum})`, 20, 78);
 
     doc.setFont("helvetica", "bold");
-    doc.text("DETALLE DEL PEDIDO:", 20, 85);
+    doc.text("DETALLE DEL PEDIDO:", 20, 93);
     doc.setFont("helvetica", "normal");
     
-    let currentY = 93;
+    let currentY = 101;
     
     doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY);
     currentY += 8;
     
-    doc.text(`Cantidad Solicitada: ${orden.cantidad}`, 20, currentY);
+    doc.text(`Cantidad ${esAbierta ? 'Estimada' : 'Solicitada'}: ${orden.cantidad}`, 20, currentY);
     currentY += 8;
     
     doc.text(`Condición de Pago: ${orden.condicionPago || 'No especificada'}`, 20, currentY);
     currentY += 8;
 
-    doc.text(`Fecha Requerida de Entrega: ${orden.fechaReq}`, 20, currentY);
+    doc.text(`Fecha ${esAbierta ? 'Límite de Vigencia' : 'Requerida de Entrega'}: ${orden.fechaReq}`, 20, currentY);
     currentY += 10;
 
     if (orden.reqDetalle) {
@@ -1171,7 +1176,10 @@ function generarPDFOrden(orden) {
 
     currentY += 10;
     doc.setFontSize(10);
-    doc.text("Favor de confirmar la recepción de la presente orden de compra.", 105, currentY, null, null, "center");
+    const msjPie = esAbierta 
+        ? "Orden Abierta de Reposición. Facturación según remitos de entregas parciales."
+        : "Favor de confirmar la recepción de la presente orden de compra.";
+    doc.text(msjPie, 105, currentY, null, null, "center");
 
     doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
 }
@@ -1185,7 +1193,6 @@ function actualizarSelectOrdenesPendientes() {
     if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione Orden Pendiente o Parcial --</option>';
 
-    // Calcular entregas previas por cada orden de compra
     const entregasPorOrden = {};
     if (Array.isArray(recepciones)) {
         recepciones.forEach(r => {
@@ -1194,7 +1201,6 @@ function actualizarSelectOrdenesPendientes() {
         });
     }
 
-    // Filtrar órdenes que aún tengan saldo pendiente
     const ordenesPendientes = ordenesCompra.filter(oc => {
         const totalSolicitado = parseFloat(oc.cantidad) || 0;
         const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
@@ -1207,10 +1213,11 @@ function actualizarSelectOrdenesPendientes() {
         const totalSolicitado = parseFloat(oc.cantidad) || 0;
         const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
         const saldoPendiente = totalSolicitado - totalEntregado;
+        const tagTipo = oc.tipoOrden === 'Abierta' ? '[ABIERTA]' : '[NORMAL]';
 
         const opt = document.createElement('option');
         opt.value = oc.idOrden;
-        opt.innerText = `${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden}) [Saldo Pendiente: ${saldoPendiente}]`;
+        opt.innerText = `${tagTipo} ${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden}) [Saldo Pendiente: ${saldoPendiente}]`;
         select.appendChild(opt);
     });
 }
@@ -1220,7 +1227,6 @@ function cargarDetalleOrdenPendiente() {
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
     if (orden) {
-        // Calcular entregas anteriores de esta orden para autocompletar el saldo restante
         const entregasPrevias = recepciones
             .filter(r => r.idOrden === idOrden)
             .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
@@ -1261,14 +1267,12 @@ async function guardarRecepcion(e) {
         fechaRecepcion
     };
 
-    // Guardar la nueva recepción / remito en la base de datos
     await fetch('/api/recepciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaRec)
     });
 
-    // Calcular el acumulado recibido de esta orden incluyendo este nuevo remito
     const entregasAnteriores = recepciones
         .filter(r => r.idOrden === idOrden)
         .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
@@ -1276,7 +1280,6 @@ async function guardarRecepcion(e) {
     const totalAcumulado = entregasAnteriores + cantRecibida;
     const totalSolicitado = parseFloat(orden ? orden.cantidad : 0) || 0;
 
-    // Si se completó o superó la cantidad solicitada, marcar la orden como Recibido
     if (totalAcumulado >= totalSolicitado && orden) {
         orden.estado = 'Recibido';
         await fetch('/api/compras', {
