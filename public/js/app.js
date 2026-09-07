@@ -1177,21 +1177,40 @@ function generarPDFOrden(orden) {
 }
 
 
-// --- PESTAÑA 5 ---
+// --- PESTAÑA 5 (RECEPCIÓN Y CONTROL DE ENTREGAS PARCIALES) ---
 let recepciones = [];
 
 function actualizarSelectOrdenesPendientes() {
     const select = document.getElementById('select-recepcion-orden');
     if (!select) return;
-    select.innerHTML = '<option value="">-- Seleccione Orden Pendiente --</option>';
+    select.innerHTML = '<option value="">-- Seleccione Orden Pendiente o Parcial --</option>';
 
-    const pendientes = ordenesCompra.filter(oc => oc.estado === 'Pendiente');
-    pendientes.sort((a, b) => a.provNombre.localeCompare(b.provNombre));
+    // Calcular entregas previas por cada orden de compra
+    const entregasPorOrden = {};
+    if (Array.isArray(recepciones)) {
+        recepciones.forEach(r => {
+            const cant = parseFloat(r.cantRecibida) || 0;
+            entregasPorOrden[r.idOrden] = (entregasPorOrden[r.idOrden] || 0) + cant;
+        });
+    }
 
-    pendientes.forEach(oc => {
+    // Filtrar órdenes que aún tengan saldo pendiente
+    const ordenesPendientes = ordenesCompra.filter(oc => {
+        const totalSolicitado = parseFloat(oc.cantidad) || 0;
+        const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
+        return oc.estado !== 'Recibido' && totalEntregado < totalSolicitado;
+    });
+
+    ordenesPendientes.sort((a, b) => a.provNombre.localeCompare(b.provNombre));
+
+    ordenesPendientes.forEach(oc => {
+        const totalSolicitado = parseFloat(oc.cantidad) || 0;
+        const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
+        const saldoPendiente = totalSolicitado - totalEntregado;
+
         const opt = document.createElement('option');
         opt.value = oc.idOrden;
-        opt.innerText = `${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden})`;
+        opt.innerText = `${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden}) [Saldo Pendiente: ${saldoPendiente}]`;
         select.appendChild(opt);
     });
 }
@@ -1201,7 +1220,14 @@ function cargarDetalleOrdenPendiente() {
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
     if (orden) {
-        document.getElementById('rec-campo-2').value = orden.cantidad;
+        // Calcular entregas anteriores de esta orden para autocompletar el saldo restante
+        const entregasPrevias = recepciones
+            .filter(r => r.idOrden === idOrden)
+            .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
+
+        const saldoRestante = Math.max(0, (parseFloat(orden.cantidad) || 0) - entregasPrevias);
+        const campoCant = document.getElementById('rec-campo-2');
+        if (campoCant) campoCant.value = saldoRestante;
     }
 }
 
@@ -1213,9 +1239,8 @@ async function guardarRecepcion(e) {
 
     const numFormulario = document.getElementById('num-formulario-rec').value.trim();
     const remito = document.getElementById('rec-campo-1').value.trim();
-    const cantRecibida = document.getElementById('rec-campo-2').value;
+    const cantRecibida = parseFloat(document.getElementById('rec-campo-2').value) || 0;
     const empaque = document.getElementById('rec-campo-3').value;
-    const tiempo = '';
     const calidad = document.getElementById('rec-campo-5').value;
     const obs = document.getElementById('rec-campo-6').value.trim();
     const fechaEl = document.getElementById('rec-fecha');
@@ -1230,17 +1255,36 @@ async function guardarRecepcion(e) {
         remito,
         cantRecibida,
         empaque,
-        tiempo,
+        tiempo: '',
         calidad,
         obs,
         fechaRecepcion
     };
 
+    // Guardar la nueva recepción / remito en la base de datos
     await fetch('/api/recepciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaRec)
     });
+
+    // Calcular el acumulado recibido de esta orden incluyendo este nuevo remito
+    const entregasAnteriores = recepciones
+        .filter(r => r.idOrden === idOrden)
+        .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
+
+    const totalAcumulado = entregasAnteriores + cantRecibida;
+    const totalSolicitado = parseFloat(orden ? orden.cantidad : 0) || 0;
+
+    // Si se completó o superó la cantidad solicitada, marcar la orden como Recibido
+    if (totalAcumulado >= totalSolicitado && orden) {
+        orden.estado = 'Recibido';
+        await fetch('/api/compras', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orden)
+        });
+    }
 
     document.getElementById('form-recepcion').reset();
     await cargarTodoDesdeServidor(true);
@@ -1717,6 +1761,7 @@ async function limpiarBaseDeDatosMaster() {
     }
 }
 
+// RENDRERIZADO SEGURO DE MATRIZ DE PERMISOS
 function renderizarMatrizPermisos() {
     const container = document.getElementById('matriz-permisos-container');
     if (!container) return;
@@ -1749,6 +1794,7 @@ function renderizarMatrizPermisos() {
     container.innerHTML = html;
 }
 
+// GUARDAR PERMISOS DE SECTORES SEGURO
 async function guardarPermisosSectores() {
     const checkboxes = document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]');
     const nuevosPermisos = {};
