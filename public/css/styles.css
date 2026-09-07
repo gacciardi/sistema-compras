@@ -15,7 +15,7 @@
 }
 
 body {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-primary) !important;
     color: var(--text-color);
     line-height: 1.5;
 }
@@ -203,7 +203,7 @@ input:focus, select:focus, textarea:focus {
     border-color: var(--primary-color);
 }
 
-/* AISLAMIENTO DE CHECKBOXES PARA EVITAR QUE SE DESBORDEN */
+/* AISLAMIENTO DE CHECKBOXES */
 input[type="checkbox"] {
     width: 18px !important;
     height: 18px !important;
@@ -319,7 +319,6 @@ tr:hover {
     padding-bottom: 10px;
 }
 
-/* REGULA LAS TABLAS DENTRO DEL PANEL MASTER PARA EVITAR DESBORDAMIENTO */
 .modal-body table {
     table-layout: auto;
     width: 100%;
