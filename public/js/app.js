@@ -975,6 +975,11 @@ function renderizarTablaCompras() {
         const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
+        // Botón de eliminación disponible únicamente para Órdenes Pendientes
+        const btnEliminar = oc.estado === 'Pendiente' 
+            ? `<button class="btn-danger" onclick="eliminarOrdenCompra('${oc.idOrden}')">Eliminar</button>` 
+            : `<small style="color:#777;">No editable</small>`;
+
         tr.innerHTML = `
             <td><strong>${oc.numFormulario || ''}</strong></td>
             <td><strong>${oc.idOrden}</strong></td>
@@ -986,9 +991,27 @@ function renderizarTablaCompras() {
             <td>${fEmis}</td>
             <td>${fReq}</td>
             <td><span class="${badgeClass}">${oc.estado}</span></td>
+            <td>${btnEliminar}</td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+async function eliminarOrdenCompra(idOrden) {
+    if (!confirm(`¿Estás seguro de eliminar la Orden de Compra "${idOrden}"?`)) return;
+
+    try {
+        const res = await fetch(`/api/compras/${idOrden}`, { method: 'DELETE' });
+        if (res.ok) {
+            alert(`✅ Orden de Compra ${idOrden} eliminada correctamente.`);
+            await cargarTodoDesdeServidor(true);
+        } else {
+            alert("❌ Ocurrió un error al intentar eliminar la Orden de Compra.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("❌ Error de conexión al servidor.");
+    }
 }
 
 function generarPDFOrden(orden) {
