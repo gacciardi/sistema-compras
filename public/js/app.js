@@ -975,7 +975,6 @@ function renderizarTablaCompras() {
         const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
-        // Botón de eliminación disponible únicamente para Órdenes Pendientes
         const btnEliminar = oc.estado === 'Pendiente' 
             ? `<button class="btn-danger" onclick="eliminarOrdenCompra('${oc.idOrden}')">Eliminar</button>` 
             : `<small style="color:#777;">No editable</small>`;
