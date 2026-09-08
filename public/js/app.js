@@ -60,13 +60,6 @@ let nombresCriteriosEstadisticas = [
 document.addEventListener('DOMContentLoaded', async () => {
     await cargarTodoDesdeServidor();
 
-    // Vinculación del formulario de Login
-    const formLogin = document.getElementById('form-login');
-    if (formLogin) {
-        formLogin.addEventListener('submit', iniciarSesionUsuario);
-    }
-
-    // Vinculación del formulario de Usuarios
     const formUsuarios = document.getElementById('form-usuarios');
     if (formUsuarios) {
         formUsuarios.addEventListener('submit', guardarUsuario);
@@ -86,7 +79,7 @@ async function iniciarSesionUsuario(e) {
 
     if (!usrInput || !passInput) return;
 
-    const usrName = usrInput.value.trim().toLowerCase();
+    const usrName = usrInput.value.trim();
     const pass = passInput.value.trim();
 
     if (!usrName || !pass) {
@@ -95,7 +88,7 @@ async function iniciarSesionUsuario(e) {
     }
 
     // 1. Verificación para usuario Admin Master
-    if (usrName === 'admin' && (pass === masterPasswordActual || pass === '1234')) {
+    if (usrName.toLowerCase() === 'admin' && pass === masterPasswordActual) {
         usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
@@ -104,21 +97,14 @@ async function iniciarSesionUsuario(e) {
         return;
     }
 
-    // 2. Cargar usuarios si aún no se han poblado en memoria
+    // Asegurar datos cargados si no estaban listos
     if (!usuarios || usuarios.length === 0) {
-        try {
-            const resUsr = await fetch('/api/usuarios');
-            if (resUsr.ok) {
-                usuarios = await resUsr.json();
-            }
-        } catch (err) {
-            console.error("Error consultando usuarios:", err);
-        }
+        await cargarTodoDesdeServidor(false);
     }
 
-    // 3. Verificación para usuarios registrados
-    const usrObj = (usuarios || []).find(u => 
-        u && u.nombre && u.nombre.trim().toLowerCase() === usrName && 
+    // 2. Verificación para usuarios registrados
+    const usrObj = usuarios.find(u => 
+        u.nombre.toLowerCase() === usrName.toLowerCase() && 
         String(u.pass).trim() === pass
     );
 
@@ -970,13 +956,6 @@ async function iniciarCompra(e) {
         estado: 'Pendiente'
     };
 
-    const indexExistente = ordenesCompra.findIndex(o => o.idOrden === idOrden);
-    if (indexExistente !== -1) {
-        ordenesCompra[indexExistente] = ordenGuardar;
-    } else {
-        ordenesCompra.push(ordenGuardar);
-    }
-
     await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -985,7 +964,6 @@ async function iniciarCompra(e) {
 
     generarPDFOrden(ordenGuardar);
     cancelarEdicionCompra();
-    renderizarTablaCompras();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -997,10 +975,7 @@ function renderizarTablaCompras() {
     ordenesCompra.forEach(oc => {
         const tr = document.createElement('tr');
         const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
-        const tipoText = oc.tipoOrden === 'Abierta' 
-            ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' 
-            : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
-
+        const tipoText = oc.tipoOrden === 'Abierta' ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
         const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
@@ -1314,6 +1289,11 @@ function renderizarTablaUsuarios() {
     const tbody = document.getElementById('tabla-usuarios-body');
     if (!tbody) return;
     tbody.innerHTML = '';
+
+    if (!usuarios || usuarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
+        return;
+    }
 
     usuarios.forEach(u => {
         const tr = document.createElement('tr');
