@@ -905,7 +905,9 @@ function autoCompletarPuntajePago() {
 async function iniciarCompra(e) {
     if (e) e.preventDefault();
 
-    const editId = document.getElementById('compra-edit-id')?.value;
+    const editIdInput = document.getElementById('compra-edit-id');
+    const editId = editIdInput ? editIdInput.value.trim() : '';
+    
     const numFormulario = document.getElementById('num-formulario-comp').value.trim();
     const tipoOrden = document.getElementById('select-compra-tipo')?.value || 'Normal';
     const provNum = document.getElementById('select-compra-prov').value;
@@ -925,7 +927,7 @@ async function iniciarCompra(e) {
 
     let idOrden = editId;
 
-    if (!idOrden) {
+    if (!idOrden || idOrden === '') {
         let nuevoNumero = 1001;
         if (ordenesCompra.length > 0) {
             const numerosExistentes = ordenesCompra.map(o => {
@@ -1030,7 +1032,7 @@ function editarOrdenCompra(idOrden) {
     document.getElementById('compra-observaciones').value = oc.observaciones || '';
 
     const btnSubmit = document.getElementById('btn-submit-compras');
-    if (btnSubmit) btnSubmit.innerText = `💾 Actualizar Orden (${oc.idOrden})`;
+    if (btnSubmit) btnSubmit.innerText = `💾 Confirmar Corrección (${oc.idOrden})`;
 
     const btnCancel = document.getElementById('btn-cancel-edit-compras');
     if (btnCancel) btnCancel.style.display = 'inline-block';
