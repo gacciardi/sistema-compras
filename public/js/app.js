@@ -955,7 +955,6 @@ async function guardarRecepcion(e) {
     const obs = document.getElementById('rec-campo-6').value.trim();
     const fechaRecepcion = document.getElementById('rec-fecha').value || new Date().toISOString().split('T')[0];
     
-    // Captura automática del usuario logueado
     const usuarioNombre = usuarioActual ? usuarioActual.nombre : 'admin';
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
@@ -984,6 +983,7 @@ function renderizarTablaRecepciones() {
     const tbody = document.getElementById('tabla-recepcion-body');
     if (!tbody) return;
     tbody.innerHTML = '';
+    
     recepciones.forEach(r => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
