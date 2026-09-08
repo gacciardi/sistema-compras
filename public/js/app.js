@@ -340,7 +340,7 @@ async function eliminarRequisito(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 2: PROVEEDORES ---
+// --- PESTAÑA 2: PROVEEDORES (CAMPOS EDITABLES LIBRES) ---
 async function guardarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`crit-nombre-${i}`);
@@ -356,7 +356,10 @@ async function guardarNombresCriteriosProveedores() {
 function cargarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`crit-nombre-${i}`);
-        if (el) el.value = nombresCriteriosProveedores[i - 1] || `Criterio ${i}`;
+        if (el) {
+            el.value = nombresCriteriosProveedores[i - 1] || `Criterio ${i}`;
+            el.readOnly = false;
+        }
     }
 }
 
@@ -427,7 +430,7 @@ function editarProveedor(num) {
             const i = index + 1;
             const lbl = document.getElementById(`crit-nombre-${i}`);
             const val = document.getElementById(`crit-cant-${i}`);
-            if (lbl) lbl.value = crit.nombre;
+            if (lbl) { lbl.value = crit.nombre; lbl.readOnly = false; }
             if (val) val.value = crit.cantidad;
         });
     }
@@ -459,7 +462,6 @@ function calcularFechaProximaDesdeDias() {
     }
 }
 
-// Cálculo automático de Cumplimiento de Entrega basado en Recepciones (Pest. 5) y OC (Pest. 4)
 function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const provObj = proveedores.find(p => p.num === provNum);
     const nombreProv = provObj ? provObj.nombre : '';
@@ -489,7 +491,6 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
     return contador > 0 ? Math.round(sumaPuntajes / contador) : null;
 }
 
-// Cálculo automático de promedios de Condición de Pago y Plazo de Entrega desde las OC (Pest. 4)
 function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
     const ordenesProv = ordenesCompra.filter(oc => oc.provNum === provNum);
     if (ordenesProv.length === 0) return { pago: null, plazo: null };
@@ -574,7 +575,6 @@ function cargarCalificacionExistente() {
         for (let i = 1; i <= 6; i++) document.getElementById(`stat-val-${i}`).value = '';
     }
 
-    // Inyección automática de puntajes basados en recepciones y órdenes de compra
     if (provNum) {
         const pc = calcularPuntajeTiemposReales(provNum, anio);
         if (pc !== null) document.getElementById('stat-val-1').value = pc;
@@ -929,7 +929,7 @@ function generarPDFOrden(orden) {
     doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
 }
 
-// --- PESTAÑA 5: RECEPCIÓN ---
+// --- PESTAÑA 5: RECEPCIÓN (CORREGIDA LA ALINEACIÓN DE COLUMNAS) ---
 function actualizarSelectOrdenesPendientes() {
     const select = document.getElementById('select-recepcion-orden');
     if (!select) return;
