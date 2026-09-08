@@ -238,15 +238,20 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.permisos_sectores) permisosPorSector = config.permisos_sectores;
 
         if (config.sys_title) {
-            document.getElementById('header-system-title').innerText = config.sys_title;
-            document.getElementById('login-title').innerText = config.sys_title;
-            document.getElementById('page-title').innerText = config.sys_title;
+            const hTitle = document.getElementById('header-system-title');
+            if (hTitle) hTitle.innerText = config.sys_title;
+            const lTitle = document.getElementById('login-title');
+            if (lTitle) lTitle.innerText = config.sys_title;
+            const pTitle = document.getElementById('page-title');
+            if (pTitle) pTitle.innerText = config.sys_title;
             const el4 = document.getElementById('master-system-title');
             if (el4) el4.value = config.sys_title;
         }
 
         if (config.sys_bg_color) cambiarColorBg(config.sys_bg_color, false);
-        if (config.sys_logo) cambiarLogo(config.sys_logo, false);
+        if (config.sys_logo && config.sys_logo.startsWith('data:image')) {
+            cambiarLogo(config.sys_logo, false);
+        }
 
         if (renderCompleto) {
             actualizarSelectSectoresUsuarios();
@@ -340,7 +345,7 @@ async function eliminarRequisito(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 2: PROVEEDORES (CAMPOS EDITABLES LIBRES) ---
+// --- PESTAÑA 2: PROVEEDORES ---
 async function guardarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`crit-nombre-${i}`);
@@ -929,7 +934,7 @@ function generarPDFOrden(orden) {
     doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
 }
 
-// --- PESTAÑA 5: RECEPCIÓN (CORREGIDA LA ALINEACIÓN DE COLUMNAS) ---
+// --- PESTAÑA 5: RECEPCIÓN ---
 function actualizarSelectOrdenesPendientes() {
     const select = document.getElementById('select-recepcion-orden');
     if (!select) return;
