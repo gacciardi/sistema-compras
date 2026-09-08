@@ -328,3 +328,29 @@ tr:hover {
     padding: 8px;
     white-space: nowrap;
 }
+/* Corrección de superposición del Panel Master */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6); /* Fondo oscuro semitransparente */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Asegura que esté por encima de todo */
+    overflow-y: auto;
+}
+
+.large-modal {
+    background: #ffffff;
+    width: 90%;
+    max-width: 1100px;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    overflow-y: auto;
+    padding: 20px;
+    z-index: 10000;
+}
