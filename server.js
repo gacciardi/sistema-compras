@@ -230,7 +230,7 @@ app.post('/api/estadisticas', async (req, res) => {
 // --- RUTAS COMPRAS ---
 app.get('/api/compras', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT id_orden AS "idOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
+        const { rows } = await pool.query('SELECT id_orden AS "idOrden", tipo_orden AS "tipoOrden"num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
