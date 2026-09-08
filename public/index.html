@@ -107,7 +107,7 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA 2: PROVEEDORES (CON PRE-EVALUACIÓN AMARILLA) -->
+            <!-- PESTAÑA 2: PROVEEDORES (CON PRE-EVALUACIÓN Y REGLA DE ENTREGA REAL) -->
             <section id="tab-proveedores" class="tab-content">
                 <div class="form-card">
                     <h2>🏬 Alta y Criterios de Selección de Proveedores</h2>
@@ -138,6 +138,18 @@
                             <div class="form-group"><input type="text" id="crit-nombre-4" placeholder="Nombre Criterio 4"><input type="number" id="crit-cant-4" min="0" max="100" placeholder="Puntos (0-100)"></div>
                             <div class="form-group"><input type="text" id="crit-nombre-5" placeholder="Nombre Criterio 5"><input type="number" id="crit-cant-5" min="0" max="100" placeholder="Puntos (0-100)"></div>
                             <div class="form-group"><input type="text" id="crit-nombre-6" placeholder="Nombre Criterio 6"><input type="number" id="crit-cant-6" min="0" max="100" placeholder="Puntos (0-100)"></div>
+                        </div>
+
+                        <!-- REGLA CÁLCULO ENTREGA REAL (MOVIDA A PESTAÑA 2) -->
+                        <div style="margin-top: 20px; padding: 12px; background: #fffde7; border-left: 4px solid #fbc02d; border-radius: 4px; font-size: 0.9em;">
+                            <h5 style="margin: 0 0 5px 0; color: #f57f17;">📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
+                            <p style="margin: 0;">El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
+                            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                                <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
+                                <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
+                                <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
+                                <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
+                            </ul>
                         </div>
 
                         <!-- CUADRO AMARILLO EN PESTAÑA 2 -->
@@ -261,7 +273,7 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA 4: EMISIÓN ÓRDENES DE COMPRA (CON TABLA AZUL DE VALORACIÓN EN EL MEDIO Y PRE-EVALUACIÓN) -->
+            <!-- PESTAÑA 4: EMISIÓN ÓRDENES DE COMPRA (SOLO EMISIÓN Y TABLA AZUL DE VALORACIÓN) -->
             <section id="tab-compras" class="tab-content">
                 <div class="form-card">
                     <h2>🛍️ Emisión de Órdenes de Compra</h2>
@@ -312,18 +324,6 @@
                             </div>
                         </div>
 
-                        <!-- REGLA CÁLCULO ENTREGA REAL -->
-                        <div style="margin-top: 20px; padding: 12px; background: #fffde7; border-left: 4px solid #fbc02d; border-radius: 4px; font-size: 0.9em;">
-                            <h5 style="margin: 0 0 5px 0; color: #f57f17;">📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
-                            <p style="margin: 0;">El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
-                            <ul style="margin: 5px 0 0 20px; padding: 0;">
-                                <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
-                                <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
-                                <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
-                                <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
-                            </ul>
-                        </div>
-
                         <!-- CUADRO AZUL EN PESTAÑA 4 -->
                         <div style="margin-top: 15px; padding: 12px; background: #e1f5fe; border-left: 4px solid #0288d1; border-radius: 4px; font-size: 0.9em;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -332,23 +332,6 @@
                             </div>
                             <p style="margin: 5px 0 0 0;">El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
                             <ul id="lista-reglas-pago-ui" style="margin: 5px 0 0 20px; padding: 0;"></ul>
-                        </div>
-
-                        <!-- PRE-EVALUACIÓN INTERNA EN PESTAÑA 4 -->
-                        <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
-                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
-                            <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes asignados automáticamente por Compras para la Pestaña 3 (No se imprimen en el PDF).</p>
-                            
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado 0-100 pts) *</label>
-                                    <input type="number" id="compra-pago-eval" min="0" max="100" placeholder="Puntaje Auto" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required readonly>
-                                </div>
-                                <div class="form-group">
-                                    <label style="color: #e65100; font-weight: bold;">Plazo de Entrega (0 - 100 pts) *</label>
-                                    <input type="number" id="compra-plazo-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="form-group" style="margin-top: 15px;">
