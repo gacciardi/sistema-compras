@@ -1,7 +1,6 @@
 let usuarioActual = null;
 let masterPasswordActual = '1234';
 
-// Lista dinámica de Sectores / Áreas de la empresa
 let listaSectoresGlobal = [
     'Compras',
     'Almacén / Depósito',
@@ -10,7 +9,6 @@ let listaSectoresGlobal = [
     'Administración'
 ];
 
-// Matriz dinámica de Condición de Pago -> Puntaje Asignado (0 a 100)
 let tablaCondicionPagoPuntos = {
     'Prepago': 10,
     'Contado': 35,
@@ -28,10 +26,8 @@ let permisosPorSector = {
     'Administración': [1, 2, 3, 4, 5, 6]
 };
 
-// Permisos individuales de Proveedores por Usuario
 let permisosProveedoresPorUsuario = {};
 
-// Arreglos de datos principales
 let requisitos = [];
 let proveedores = [];
 let estadisticas = [];
@@ -64,19 +60,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (formUsuarios) {
         formUsuarios.addEventListener('submit', guardarUsuario);
     }
-
-    setInterval(async () => {
-        await cargarTodoDesdeServidor(false);
-    }, 5000);
 });
 
-// --- AUTENTICACIÓN Y CONTROL DE ACCESO ---
 async function iniciarSesionUsuario(e) {
     if (e) e.preventDefault();
 
     const usrInput = document.getElementById('login-user');
     const passInput = document.getElementById('login-pass');
-
     if (!usrInput || !passInput) return;
 
     const usrName = usrInput.value.trim();
@@ -87,7 +77,6 @@ async function iniciarSesionUsuario(e) {
         return;
     }
 
-    // 1. Verificación para usuario Admin Master
     if (usrName.toLowerCase() === 'admin' && pass === masterPasswordActual) {
         usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
         document.getElementById('login-screen').style.display = 'none';
@@ -97,12 +86,10 @@ async function iniciarSesionUsuario(e) {
         return;
     }
 
-    // Asegurar datos cargados si no estaban listos
     if (!usuarios || usuarios.length === 0) {
         await cargarTodoDesdeServidor(false);
     }
 
-    // 2. Verificación para usuarios registrados
     const usrObj = usuarios.find(u => 
         u.nombre.toLowerCase() === usrName.toLowerCase() && 
         String(u.pass).trim() === pass
@@ -136,7 +123,6 @@ function cerrarSesionUsuario() {
 
 function aplicarPermisosUsuario(sectorUsuario) {
     if (!sectorUsuario) return;
-
     const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
     const sectorBuscadoNorm = normalizar(sectorUsuario);
     let pestañasPermitidas = null;
@@ -149,9 +135,7 @@ function aplicarPermisosUsuario(sectorUsuario) {
         }
     }
 
-    if (!pestañasPermitidas) {
-        pestañasPermitidas = [1];
-    }
+    if (!pestañasPermitidas) pestañasPermitidas = [1];
 
     const mapaPestañas = {
         1: { id: 'tab-requisitos', btn: 'btn-tab-requisitos' },
@@ -163,11 +147,9 @@ function aplicarPermisosUsuario(sectorUsuario) {
     };
 
     let primeraDisponible = null;
-
     for (let num = 1; num <= 6; num++) {
         const p = mapaPestañas[num];
         const btnEl = document.getElementById(p.btn);
-        
         if (pestañasPermitidas.includes(num)) {
             if (btnEl) btnEl.style.display = 'inline-block';
             if (!primeraDisponible) primeraDisponible = p.id;
@@ -176,29 +158,20 @@ function aplicarPermisosUsuario(sectorUsuario) {
         }
     }
 
-    if (primeraDisponible) {
-        showTab(primeraDisponible);
-    }
+    if (primeraDisponible) showTab(primeraDisponible);
 }
 
 function showTab(tabId) {
-    const sections = document.querySelectorAll('.tab-content');
-    sections.forEach(section => section.classList.remove('active'));
-
-    const buttons = document.querySelectorAll('.tab-btn');
-    buttons.forEach(button => button.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(sec => sec.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
     const activeSection = document.getElementById(tabId);
-    if (activeSection) {
-        activeSection.classList.add('active');
-    }
+    if (activeSection) activeSection.classList.add('active');
 
-    const activeButton = Array.from(buttons).find(btn => 
+    const activeButton = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
         btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(tabId)
     );
-    if (activeButton) {
-        activeButton.classList.add('active');
-    }
+    if (activeButton) activeButton.classList.add('active');
 
     if (tabId === 'tab-proveedores') cargarNombresCriteriosProveedores();
     if (tabId === 'tab-estadisticas') actualizarSelectProveedoresEstadisticas();
@@ -211,26 +184,17 @@ async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
     const el = document.getElementById(idInput);
     if (!el) return;
     const valor = el.value.trim();
-    if (!valor) {
-        alert("Por favor ingrese un N° de Formulario para guardar.");
-        return;
-    }
+    if (!valor) return alert("Ingrese un N° de Formulario.");
 
     try {
-        const res = await fetch('/api/configuraciones', {
+        await fetch('/api/configuraciones', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clave: claveConfig, valor: valor })
         });
-
-        if (res.ok) {
-            alert(`✅ N° de Formulario "${valor}" guardado correctamente.`);
-        } else {
-            alert("❌ Ocurrió un error al guardar en la base de datos.");
-        }
+        alert(`✅ N° de Formulario "${valor}" guardado.`);
     } catch (e) {
         console.error(e);
-        alert("❌ Error de conexión al servidor.");
     }
 }
 
@@ -256,61 +220,28 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         const config = await resConfig.json();
         const activeEl = document.activeElement;
 
-        if (config.num_form_req && activeEl !== document.getElementById('num-formulario-req')) {
-            const el = document.getElementById('num-formulario-req');
-            if (el) el.value = config.num_form_req;
-        }
-        if (config.num_form_prov && activeEl !== document.getElementById('num-formulario-prov')) {
-            const el = document.getElementById('num-formulario-prov');
-            if (el) el.value = config.num_form_prov;
-        }
-        if (config.num_form_stat && activeEl !== document.getElementById('num-formulario')) {
-            const el = document.getElementById('num-formulario');
-            if (el) el.value = config.num_form_stat;
-        }
-        if (config.num_form_comp && activeEl !== document.getElementById('num-formulario-comp')) {
-            const el = document.getElementById('num-formulario-comp');
-            if (el) el.value = config.num_form_comp;
-        }
-        if (config.num_form_rec && activeEl !== document.getElementById('num-formulario-rec')) {
-            const el = document.getElementById('num-formulario-rec');
-            if (el) el.value = config.num_form_rec;
-        }
+        if (config.num_form_req && activeEl !== document.getElementById('num-formulario-req')) document.getElementById('num-formulario-req').value = config.num_form_req;
+        if (config.num_form_prov && activeEl !== document.getElementById('num-formulario-prov')) document.getElementById('num-formulario-prov').value = config.num_form_prov;
+        if (config.num_form_stat && activeEl !== document.getElementById('num-formulario')) document.getElementById('num-formulario').value = config.num_form_stat;
+        if (config.num_form_comp && activeEl !== document.getElementById('num-formulario-comp')) document.getElementById('num-formulario-comp').value = config.num_form_comp;
+        if (config.num_form_rec && activeEl !== document.getElementById('num-formulario-rec')) document.getElementById('num-formulario-rec').value = config.num_form_rec;
 
         if (config.master_password) masterPasswordActual = config.master_password;
-
-        if (config.lista_sectores && Array.isArray(config.lista_sectores)) {
-            listaSectoresGlobal = config.lista_sectores;
-        }
-
+        if (config.lista_sectores && Array.isArray(config.lista_sectores)) listaSectoresGlobal = config.lista_sectores;
         if (config.tabla_condicion_pago_puntos) {
             tablaCondicionPagoPuntos = config.tabla_condicion_pago_puntos;
             opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
         }
-
-        if (config.permisos_proveedores_usuarios) {
-            permisosProveedoresPorUsuario = config.permisos_proveedores_usuarios;
-        }
-
-        if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) {
-            nombresCriteriosProveedores = config.crit_prov_labels;
-        }
-        if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) {
-            nombresCriteriosEstadisticas = config.crit_stat_labels;
-        }
-        if (config.permisos_sectores) {
-            permisosPorSector = config.permisos_sectores;
-        }
+        if (config.permisos_proveedores_usuarios) permisosProveedoresPorUsuario = config.permisos_proveedores_usuarios;
+        if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) nombresCriteriosProveedores = config.crit_prov_labels;
+        if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) nombresCriteriosEstadisticas = config.crit_stat_labels;
+        if (config.permisos_sectores) permisosPorSector = config.permisos_sectores;
 
         if (config.sys_title) {
-            const el1 = document.getElementById('header-system-title');
-            const el2 = document.getElementById('login-title');
-            const el3 = document.getElementById('page-title');
+            document.getElementById('header-system-title').innerText = config.sys_title;
+            document.getElementById('login-title').innerText = config.sys_title;
+            document.getElementById('page-title').innerText = config.sys_title;
             const el4 = document.getElementById('master-system-title');
-
-            if (el1) el1.innerText = config.sys_title;
-            if (el2) el2.innerText = config.sys_title;
-            if (el3) el3.innerText = config.sys_title;
             if (el4) el4.value = config.sys_title;
         }
 
@@ -335,11 +266,7 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
 }
 
 function actualizarSelectSectoresUsuarios() {
-    const selects = [
-        document.getElementById('usr-sector'),
-        document.getElementById('master-usr-sector')
-    ];
-
+    const selects = [document.getElementById('usr-sector'), document.getElementById('master-usr-sector')];
     const sectoresOrdenados = [...listaSectoresGlobal].sort((a, b) => a.localeCompare(b));
 
     selects.forEach(select => {
@@ -352,20 +279,17 @@ function actualizarSelectSectoresUsuarios() {
             opt.innerText = sec;
             select.appendChild(opt);
         });
-        if (valActual && listaSectoresGlobal.includes(valActual)) {
-            select.value = valActual;
-        }
+        if (valActual && listaSectoresGlobal.includes(valActual)) select.value = valActual;
     });
 }
 
-// --- PESTAÑA 1 ---
+// --- REQUISITOS ---
 async function guardarRequisito(e) {
     if (e) e.preventDefault();
     const numFormulario = document.getElementById('num-formulario-req').value.trim();
     const num = document.getElementById('num-requisito').value.trim();
     const nombre = document.getElementById('nombre-requisito').value.trim();
-    const fechaEl = document.getElementById('fecha-requisito');
-    const fecha = fechaEl && fechaEl.value ? fechaEl.value : new Date().toISOString().split('T')[0];
+    const fecha = document.getElementById('fecha-requisito').value || new Date().toISOString().split('T')[0];
     const detalle = document.getElementById('detalle-requisito').value.trim();
 
     await fetch('/api/requisitos', {
@@ -382,15 +306,13 @@ function renderizarTablaRequisitos() {
     const tbody = document.getElementById('tabla-requisitos-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-
     requisitos.forEach((req) => {
         const tr = document.createElement('tr');
-        const fReq = req.fecha ? req.fecha.split('T')[0] : '';
         tr.innerHTML = `
             <td><strong>${req.numFormulario || ''}</strong></td>
             <td><strong>${req.num}</strong></td>
             <td>${req.nombre}</td>
-            <td>${fReq}</td>
+            <td>${req.fecha ? req.fecha.split('T')[0] : ''}</td>
             <td>${req.detalle || ''}</td>
             <td>
                 <button class="btn-warning" onclick="editarRequisito('${req.num}')">Editar</button>
@@ -404,31 +326,25 @@ function renderizarTablaRequisitos() {
 function editarRequisito(num) {
     const req = requisitos.find(r => r.num === num);
     if (!req) return;
-
     document.getElementById('num-formulario-req').value = req.numFormulario || '';
     document.getElementById('num-requisito').value = req.num;
     document.getElementById('nombre-requisito').value = req.nombre;
-    if (req.fecha) {
-        document.getElementById('fecha-requisito').value = req.fecha.split('T')[0];
-    }
+    if (req.fecha) document.getElementById('fecha-requisito').value = req.fecha.split('T')[0];
     document.getElementById('detalle-requisito').value = req.detalle || '';
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function eliminarRequisito(num) {
-    if (!confirm(`¿Estás seguro de eliminar el requisito "${num}"?`)) return;
+    if (!confirm(`¿Eliminar requisito "${num}"?`)) return;
     await fetch(`/api/requisitos/${num}`, { method: 'DELETE' });
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 2 ---
+// --- PROVEEDORES ---
 async function guardarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`crit-nombre-${i}`);
-        if (el && el.value.trim()) {
-            nombresCriteriosProveedores[i - 1] = el.value.trim();
-        }
+        if (el && el.value.trim()) nombresCriteriosProveedores[i - 1] = el.value.trim();
     }
     await fetch('/api/configuraciones', {
         method: 'POST',
@@ -446,9 +362,7 @@ function cargarNombresCriteriosProveedores() {
 
 async function guardarProveedor(e) {
     if (e) e.preventDefault();
-
     await guardarNombresCriteriosProveedores();
-
     const numFormulario = document.getElementById('num-formulario-prov').value.trim();
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
@@ -476,7 +390,6 @@ function renderizarTablaProveedores() {
     const tbody = document.getElementById('tabla-proveedores-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-
     proveedores.forEach((p) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -495,7 +408,6 @@ function renderizarTablaProveedores() {
 function editarProveedor(num) {
     const p = proveedores.find(prov => prov.num === num);
     if (!p) return;
-
     document.getElementById('num-formulario-prov').value = p.numFormulario || '';
     document.getElementById('num-proveedor').value = p.num;
     document.getElementById('nombre-proveedor').value = p.nombre;
@@ -509,7 +421,6 @@ function editarProveedor(num) {
             if (val) val.value = crit.cantidad;
         });
     }
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -518,7 +429,7 @@ async function eliminarProveedor(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 3 ---
+// --- ESTADÍSTICAS ---
 function calcularFechaProximaDesdeDias() {
     const fEvalVal = document.getElementById('fecha-evaluacion')?.value;
     const diasVal = parseInt(document.getElementById('dias-proxima-eval')?.value);
@@ -527,13 +438,10 @@ function calcularFechaProximaDesdeDias() {
     if (fEvalVal && !isNaN(diasVal) && diasVal > 0) {
         const fechaBase = new Date(fEvalVal + 'T00:00:00');
         fechaBase.setDate(fechaBase.getDate() + diasVal);
-
         const dia = String(fechaBase.getDate()).padStart(2, '0');
         const mes = String(fechaBase.getMonth() + 1).padStart(2, '0');
         const anio = fechaBase.getFullYear();
-
-        const fechaFormateada = `${dia}/${mes}/${anio}`;
-        if (badgeFechaCalc) badgeFechaCalc.innerText = fechaFormateada;
+        if (badgeFechaCalc) badgeFechaCalc.innerText = `${dia}/${mes}/${anio}`;
         return `${anio}-${mes}-${dia}`;
     } else {
         if (badgeFechaCalc) badgeFechaCalc.innerText = '-- / -- / ----';
@@ -544,13 +452,10 @@ function calcularFechaProximaDesdeDias() {
 function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const provObj = proveedores.find(p => p.num === provNum);
     const nombreProv = provObj ? provObj.nombre : '';
-
     const recepcionesProv = recepciones.filter(r => r.provNombre === nombreProv);
     if (recepcionesProv.length === 0) return null;
 
-    let sumaPuntajes = 0;
-    let contador = 0;
-
+    let sumaPuntajes = 0, contador = 0;
     recepcionesProv.forEach(rec => {
         const orden = ordenesCompra.find(oc => oc.idOrden === rec.idOrden);
         if (orden && orden.fechaReq && rec.fechaRecepcion) {
@@ -559,7 +464,6 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
 
             const fRequerida = new Date(orden.fechaReq.split('T')[0] + 'T00:00:00');
             const fReal = new Date(rec.fechaRecepcion.split('T')[0] + 'T00:00:00');
-            
             const diffDias = Math.ceil((fReal - fRequerida) / (1000 * 60 * 60 * 24));
             
             let puntajeEntrega = 100;
@@ -571,7 +475,6 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
             contador++;
         }
     });
-
     return contador > 0 ? Math.round(sumaPuntajes / contador) : null;
 }
 
@@ -605,9 +508,7 @@ function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
 async function guardarNombresCriteriosEstadisticas() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`lbl-stat-${i}`);
-        if (el && el.value.trim()) {
-            nombresCriteriosEstadisticas[i - 1] = el.value.trim();
-        }
+        if (el && el.value.trim()) nombresCriteriosEstadisticas[i - 1] = el.value.trim();
     }
     await fetch('/api/configuraciones', {
         method: 'POST',
@@ -627,16 +528,12 @@ function actualizarSelectProveedoresEstadisticas() {
     const select = document.getElementById('select-prov-estadistica');
     if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione un Proveedor --</option>';
-
-    const provsOrdenados = [...proveedores].sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-    provsOrdenados.forEach(p => {
+    [...proveedores].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.num;
         opt.innerText = `${p.nombre} (${p.num})`;
         select.appendChild(opt);
     });
-
     cargarNombresCriteriosEstadisticas();
     renderizarTablaEstadisticas();
 }
@@ -648,136 +545,77 @@ function cargarCalificacionExistente() {
 
     const provNum = provSelect.value;
     const anio = anioSelect.value;
-
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
     if (registro) {
-        if (registro.numFormulario) {
-            document.getElementById('num-formulario').value = registro.numFormulario;
-        }
-
-        if (registro.fechaEval) {
-            document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
-        }
+        if (registro.numFormulario) document.getElementById('num-formulario').value = registro.numFormulario;
+        if (registro.fechaEval) document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
         document.getElementById('dias-proxima-eval').value = registro.diasPlazo || '';
         calcularFechaProximaDesdeDias();
-
         if (registro.puntajes) {
-            for (let i = 1; i <= 6; i++) {
-                document.getElementById(`stat-val-${i}`).value = registro.puntajes[i - 1] || '';
-            }
+            for (let i = 1; i <= 6; i++) document.getElementById(`stat-val-${i}`).value = registro.puntajes[i - 1] || '';
         }
     } else {
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
-
-        for (let i = 1; i <= 6; i++) {
-            document.getElementById(`stat-val-${i}`).value = '';
-        }
+        for (let i = 1; i <= 6; i++) document.getElementById(`stat-val-${i}`).value = '';
     }
 
     if (provNum) {
-        const puntajeCumplimiento = calcularPuntajeTiemposReales(provNum, anio);
-        if (puntajeCumplimiento !== null) {
-            document.getElementById('stat-val-1').value = puntajeCumplimiento;
-        }
-
-        const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
-        if (promediosOC.pago !== null) {
-            document.getElementById('stat-val-3').value = promediosOC.pago;
-        }
-        if (promediosOC.plazo !== null) {
-            document.getElementById('stat-val-4').value = promediosOC.plazo;
-        }
+        const pc = calcularPuntajeTiemposReales(provNum, anio);
+        if (pc !== null) document.getElementById('stat-val-1').value = pc;
+        const oc = calcularPromediosPreEvaluacionOC(provNum, anio);
+        if (oc.pago !== null) document.getElementById('stat-val-3').value = oc.pago;
+        if (oc.plazo !== null) document.getElementById('stat-val-4').value = oc.plazo;
     }
-
     calcularPuntajeClase();
 }
 
 function calcularPuntajeClase() {
-    let suma = 0;
-    let contador = 0;
-
+    let suma = 0, contador = 0;
     for (let i = 1; i <= 6; i++) {
-        const el = document.getElementById(`stat-val-${i}`);
-        if (el) {
-            const val = parseFloat(el.value);
-            if (!isNaN(val)) {
-                suma += val;
-                contador++;
-            }
-        }
+        const val = parseFloat(document.getElementById(`stat-val-${i}`)?.value);
+        if (!isNaN(val)) { suma += val; contador++; }
     }
-
     const promedio = contador > 0 ? Math.round(suma / contador) : 0;
     const promEl = document.getElementById('stat-promedio');
     if (promEl) promEl.innerText = `${promedio} pts`;
 
     const badgeClase = document.getElementById('stat-clase');
-    let clase = 'Clase D';
-    let claseCSS = 'badge-d';
+    let clase = 'Clase D', claseCSS = 'badge-d';
+    if (promedio >= 91) { clase = 'Clase A'; claseCSS = 'badge-a'; }
+    else if (promedio >= 76) { clase = 'Clase B'; claseCSS = 'badge-b'; }
+    else if (promedio >= 61) { clase = 'Clase C'; claseCSS = 'badge-c'; }
 
-    if (promedio >= 91) {
-        clase = 'Clase A';
-        claseCSS = 'badge-a';
-    } else if (promedio >= 76) {
-        clase = 'Clase B';
-        claseCSS = 'badge-b';
-    } else if (promedio >= 61) {
-        clase = 'Clase C';
-        claseCSS = 'badge-c';
-    }
-
-    if (badgeClase) {
-        badgeClase.innerText = clase;
-        badgeClase.className = `clase-badge ${claseCSS}`;
-    }
-
+    if (badgeClase) { badgeClase.innerText = clase; badgeClase.className = `clase-badge ${claseCSS}`; }
     return { promedio, clase, claseCSS };
 }
 
 async function calcularEstadistica(e) {
     if (e) e.preventDefault();
-
     const provNum = document.getElementById('select-prov-estadistica').value;
     const anio = document.getElementById('select-anio-estadistica').value;
     if (!provNum || !anio) return;
 
     await guardarNombresCriteriosEstadisticas();
-
     const numFormulario = document.getElementById('num-formulario').value.trim();
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
-
     const fechaEval = document.getElementById('fecha-evaluacion').value;
     const diasPlazo = parseInt(document.getElementById('dias-proxima-eval').value) || 0;
     const fechaProx = calcularFechaProximaDesdeDias();
 
     const puntajes = [];
-    for (let i = 1; i <= 6; i++) {
-        puntajes.push(parseFloat(document.getElementById(`stat-val-${i}`).value) || 0);
-    }
-
-    const registro = {
-        numFormulario,
-        version: '',
-        provNum,
-        provNombre: proveedor ? proveedor.nombre : 'Desconocido',
-        anio,
-        fechaEval,
-        diasPlazo,
-        fechaProx,
-        promedio,
-        clase,
-        claseCSS,
-        puntajes
-    };
+    for (let i = 1; i <= 6; i++) puntajes.push(parseFloat(document.getElementById(`stat-val-${i}`).value) || 0);
 
     await fetch('/api/estadisticas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registro)
+        body: JSON.stringify({
+            numFormulario, version: '', provNum, provNombre: proveedor ? proveedor.nombre : 'Desconocido',
+            anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, puntajes
+        })
     });
 
     document.getElementById('form-estadisticas').reset();
@@ -793,35 +631,21 @@ async function calcularEstadistica(e) {
 
 function renderizarTablaEstadisticas() {
     const tbody = document.getElementById('tabla-estadisticas-body');
-    const filtroAnio = document.getElementById('filtro-tabla-anio')?.value || 'TODOS';
     if (!tbody) return;
     tbody.innerHTML = '';
-
-    let lista = estadisticas;
-    if (filtroAnio !== 'TODOS') {
-        lista = estadisticas.filter(s => s.anio === filtroAnio);
-    }
-
-    lista.sort((a, b) => b.anio.localeCompare(a.anio));
-
-    lista.forEach((s) => {
+    [...estadisticas].sort((a, b) => b.anio.localeCompare(a.anio)).forEach((s) => {
         const tr = document.createElement('tr');
-        const fEval = s.fechaEval ? s.fechaEval.split('T')[0] : '';
-        const fProx = s.fechaProx ? s.fechaProx.split('T')[0] : '';
-
         tr.innerHTML = `
             <td><strong>${s.numFormulario || ''}</strong></td>
             <td><strong>${s.anio}</strong></td>
             <td>${s.provNum}</td>
             <td>${s.provNombre}</td>
-            <td>${fEval}</td>
+            <td>${s.fechaEval ? s.fechaEval.split('T')[0] : ''}</td>
             <td><strong>${s.diasPlazo || 0} días</strong></td>
-            <td><strong>${fProx}</strong></td>
+            <td><strong>${s.fechaProx ? s.fechaProx.split('T')[0] : ''}</strong></td>
             <td>${s.promedio} pts</td>
             <td><span class="clase-badge ${s.claseCSS}">${s.clase}</span></td>
-            <td>
-                <button class="btn-warning" onclick="editarEstadistica('${s.provNum}', '${s.anio}')">Editar</button>
-            </td>
+            <td><button class="btn-warning" onclick="editarEstadistica('${s.provNum}', '${s.anio}')">Editar</button></td>
         `;
         tbody.appendChild(tr);
     });
@@ -834,24 +658,19 @@ function editarEstadistica(provNum, anio) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- PESTAÑA 4 ---
+// --- ÓRDENES DE COMPRA ---
 function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
     if (selectProv) {
         selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
-
         let proveedoresPermitidos = proveedores;
-
         if (usuarioActual && usuarioActual.nombre !== 'admin') {
             const provsAsignados = permisosProveedoresPorUsuario[usuarioActual.nombre];
             if (Array.isArray(provsAsignados) && provsAsignados.length > 0) {
                 proveedoresPermitidos = proveedores.filter(p => provsAsignados.includes(p.num));
             }
         }
-
-        const provsOrdenados = [...proveedoresPermitidos].sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-        provsOrdenados.forEach(p => {
+        [...proveedoresPermitidos].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.num;
             opt.innerText = `${p.nombre} (${p.num})`;
@@ -862,10 +681,7 @@ function actualizarSelectsCompras() {
     const selectReq = document.getElementById('select-compra-req');
     if (selectReq) {
         selectReq.innerHTML = '<option value="">-- Seleccione Requisito --</option>';
-
-        const reqsOrdenados = [...requisitos].sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-        reqsOrdenados.forEach(r => {
+        [...requisitos].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(r => {
             const opt = document.createElement('option');
             opt.value = r.num;
             opt.innerText = `${r.nombre} [${r.num}]`;
@@ -876,10 +692,7 @@ function actualizarSelectsCompras() {
     const selectCondPago = document.getElementById('select-compra-condicion-pago');
     if (selectCondPago) {
         selectCondPago.innerHTML = '<option value="">-- Seleccione Condición --</option>';
-
-        const opcionesOrdenadas = [...opcionesCondicionPago].sort((a, b) => a.localeCompare(b));
-
-        opcionesOrdenadas.forEach(optVal => {
+        [...opcionesCondicionPago].sort((a, b) => a.localeCompare(b)).forEach(optVal => {
             const opt = document.createElement('option');
             opt.value = optVal;
             opt.innerText = optVal;
@@ -891,7 +704,6 @@ function actualizarSelectsCompras() {
 function autoCompletarPuntajePago() {
     const condEl = document.getElementById('select-compra-condicion-pago');
     const inputPagoEval = document.getElementById('compra-pago-eval');
-
     if (condEl && inputPagoEval) {
         const condicionSelect = condEl.value;
         if (condicionSelect && tablaCondicionPagoPuntos[condicionSelect] !== undefined) {
@@ -904,21 +716,18 @@ function autoCompletarPuntajePago() {
 
 async function iniciarCompra(e) {
     if (e) e.preventDefault();
-
     const editIdInput = document.getElementById('compra-edit-id');
     const editId = editIdInput ? editIdInput.value.trim() : '';
-    
+
     const numFormulario = document.getElementById('num-formulario-comp').value.trim();
     const tipoOrden = document.getElementById('select-compra-tipo')?.value || 'Normal';
     const provNum = document.getElementById('select-compra-prov').value;
     const reqNum = document.getElementById('select-compra-req').value;
     const cantidad = document.getElementById('compra-cantidad').value;
-    const fechaEmisionEl = document.getElementById('compra-fecha-emision');
-    const fechaEmision = fechaEmisionEl && fechaEmisionEl.value ? fechaEmisionEl.value : new Date().toISOString().split('T')[0];
+    const fechaEmision = document.getElementById('compra-fecha-emision').value || new Date().toISOString().split('T')[0];
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const condicionPago = document.getElementById('select-compra-condicion-pago').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
-
     const pagoEval = parseInt(document.getElementById('compra-pago-eval').value) || 0;
     const plazoEval = parseInt(document.getElementById('compra-plazo-eval').value) || 0;
 
@@ -926,7 +735,6 @@ async function iniciarCompra(e) {
     const reqObj = requisitos.find(r => r.num === reqNum);
 
     let idOrden = editId;
-
     if (!idOrden || idOrden === '') {
         let nuevoNumero = 1001;
         if (ordenesCompra.length > 0) {
@@ -977,9 +785,9 @@ function renderizarTablaCompras() {
     ordenesCompra.forEach(oc => {
         const tr = document.createElement('tr');
         const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
-        const tipoText = oc.tipoOrden === 'Abierta' ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
-        const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
-        const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
+        const tipoText = oc.tipoOrden === 'Abierta' 
+            ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' 
+            : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
 
         const botonesAcciones = oc.estado === 'Pendiente' 
             ? `<button class="btn-warning" onclick="editarOrdenCompra('${oc.idOrden}')">Editar</button>
@@ -994,8 +802,8 @@ function renderizarTablaCompras() {
             <td>${oc.reqNombre}</td>
             <td>${oc.cantidad}</td>
             <td><strong>${oc.condicionPago || '-'}</strong></td>
-            <td>${fEmis}</td>
-            <td>${fReq}</td>
+            <td>${oc.fechaEmision ? oc.fechaEmision.split('T')[0] : ''}</td>
+            <td>${oc.fechaReq ? oc.fechaReq.split('T')[0] : ''}</td>
             <td><span class="${badgeClass}">${oc.estado}</span></td>
             <td>${botonesAcciones}</td>
         `;
@@ -1007,67 +815,44 @@ function editarOrdenCompra(idOrden) {
     const oc = ordenesCompra.find(o => o.idOrden === idOrden);
     if (!oc) return;
 
-    const editIdInput = document.getElementById('compra-edit-id');
-    if (editIdInput) editIdInput.value = oc.idOrden;
-
+    document.getElementById('compra-edit-id').value = oc.idOrden;
     document.getElementById('num-formulario-comp').value = oc.numFormulario || '';
-    
-    const tipoSelect = document.getElementById('select-compra-tipo');
-    if (tipoSelect) tipoSelect.value = oc.tipoOrden || 'Normal';
-
+    document.getElementById('select-compra-tipo').value = oc.tipoOrden || 'Normal';
     document.getElementById('select-compra-prov').value = oc.provNum || '';
     document.getElementById('select-compra-req').value = oc.reqNum || '';
     document.getElementById('compra-cantidad').value = oc.cantidad || '';
     
-    if (oc.fechaEmision) {
-        document.getElementById('compra-fecha-emision').value = oc.fechaEmision.split('T')[0];
-    }
-    if (oc.fechaReq) {
-        document.getElementById('compra-fecha-req').value = oc.fechaReq.split('T')[0];
-    }
+    if (oc.fechaEmision) document.getElementById('compra-fecha-emision').value = oc.fechaEmision.split('T')[0];
+    if (oc.fechaReq) document.getElementById('compra-fecha-req').value = oc.fechaReq.split('T')[0];
 
     document.getElementById('select-compra-condicion-pago').value = oc.condicionPago || '';
     document.getElementById('compra-pago-eval').value = oc.pagoEval || '';
     document.getElementById('compra-plazo-eval').value = oc.plazoEval || '';
     document.getElementById('compra-observaciones').value = oc.observaciones || '';
 
-    const btnSubmit = document.getElementById('btn-submit-compras');
-    if (btnSubmit) btnSubmit.innerText = `💾 Confirmar Corrección (${oc.idOrden})`;
-
-    const btnCancel = document.getElementById('btn-cancel-edit-compras');
-    if (btnCancel) btnCancel.style.display = 'inline-block';
-
+    document.getElementById('btn-submit-compras').innerText = `💾 Confirmar Corrección (${oc.idOrden})`;
+    document.getElementById('btn-cancel-edit-compras').style.display = 'inline-block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function cancelarEdicionCompra() {
-    const editIdInput = document.getElementById('compra-edit-id');
-    if (editIdInput) editIdInput.value = '';
-
-    const formCompras = document.getElementById('form-compras');
-    if (formCompras) formCompras.reset();
-
-    const btnSubmit = document.getElementById('btn-submit-compras');
-    if (btnSubmit) btnSubmit.innerText = '📄 Emitir y Generar PDF Orden de Compra';
-
-    const btnCancel = document.getElementById('btn-cancel-edit-compras');
-    if (btnCancel) btnCancel.style.display = 'none';
+    document.getElementById('compra-edit-id').value = '';
+    document.getElementById('form-compras').reset();
+    document.getElementById('btn-submit-compras').innerText = '📄 Emitir y Generar PDF Orden de Compra';
+    document.getElementById('btn-cancel-edit-compras').style.display = 'none';
 }
 
 async function eliminarOrdenCompra(idOrden) {
-    if (!confirm(`¿Estás seguro de eliminar la Orden de Compra "${idOrden}"?`)) return;
-
+    if (!confirm(`¿Eliminar Orden de Compra "${idOrden}"?`)) return;
     try {
         const res = await fetch(`/api/compras/${idOrden}`, { method: 'DELETE' });
         if (res.ok) {
-            alert(`✅ Orden de Compra ${idOrden} eliminada correctamente.`);
             await cargarTodoDesdeServidor(true);
         } else {
-            alert("❌ Ocurrió un error al intentar eliminar la Orden de Compra.");
+            alert("Error al intentar eliminar la Orden.");
         }
     } catch (e) {
         console.error(e);
-        alert("❌ Error de conexión al servidor.");
     }
 }
 
@@ -1077,12 +862,10 @@ function generarPDFOrden(orden) {
     const doc = new jsPDF();
 
     const esAbierta = orden.tipoOrden === 'Abierta';
-    const tituloPDF = esAbierta ? "ORDEN DE COMPRA ABIERTA" : "ORDEN DE COMPRA";
-
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(216, 27, 96);
-    doc.text(tituloPDF, 105, 20, null, null, "center");
+    doc.text(esAbierta ? "ORDEN DE COMPRA ABIERTA" : "ORDEN DE COMPRA", 105, 20, null, null, "center");
 
     doc.setFontSize(12);
     doc.setTextColor(51, 51, 51);
@@ -1101,48 +884,28 @@ function generarPDFOrden(orden) {
     doc.setFont("helvetica", "normal");
     
     let currentY = 101;
-    
-    doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY);
-    currentY += 8;
-    
-    doc.text(`Cantidad ${esAbierta ? 'Estimada' : 'Solicitada'}: ${orden.cantidad}`, 20, currentY);
-    currentY += 8;
-    
-    doc.text(`Condición de Pago: ${orden.condicionPago || 'No especificada'}`, 20, currentY);
-    currentY += 8;
-
-    doc.text(`Fecha ${esAbierta ? 'Límite de Vigencia' : 'Requerida de Entrega'}: ${orden.fechaReq}`, 20, currentY);
-    currentY += 10;
+    doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY); currentY += 8;
+    doc.text(`Cantidad ${esAbierta ? 'Estimada' : 'Solicitada'}: ${orden.cantidad}`, 20, currentY); currentY += 8;
+    doc.text(`Condición de Pago: ${orden.condicionPago || 'No especificada'}`, 20, currentY); currentY += 8;
+    doc.text(`Fecha ${esAbierta ? 'Límite de Vigencia' : 'Requerida de Entrega'}: ${orden.fechaReq}`, 20, currentY); currentY += 10;
 
     if (orden.reqDetalle) {
-        const textoReq = `Especificaciones Técnicas: ${orden.reqDetalle}`;
-        const lineasReq = doc.splitTextToSize(textoReq, 170);
+        const lineasReq = doc.splitTextToSize(`Especificaciones Técnicas: ${orden.reqDetalle}`, 170);
         doc.text(lineasReq, 20, currentY);
         currentY += (lineasReq.length * 6) + 4;
     }
-
     if (orden.observaciones) {
-        const textoObs = `Observaciones: ${orden.observaciones}`;
-        const lineasObs = doc.splitTextToSize(textoObs, 170);
+        const lineasObs = doc.splitTextToSize(`Observaciones: ${orden.observaciones}`, 170);
         doc.text(lineasObs, 20, currentY);
         currentY += (lineasObs.length * 6) + 4;
     }
 
-    currentY += 5;
     doc.setDrawColor(216, 27, 96);
-    doc.line(20, currentY, 190, currentY);
-
-    currentY += 10;
-    doc.setFontSize(10);
-    const msjPie = esAbierta 
-        ? "Orden Abierta de Reposición. Facturación según remitos de entregas parciales."
-        : "Favor de confirmar la recepción de la presente orden de compra.";
-    doc.text(msjPie, 105, currentY, null, null, "center");
-
+    doc.line(20, currentY + 5, 190, currentY + 5);
     doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
 }
 
-// --- PESTAÑA 5 ---
+// --- RECEPCIÓN ---
 function actualizarSelectOrdenesPendientes() {
     const select = document.getElementById('select-recepcion-orden');
     if (!select) return;
@@ -1151,28 +914,19 @@ function actualizarSelectOrdenesPendientes() {
     const entregasPorOrden = {};
     if (Array.isArray(recepciones)) {
         recepciones.forEach(r => {
-            const cant = parseFloat(r.cantRecibida) || 0;
-            entregasPorOrden[r.idOrden] = (entregasPorOrden[r.idOrden] || 0) + cant;
+            entregasPorOrden[r.idOrden] = (entregasPorOrden[r.idOrden] || 0) + (parseFloat(r.cantRecibida) || 0);
         });
     }
 
-    const ordenesPendientes = ordenesCompra.filter(oc => {
+    ordenesCompra.filter(oc => {
         const totalSolicitado = parseFloat(oc.cantidad) || 0;
         const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
         return oc.estado !== 'Recibido' && totalEntregado < totalSolicitado;
-    });
-
-    ordenesPendientes.sort((a, b) => a.provNombre.localeCompare(b.provNombre));
-
-    ordenesPendientes.forEach(oc => {
-        const totalSolicitado = parseFloat(oc.cantidad) || 0;
-        const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
-        const saldoPendiente = totalSolicitado - totalEntregado;
-        const tagTipo = oc.tipoOrden === 'Abierta' ? '[ABIERTA]' : '[NORMAL]';
-
+    }).sort((a, b) => a.provNombre.localeCompare(b.provNombre)).forEach(oc => {
+        const saldo = (parseFloat(oc.cantidad) || 0) - (entregasPorOrden[oc.idOrden] || 0);
         const opt = document.createElement('option');
         opt.value = oc.idOrden;
-        opt.innerText = `${tagTipo} ${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden}) [Saldo Pendiente: ${saldoPendiente}]`;
+        opt.innerText = `${oc.tipoOrden === 'Abierta' ? '[ABIERTA]' : '[NORMAL]'} ${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden}) [Saldo: ${saldo}]`;
         select.appendChild(opt);
     });
 }
@@ -1180,12 +934,8 @@ function actualizarSelectOrdenesPendientes() {
 function cargarDetalleOrdenPendiente() {
     const idOrden = document.getElementById('select-recepcion-orden').value;
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
-
     if (orden) {
-        const entregasPrevias = recepciones
-            .filter(r => r.idOrden === idOrden)
-            .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
-
+        const entregasPrevias = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
         const saldoRestante = Math.max(0, (parseFloat(orden.cantidad) || 0) - entregasPrevias);
         const campoCant = document.getElementById('rec-campo-2');
         if (campoCant) campoCant.value = saldoRestante;
@@ -1194,7 +944,6 @@ function cargarDetalleOrdenPendiente() {
 
 async function guardarRecepcion(e) {
     if (e) e.preventDefault();
-
     const idOrden = document.getElementById('select-recepcion-orden').value;
     if (!idOrden) return;
 
@@ -1204,38 +953,20 @@ async function guardarRecepcion(e) {
     const empaque = document.getElementById('rec-campo-3').value;
     const calidad = document.getElementById('rec-campo-5').value;
     const obs = document.getElementById('rec-campo-6').value.trim();
-    const fechaEl = document.getElementById('rec-fecha');
-    const fechaRecepcion = fechaEl && fechaEl.value ? fechaEl.value : new Date().toISOString().split('T')[0];
-
+    const fechaRecepcion = document.getElementById('rec-fecha').value || new Date().toISOString().split('T')[0];
+    
+    // Captura automática del usuario logueado
+    const usuarioNombre = usuarioActual ? usuarioActual.nombre : 'admin';
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
-
-    const nuevaRec = {
-        numFormulario,
-        idOrden,
-        provNombre: orden ? orden.provNombre : '',
-        remito,
-        cantRecibida,
-        empaque,
-        tiempo: '',
-        calidad,
-        obs,
-        fechaRecepcion
-    };
 
     await fetch('/api/recepciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevaRec)
+        body: JSON.stringify({ numFormulario, idOrden, provNombre: orden ? orden.provNombre : '', remito, cantRecibida, empaque, tiempo: '', calidad, obs, fechaRecepcion, usuario: usuarioNombre })
     });
 
-    const entregasAnteriores = recepciones
-        .filter(r => r.idOrden === idOrden)
-        .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
-
-    const totalAcumulado = entregasAnteriores + cantRecibida;
-    const totalSolicitado = parseFloat(orden ? orden.cantidad : 0) || 0;
-
-    if (totalAcumulado >= totalSolicitado && orden) {
+    const entregasAnteriores = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
+    if ((entregasAnteriores + cantRecibida) >= (parseFloat(orden ? orden.cantidad : 0) || 0) && orden) {
         orden.estado = 'Recibido';
         await fetch('/api/compras', {
             method: 'POST',
@@ -1253,10 +984,8 @@ function renderizarTablaRecepciones() {
     const tbody = document.getElementById('tabla-recepcion-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-
     recepciones.forEach(r => {
         const tr = document.createElement('tr');
-        const fRec = r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : '';
         tr.innerHTML = `
             <td><strong>${r.numFormulario || ''}</strong></td>
             <td><strong>${r.idOrden}</strong></td>
@@ -1264,7 +993,8 @@ function renderizarTablaRecepciones() {
             <td>${r.remito}</td>
             <td>${r.cantRecibida}</td>
             <td>${r.calidad}</td>
-            <td>${fRec}</td>
+            <td>${r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : ''}</td>
+            <td><strong>👤 ${r.usuario || 'admin'}</strong></td>
             <td>${r.obs || '-'}</td>
             <td><span class="status-badge-received">Recibido</span></td>
         `;
@@ -1272,19 +1002,15 @@ function renderizarTablaRecepciones() {
     });
 }
 
-// --- PESTAÑA 6 ---
+// --- USUARIOS ---
 async function guardarUsuario(e) {
     if (e) e.preventDefault();
-
     const nombre = document.getElementById('usr-nombre').value.trim();
     const pass = document.getElementById('usr-pass').value;
     const sector = document.getElementById('usr-sector').value;
     const estado = document.getElementById('usr-estado').value;
 
-    if (!nombre) {
-        alert("Por favor ingrese el nombre del usuario.");
-        return;
-    }
+    if (!nombre) return alert("Ingrese el nombre de usuario.");
 
     await fetch('/api/usuarios', {
         method: 'POST',
@@ -1300,12 +1026,10 @@ function renderizarTablaUsuarios() {
     const tbody = document.getElementById('tabla-usuarios-body');
     if (!tbody) return;
     tbody.innerHTML = '';
-
     if (!usuarios || usuarios.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
         return;
     }
-
     usuarios.forEach(u => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -1324,35 +1048,26 @@ function renderizarTablaUsuarios() {
 function editarUsuario(nombre) {
     const u = usuarios.find(usr => usr.nombre === nombre);
     if (!u) return;
-
     document.getElementById('usr-nombre').value = u.nombre;
     document.getElementById('usr-pass').value = u.pass || '';
     document.getElementById('usr-sector').value = u.sector;
     document.getElementById('usr-estado').value = u.estado;
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function eliminarUsuario(nombre) {
-    if (!confirm(`¿Estás seguro de eliminar al usuario "${nombre}"?`)) return;
-
+    if (!confirm(`¿Eliminar usuario "${nombre}"?`)) return;
     await fetch(`/api/usuarios/${encodeURIComponent(nombre)}`, { method: 'DELETE' });
     await cargarTodoDesdeServidor(true);
 }
 
-// --- MODAL Y CONFIGURACIÓN MASTER ---
-function abrirModalMaster() {
-    document.getElementById('modal-master').style.display = 'flex';
-}
-
-function cerrarModalMaster() {
-    document.getElementById('modal-master').style.display = 'none';
-}
+// --- MASTER PANEL ---
+function abrirModalMaster() { document.getElementById('modal-master').style.display = 'flex'; }
+function cerrarModalMaster() { document.getElementById('modal-master').style.display = 'none'; }
 
 function autenticarMaster() {
     const usr = document.getElementById('master-user').value;
     const pass = document.getElementById('master-pass').value;
-
     if (usr === 'admin' && pass === masterPasswordActual) {
         document.getElementById('master-auth').style.display = 'none';
         document.getElementById('master-panel').style.display = 'block';
@@ -1360,56 +1075,33 @@ function autenticarMaster() {
         renderizarMatrizPermisos();
         renderizarMatrizPermisosProveedores();
     } else {
-        alert('Credenciales de Administrador Master incorrectas.');
+        alert('Credenciales Master incorrectas.');
     }
 }
 
 function renderizarTablaSectoresMaster() {
     const container = document.getElementById('lista-sectores-master-container');
     if (!container) return;
-
-    let html = `<div style="overflow-x: auto;"><table>
-        <thead>
-            <tr>
-                <th>Nombre del Sector / Área</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>`;
-
+    let html = `<table><thead><tr><th>Sector</th><th>Acciones</th></tr></thead><tbody>`;
     listaSectoresGlobal.forEach((sec, idx) => {
         html += `<tr>
-            <td><input type="text" id="input-sector-name-${idx}" value="${sec}" style="width: 100%; padding: 4px;"></td>
+            <td><input type="text" id="input-sector-name-${idx}" value="${sec}" style="width:100%; padding:4px;"></td>
             <td>
                 <button class="btn-warning" onclick="guardarNombreSectorMaster(${idx})">Guardar</button>
                 <button class="btn-danger" onclick="eliminarSectorMaster(${idx})">Eliminar</button>
             </td>
         </tr>`;
     });
-
-    html += `</tbody></table></div>`;
+    html += `</tbody></table>`;
     container.innerHTML = html;
 }
 
 async function agregarNuevoSectorMaster() {
     const input = document.getElementById('nuevo-sector-nombre');
     const val = input.value.trim();
-
-    if (!val) {
-        alert("Ingresa un nombre de sector válido.");
-        return;
-    }
-
-    if (listaSectoresGlobal.includes(val)) {
-        alert("Ese sector ya existe.");
-        return;
-    }
-
+    if (!val || listaSectoresGlobal.includes(val)) return alert("Nombre inválido o ya existente.");
     listaSectoresGlobal.push(val);
-    if (!permisosPorSector[val]) {
-        permisosPorSector[val] = [1];
-    }
-
+    if (!permisosPorSector[val]) permisosPorSector[val] = [1];
     await guardarSectoresBaseDatos();
     input.value = '';
     renderizarTablaSectoresMaster();
@@ -1419,42 +1111,26 @@ async function agregarNuevoSectorMaster() {
 
 async function guardarNombreSectorMaster(index) {
     const input = document.getElementById(`input-sector-name-${index}`);
-    if (!input) return;
-
-    const nuevoNombre = input.value.trim();
-    const viejoNombre = listaSectoresGlobal[index];
-
-    if (!nuevoNombre) {
-        alert("El nombre del sector no puede estar vacío.");
-        return;
+    const nuevo = input.value.trim();
+    const viejo = listaSectoresGlobal[index];
+    if (!nuevo) return;
+    listaSectoresGlobal[index] = nuevo;
+    if (permisosPorSector[viejo]) {
+        permisosPorSector[nuevo] = permisosPorSector[viejo];
+        delete permisosPorSector[viejo];
     }
-
-    listaSectoresGlobal[index] = nuevoNombre;
-
-    if (permisosPorSector[viejoNombre]) {
-        permisosPorSector[nuevoNombre] = permisosPorSector[viejoNombre];
-        delete permisosPorSector[viejoNombre];
-    }
-
     await guardarSectoresBaseDatos();
     renderizarTablaSectoresMaster();
     renderizarMatrizPermisos();
     actualizarSelectSectoresUsuarios();
-    alert(`✅ Sector renombrado a "${nuevoNombre}".`);
 }
 
 async function eliminarSectorMaster(index) {
-    if (listaSectoresGlobal.length <= 1) {
-        alert("Debe existir al menos un sector registrado.");
-        return;
-    }
-
+    if (listaSectoresGlobal.length <= 1) return alert("Debe haber al menos un sector.");
     const sec = listaSectoresGlobal[index];
-    if (!confirm(`¿Estás seguro de eliminar el sector "${sec}"?`)) return;
-
+    if (!confirm(`¿Eliminar sector "${sec}"?`)) return;
     listaSectoresGlobal.splice(index, 1);
     delete permisosPorSector[sec];
-
     await guardarSectoresBaseDatos();
     renderizarTablaSectoresMaster();
     renderizarMatrizPermisos();
@@ -1462,183 +1138,108 @@ async function eliminarSectorMaster(index) {
 }
 
 async function guardarSectoresBaseDatos() {
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'lista_sectores', valor: listaSectoresGlobal })
-    });
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'permisos_sectores', valor: permisosPorSector })
-    });
+    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'lista_sectores', valor: listaSectoresGlobal }) });
+    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'permisos_sectores', valor: permisosPorSector }) });
 }
 
 function renderizarMatrizPermisosProveedores() {
     const container = document.getElementById('matriz-permisos-proveedores-container');
     if (!container) return;
-
-    if (!usuarios || usuarios.length === 0 || !proveedores || proveedores.length === 0) {
-        container.innerHTML = '<p style="color:#777; padding: 10px;">Debe registrar usuarios y proveedores para configurar los permisos.</p>';
+    if (!usuarios.length || !proveedores.length) {
+        container.innerHTML = '<p style="color:#777;">Registre usuarios y proveedores primero.</p>';
         return;
     }
-
-    let html = '<div style="overflow-x: auto;"><table style="width: 100%;"><thead><tr><th>Usuario</th>';
-    proveedores.forEach(p => { 
-        html += `<th style="text-align:center; padding: 8px;">${p.nombre}<br><small style="color:#666;">(${p.num})</small></th>`; 
-    });
+    let html = '<table><thead><tr><th>Usuario</th>';
+    proveedores.forEach(p => html += `<th>${p.nombre}<br><small>(${p.num})</small></th>`);
     html += '</tr></thead><tbody>';
-
     usuarios.forEach(u => {
-        html += `<tr><td><strong>${u.nombre}</strong><br><small>(${u.sector})</small></td>`;
+        html += `<tr><td><strong>${u.nombre}</strong></td>`;
         const asignados = permisosProveedoresPorUsuario[u.nombre] || [];
-
         proveedores.forEach(p => {
-            const checked = asignados.includes(p.num) ? 'checked' : '';
-            html += `<td style="text-align:center;"><input type="checkbox" data-usuario-prov="${u.nombre}" data-prov-num="${p.num}" ${checked}></td>`;
+            html += `<td style="text-align:center;"><input type="checkbox" data-usuario-prov="${u.nombre}" data-prov-num="${p.num}" ${asignados.includes(p.num) ? 'checked' : ''}></td>`;
         });
         html += '</tr>';
     });
-
-    html += '</tbody></table></div>';
+    html += '</tbody></table>';
     container.innerHTML = html;
 }
 
 async function guardarPermisosProveedoresMaster() {
-    const checkboxes = document.querySelectorAll('#matriz-permisos-proveedores-container input[type="checkbox"]');
-    const nuevosPermisos = {};
-
-    checkboxes.forEach(chk => {
-        const usrName = chk.getAttribute('data-usuario-prov');
-        const provNum = chk.getAttribute('data-prov-num');
+    const nuevos = {};
+    document.querySelectorAll('#matriz-permisos-proveedores-container input[type="checkbox"]').forEach(chk => {
         if (chk.checked) {
-            if (!nuevosPermisos[usrName]) nuevosPermisos[usrName] = [];
-            nuevosPermisos[usrName].push(provNum);
+            const usr = chk.dataset.usuarioProv;
+            const prov = chk.dataset.provNum;
+            if (!nuevos[usr]) nuevos[usr] = [];
+            nuevos[usr].push(prov);
         }
     });
-
-    permisosProveedoresPorUsuario = nuevosPermisos;
-
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'permisos_proveedores_usuarios', valor: permisosProveedoresPorUsuario })
-    });
-
+    permisosProveedoresPorUsuario = nuevos;
+    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'permisos_proveedores_usuarios', valor: permisosProveedoresPorUsuario }) });
     actualizarSelectsCompras();
-    alert("✅ Permisos de proveedores por usuario guardados correctamente.");
+    alert("✅ Permisos guardados.");
 }
 
 function renderizarMatrizPermisos() {
     const container = document.getElementById('matriz-permisos-container');
     if (!container) return;
-
-    const pestañas = [
-        { id: 1, nombre: 'P1: Requisitos' },
-        { id: 2, nombre: 'P2: Proveedores' },
-        { id: 3, nombre: 'P3: Evaluación' },
-        { id: 4, nombre: 'P4: Órdenes Compra' },
-        { id: 5, nombre: 'P5: Recepción' },
-        { id: 6, nombre: 'P6: Usuarios' }
-    ];
-
-    let html = '<div style="overflow-x: auto;"><table style="width: 100%;"><thead><tr><th>Sector</th>';
-    pestañas.forEach(p => { html += `<th style="text-align:center;">${p.nombre}</th>`; });
+    const pestañas = [{ id: 1, nombre: 'P1' }, { id: 2, nombre: 'P2' }, { id: 3, nombre: 'P3' }, { id: 4, nombre: 'P4' }, { id: 5, nombre: 'P5' }, { id: 6, nombre: 'P6' }];
+    let html = '<table><thead><tr><th>Sector</th>';
+    pestañas.forEach(p => html += `<th>${p.nombre}</th>`);
     html += '</tr></thead><tbody>';
-
     listaSectoresGlobal.forEach(sec => {
         html += `<tr><td><strong>${sec}</strong></td>`;
         const permitidas = permisosPorSector[sec] || [];
-
         pestañas.forEach(p => {
-            const checked = permitidas.includes(p.id) ? 'checked' : '';
-            html += `<td style="text-align:center;"><input type="checkbox" data-sector="${sec}" data-pestaña="${p.id}" ${checked}></td>`;
+            html += `<td style="text-align:center;"><input type="checkbox" data-sector="${sec}" data-pestaña="${p.id}" ${permitidas.includes(p.id) ? 'checked' : ''}></td>`;
         });
         html += '</tr>';
     });
-
-    html += '</tbody></table></div>';
+    html += '</tbody></table>';
     container.innerHTML = html;
 }
 
 async function guardarPermisosSectores() {
-    const checkboxes = document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]');
-    const nuevosPermisos = {};
-
-    listaSectoresGlobal.forEach(s => { nuevosPermisos[s] = []; });
-
-    checkboxes.forEach(chk => {
-        const sec = chk.dataset.sector || chk.getAttribute('data-sector');
-        const pId = parseInt(chk.dataset.pestaña || chk.getAttribute('data-pestaña'));
-
-        if (chk.checked && sec && !isNaN(pId)) {
-            if (!nuevosPermisos[sec]) nuevosPermisos[sec] = [];
-            if (!nuevosPermisos[sec].includes(pId)) nuevosPermisos[sec].push(pId);
+    const nuevos = {};
+    listaSectoresGlobal.forEach(s => nuevos[s] = []);
+    document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]').forEach(chk => {
+        if (chk.checked) {
+            const sec = chk.dataset.sector;
+            const pId = parseInt(chk.dataset.pestaña);
+            if (sec && !isNaN(pId)) {
+                if (!nuevos[sec].includes(pId)) nuevos[sec].push(pId);
+            }
         }
     });
-
-    permisosPorSector = nuevosPermisos;
-
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'permisos_sectores', valor: permisosPorSector })
-    });
-
+    permisosPorSector = nuevos;
+    await guardarSectoresBaseDatos();
     if (usuarioActual) aplicarPermisosUsuario(usuarioActual.sector);
-    alert("✅ Permisos de sectores guardados correctamente.");
+    alert("✅ Permisos actualizados.");
 }
 
 async function guardarNuevaPasswordMaster() {
-    const nuevaPass = document.getElementById('master-new-pass').value.trim();
-    if (!nuevaPass) {
-        alert("Por favor ingrese una contraseña válida.");
-        return;
-    }
-
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'master_password', valor: nuevaPass })
-    });
-
-    masterPasswordActual = nuevaPass;
+    const np = document.getElementById('master-new-pass').value.trim();
+    if (!np) return;
+    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'master_password', valor: np }) });
+    masterPasswordActual = np;
     document.getElementById('master-new-pass').value = '';
-    alert("🔐 Contraseña del Panel Master actualizada.");
+    alert("🔐 Contraseña Master cambiada.");
 }
 
 async function guardarTituloSistema() {
     const titulo = document.getElementById('master-system-title').value.trim();
     if (!titulo) return;
-
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'sys_title', valor: titulo })
-    });
-
+    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_title', valor: titulo }) });
     document.getElementById('header-system-title').innerText = titulo;
     document.getElementById('login-title').innerText = titulo;
     document.getElementById('page-title').innerText = titulo;
-
-    alert("✅ Título del sistema actualizado.");
 }
 
 async function cambiarColorBg(color, guardar = true) {
     document.documentElement.style.setProperty('--bg-primary', color);
     document.body.style.backgroundColor = color;
-
-    const inputColor = document.getElementById('master-bg-color');
-    if (inputColor && inputColor.value !== color) {
-        inputColor.value = color;
-    }
-
     if (guardar) {
-        await fetch('/api/configuraciones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clave: 'sys_bg_color', valor: color })
-        });
+        await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_bg_color', valor: color }) });
     }
 }
 
@@ -1646,68 +1247,30 @@ function subirLogoDesdePC(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const base64Image = e.target.result;
-            cambiarLogo(base64Image, true);
-        };
+        reader.onload = e => cambiarLogo(e.target.result, true);
         reader.readAsDataURL(file);
     }
 }
 
-async function cambiarLogo(srcImagen, guardar = true) {
-    if (!srcImagen) return;
-
-    const logoImg = document.getElementById('app-logo');
-    const loginLogo = document.getElementById('login-logo');
-
-    if (logoImg) {
-        logoImg.src = srcImagen;
-        logoImg.style.display = 'block';
-    }
-    if (loginLogo) {
-        loginLogo.src = srcImagen;
-        loginLogo.style.display = 'inline-block';
-    }
-
+async function cambiarLogo(src, guardar = true) {
+    if (!src) return;
+    const l1 = document.getElementById('app-logo'), l2 = document.getElementById('login-logo');
+    if (l1) { l1.src = src; l1.style.display = 'block'; }
+    if (l2) { l2.src = src; l2.style.display = 'inline-block'; }
     if (guardar) {
-        try {
-            const res = await fetch('/api/configuraciones', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clave: 'sys_logo', valor: srcImagen })
-            });
-
-            if (res.ok) {
-                alert("✅ Logo actualizado y guardado correctamente en la base de datos.");
-            } else {
-                alert("❌ Ocurrió un error al guardar el logo en el servidor.");
-            }
-        } catch (err) {
-            console.error("Error al guardar logo:", err);
-            alert("❌ Error de conexión al guardar el logo.");
-        }
+        await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_logo', valor: src }) });
     }
 }
 
 async function limpiarBaseDeDatosMaster() {
-    const confirm1 = confirm("⚠️ ¿Estás SEGURO de eliminar las Evaluaciones, Órdenes y Recepciones?");
-    if (!confirm1) return;
-
-    const confirm2 = confirm("🚨 ¡Esta acción NO se puede deshacer! ¿Confirmas?");
-    if (!confirm2) return;
-
+    if (!confirm("⚠️ ¿Vaciar Evaluaciones, Órdenes y Recepciones?")) return;
     try {
         const res = await fetch('/api/master/limpiar-bd', { method: 'POST' });
-        const data = await res.json();
-
         if (res.ok) {
-            alert("✅ " + data.message);
+            alert("✅ Base de datos limpia.");
             await cargarTodoDesdeServidor(true);
-        } else {
-            alert("❌ " + (data.error || "Ocurrió un error al limpiar la base de datos."));
         }
     } catch (e) {
         console.error(e);
-        alert("❌ Error de conexión al servidor.");
     }
 }
