@@ -250,6 +250,15 @@ app.post('/api/compras', async (req, res) => {
     }
 });
 
+app.delete('/api/compras/:idOrden', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM compras WHERE id_orden = $1', [req.params.idOrden]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- RUTAS RECEPCIONES ---
 app.get('/api/recepciones', async (req, res) => {
     try {
