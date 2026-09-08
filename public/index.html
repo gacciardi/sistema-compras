@@ -132,12 +132,36 @@
 
                         <h3 style="margin-top: 20px;">Criterios de Evaluación Inicial</h3>
                         <div class="form-grid-2col">
-                            <div class="form-group"><input type="text" id="crit-nombre-1" value="Cumplimiento de Entrega"><input type="number" id="crit-cant-1" placeholder="Puntos (0-100)"></div>
-                            <div class="form-group"><input type="text" id="crit-nombre-2" value="Calidad Insumos/Servicios"><input type="number" id="crit-cant-2" placeholder="Puntos (0-100)"></div>
-                            <div class="form-group"><input type="text" id="crit-nombre-3" value="Condicion de Pago"><input type="number" id="crit-cant-3" placeholder="Puntos (0-100)"></div>
-                            <div class="form-group"><input type="text" id="crit-nombre-4" value="Plazo de Entrega"><input type="number" id="crit-cant-4" placeholder="Puntos (0-100)"></div>
-                            <div class="form-group"><input type="text" id="crit-nombre-5" value="Atencion"><input type="number" id="crit-cant-5" placeholder="Puntos (0-100)"></div>
-                            <div class="form-group"><input type="text" id="crit-nombre-6" value="Respuesta a Reclamos"><input type="number" id="crit-cant-6" placeholder="Puntos (0-100)"></div>
+                            <div class="form-group">
+                                <label>Criterio 1:</label>
+                                <input type="text" id="crit-nombre-1" placeholder="Nombre">
+                                <input type="number" id="crit-cant-1" min="0" max="100" placeholder="Puntos (0-100)">
+                            </div>
+                            <div class="form-group">
+                                <label>Criterio 2:</label>
+                                <input type="text" id="crit-nombre-2" placeholder="Nombre">
+                                <input type="number" id="crit-cant-2" min="0" max="100" placeholder="Puntos (0-100)">
+                            </div>
+                            <div class="form-group">
+                                <label>Criterio 3:</label>
+                                <input type="text" id="crit-nombre-3" placeholder="Nombre">
+                                <input type="number" id="crit-cant-3" min="0" max="100" placeholder="Puntos (0-100)">
+                            </div>
+                            <div class="form-group">
+                                <label>Criterio 4:</label>
+                                <input type="text" id="crit-nombre-4" placeholder="Nombre">
+                                <input type="number" id="crit-cant-4" min="0" max="100" placeholder="Puntos (0-100)">
+                            </div>
+                            <div class="form-group">
+                                <label>Criterio 5:</label>
+                                <input type="text" id="crit-nombre-5" placeholder="Nombre">
+                                <input type="number" id="crit-cant-5" min="0" max="100" placeholder="Puntos (0-100)">
+                            </div>
+                            <div class="form-group">
+                                <label>Criterio 6:</label>
+                                <input type="text" id="crit-nombre-6" placeholder="Nombre">
+                                <input type="number" id="crit-cant-6" min="0" max="100" placeholder="Puntos (0-100)">
+                            </div>
                         </div>
 
                         <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Guardar Proveedor</button>
@@ -164,6 +188,11 @@
             <section id="tab-estadisticas" class="tab-content">
                 <div class="form-card">
                     <h2>📊 Evaluación Periódica de Desempeño de Proveedores</h2>
+                    
+                    <!-- 📦 CAJAS DE INFORMACIÓN AUTOMÁTICA -->
+                    <div id="info-caja-recepciones" style="display:none; background:#e8f4fd; border-left: 4px solid #2196F3; padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;"></div>
+                    <div id="info-caja-oc" style="display:none; background:#e8f8f5; border-left: 4px solid #2ecc71; padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;"></div>
+
                     <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
                         <div class="form-grid">
                             <div class="form-group">
