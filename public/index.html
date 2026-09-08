@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="page-title">Sistema de Gestión e Inspección de Compras</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- jsPDF para generación de PDFs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Chart.js para gráficos estadísticos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -32,7 +30,7 @@
         </div>
     </div>
 
-    <!-- PANTALLA PRINCIPAL DE LA APLICACIÓN -->
+    <!-- PANTALLA PRINCIPAL -->
     <div id="app-screen" style="display: none;">
         <header class="app-header">
             <div class="header-left">
@@ -46,7 +44,6 @@
             </div>
         </header>
 
-        <!-- BARRA DE NAVEGACIÓN POR PESTAÑAS -->
         <nav class="nav-tabs">
             <button id="btn-tab-requisitos" class="tab-btn active" onclick="showTab('tab-requisitos')">P1: Requisitos de Compra</button>
             <button id="btn-tab-proveedores" class="tab-btn" onclick="showTab('tab-proveedores')">P2: Criterios y Alta Proveedores</button>
@@ -248,7 +245,6 @@
                 <div class="form-card">
                     <h2>🛍️ Emisión de Órdenes de Compra</h2>
                     <form id="form-compras" onsubmit="iniciarCompra(event)">
-                        <!-- CAMPO OCULTO PARA SABER SI SE ESTÁ EDITANDO UNA ORDEN -->
                         <input type="hidden" id="compra-edit-id">
 
                         <div class="form-grid">
@@ -403,6 +399,7 @@
                                 <th>Cant. Recibida</th>
                                 <th>Calidad</th>
                                 <th>Fecha Recepción</th>
+                                <th>Recibido por</th>
                                 <th>Observaciones</th>
                                 <th>Estado</th>
                             </tr>
@@ -477,7 +474,6 @@
             </div>
 
             <div id="master-panel" class="modal-body" style="display: none;">
-                
                 <h3>Matriz de Permisos por Sector (Pestañas)</h3>
                 <div id="matriz-permisos-container"></div>
                 <button class="btn-primary" onclick="guardarPermisosSectores()" style="margin-top: 10px;">💾 Guardar Permisos de Sectores</button>
@@ -524,7 +520,7 @@
                 <hr style="margin: 20px 0;">
 
                 <h3>Mantenimiento de Base de Datos</h3>
-                <button class="btn-danger" onclick="limpiarBaseDeDatosMaster()">🚨 Limpiar Datos de Prueba (Evaluaciones, Órdenes y Recepciones)</button>
+                <button class="btn-danger" onclick="limpiarBaseDeDatosMaster()">🚨 Limpiar Datos de Prueba</button>
             </div>
         </div>
     </div>
