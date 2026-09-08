@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 5000);
 });
 
-// --- AUTENTICACIÓN Y CONTROL DE ACCESO ---
+// --- AUTENTICACIÓN Y CONTROL DE ACCESO CORREGIDO ---
 async function iniciarSesionUsuario(e) {
     if (e) e.preventDefault();
 
@@ -79,7 +79,7 @@ async function iniciarSesionUsuario(e) {
 
     if (!usrInput || !passInput) return;
 
-    const usrName = usrInput.value.trim();
+    const usrName = usrInput.value.trim().toLowerCase();
     const pass = passInput.value.trim();
 
     if (!usrName || !pass) {
@@ -88,7 +88,7 @@ async function iniciarSesionUsuario(e) {
     }
 
     // 1. Verificación para usuario Admin Master
-    if (usrName.toLowerCase() === 'admin' && pass === masterPasswordActual) {
+    if (usrName === 'admin' && pass === masterPasswordActual) {
         usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
@@ -97,14 +97,19 @@ async function iniciarSesionUsuario(e) {
         return;
     }
 
-    // Asegurar datos cargados si no estaban listos
+    // 2. Traer la lista actualizada directamente del backend si la lista está vacía
     if (!usuarios || usuarios.length === 0) {
-        await cargarTodoDesdeServidor(false);
+        try {
+            const resUsr = await fetch('/api/usuarios');
+            usuarios = await resUsr.json();
+        } catch (err) {
+            console.error("Error al consultar usuarios:", err);
+        }
     }
 
-    // 2. Verificación para usuarios registrados
+    // 3. Verificación para usuarios registrados
     const usrObj = usuarios.find(u => 
-        u.nombre.toLowerCase() === usrName.toLowerCase() && 
+        u.nombre.trim().toLowerCase() === usrName && 
         String(u.pass).trim() === pass
     );
 
