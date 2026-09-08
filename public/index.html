@@ -107,7 +107,7 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA 2: PROVEEDORES -->
+            <!-- PESTAÑA 2: PROVEEDORES (CON TABLA AZUL DE VALORACIÓN) -->
             <section id="tab-proveedores" class="tab-content">
                 <div class="form-card">
                     <h2>🏬 Alta y Criterios de Selección de Proveedores</h2>
@@ -140,6 +140,16 @@
                             <div class="form-group"><input type="text" id="crit-nombre-6" placeholder="Nombre Criterio 6"><input type="number" id="crit-cant-6" min="0" max="100" placeholder="Puntos (0-100)"></div>
                         </div>
 
+                        <!-- TABLA AZUL DE VALORACIÓN DE CONDICIÓN DE PAGO EN PESTAÑA 2 -->
+                        <div style="margin-top: 20px; padding: 12px; background: #e1f5fe; border-left: 4px solid #0288d1; border-radius: 4px; font-size: 0.9em;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h5 style="color: #01579b; margin: 0;">📌 Tabla de Valoración de Condición de Pago:</h5>
+                                <button type="button" class="btn-secondary" onclick="abrirModalGestionPago()" style="font-size: 0.8em; padding: 4px 8px;">✏️ Modificar Tabla</button>
+                            </div>
+                            <p style="margin: 5px 0 0 0;">El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
+                            <ul id="lista-reglas-pago-ui" style="margin: 5px 0 0 20px; padding: 0;"></ul>
+                        </div>
+
                         <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Guardar Proveedor</button>
                     </form>
                 </div>
@@ -165,7 +175,6 @@
                 <div class="form-card">
                     <h2>📊 Evaluación Periódica de Desempeño de Proveedores</h2>
                     
-                    <!-- CAJAS DE INFORMACIÓN AUTOMÁTICA -->
                     <div id="info-caja-recepciones" style="display:none; background:#e8f4fd; border-left: 4px solid #2196F3; padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;"></div>
                     <div id="info-caja-oc" style="display:none; background:#e8f8f5; border-left: 4px solid #2ecc71; padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;"></div>
 
@@ -296,7 +305,7 @@
                             </div>
                         </div>
 
-                        <!-- REGLA 1: CÁLCULO DE ENTREGA REAL -->
+                        <!-- REGLA CÁLCULO ENTREGA REAL -->
                         <div style="margin-top: 20px; padding: 12px; background: #fffde7; border-left: 4px solid #fbc02d; border-radius: 4px; font-size: 0.9em;">
                             <h5 style="margin: 0 0 5px 0; color: #f57f17;">📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
                             <p style="margin: 0;">El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
@@ -306,16 +315,6 @@
                                 <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
                                 <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
                             </ul>
-                        </div>
-
-                        <!-- REGLA 2: VALORACIÓN DE CONDICIÓN DE PAGO (DINÁMICA AZUL) -->
-                        <div style="margin-top: 15px; padding: 12px; background: #e1f5fe; border-left: 4px solid #0288d1; border-radius: 4px; font-size: 0.9em;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h5 style="color: #01579b; margin: 0;">📌 Tabla de Valoración de Condición de Pago:</h5>
-                                <button type="button" class="btn-secondary" onclick="abrirModalGestionPago()" style="font-size: 0.8em; padding: 4px 8px;">✏️ Modificar Tabla</button>
-                            </div>
-                            <p style="margin: 5px 0 0 0;">El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
-                            <ul id="lista-reglas-pago-ui" style="margin: 5px 0 0 20px; padding: 0;"></ul>
                         </div>
 
                         <!-- PRE-EVALUACIÓN INTERNA -->
