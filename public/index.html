@@ -248,6 +248,9 @@
                 <div class="form-card">
                     <h2>🛍️ Emisión de Órdenes de Compra</h2>
                     <form id="form-compras" onsubmit="iniciarCompra(event)">
+                        <!-- CAMPO OCULTO PARA SABER SI SE ESTÁ EDITANDO UNA ORDEN -->
+                        <input type="hidden" id="compra-edit-id">
+
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>N° de Formulario:</label>
@@ -302,7 +305,10 @@
                             <textarea id="compra-observaciones" rows="2" placeholder="Observaciones de entrega, aclaraciones para orden abierta..."></textarea>
                         </div>
 
-                        <button type="submit" class="btn-primary" style="margin-top: 15px;">📄 Emitir y Generar PDF Orden de Compra</button>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button type="submit" id="btn-submit-compras" class="btn-primary">📄 Emitir y Generar PDF Orden de Compra</button>
+                            <button type="button" id="btn-cancel-edit-compras" class="btn-secondary" style="display:none;" onclick="cancelarEdicionCompra()">Cancelar Edición</button>
+                        </div>
                     </form>
                 </div>
 
@@ -321,6 +327,7 @@
                                 <th>Emisión</th>
                                 <th>Fecha Req.</th>
                                 <th>Estado</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-compras-body"></tbody>
