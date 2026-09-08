@@ -1316,7 +1316,7 @@ function renderizarTablaUsuarios() {
     tbody.innerHTML = '';
 
     if (!usuarios || usuarios.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay usuarios registrados</td></tr>';
         return;
     }
 
@@ -1324,6 +1324,7 @@ function renderizarTablaUsuarios() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${u.nombre}</strong></td>
+            <td><code>${u.pass || ''}</code></td>
             <td>${u.sector}</td>
             <td>${u.estado}</td>
             <td>
