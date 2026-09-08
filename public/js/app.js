@@ -447,7 +447,7 @@ async function eliminarProveedor(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 3: EVALUACIÓN Y CÁLCULOS AUTOMÁTICOS ---
+// --- PESTAÑA 3: EVALUACIÓN Y CÁLCULOS AUTOMÁTICOS (INCLUYENDO LAS 2 CAJAS DE INFORMACIÓN) ---
 function calcularFechaProximaDesdeDias() {
     const fEvalVal = document.getElementById('fecha-evaluacion')?.value;
     const diasVal = parseInt(document.getElementById('dias-proxima-eval')?.value);
@@ -471,6 +471,19 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const provObj = proveedores.find(p => p.num === provNum);
     const nombreProv = provObj ? provObj.nombre : '';
     const recepcionesProv = recepciones.filter(r => r.provNombre === nombreProv);
+    
+    // Actualización de la Caja de Información de Recepciones (Pest. 5)
+    const infoCajaRec = document.getElementById('info-caja-recepciones');
+    if (infoCajaRec) {
+        if (recepcionesProv.length > 0) {
+            infoCajaRec.innerHTML = `📦 <b>Recepciones evaluadas:</b> ${recepcionesProv.length} remito(s) encontrados para ${nombreProv}.`;
+            infoCajaRec.style.display = 'block';
+        } else {
+            infoCajaRec.innerHTML = `⚠️ <b>Aviso:</b> No se registran remitos de recepción (Pest. 5) para este proveedor.`;
+            infoCajaRec.style.display = 'block';
+        }
+    }
+
     if (recepcionesProv.length === 0) return null;
 
     let sumaPuntajes = 0, contador = 0;
@@ -498,6 +511,19 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
 
 function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
     const ordenesProv = ordenesCompra.filter(oc => oc.provNum === provNum);
+    
+    // Actualización de la Caja de Información de Órdenes de Compra (Pest. 4)
+    const infoCajaOC = document.getElementById('info-caja-oc');
+    if (infoCajaOC) {
+        if (ordenesProv.length > 0) {
+            infoCajaOC.innerHTML = `📋 <b>Órdenes de Compra evaluadas:</b> ${ordenesProv.length} OC(s) encontradas. Promedios calculados automáticamente.`;
+            infoCajaOC.style.display = 'block';
+        } else {
+            infoCajaOC.innerHTML = `⚠️ <b>Aviso:</b> No se registran Órdenes de Compra (Pest. 4) para este proveedor.`;
+            infoCajaOC.style.display = 'block';
+        }
+    }
+
     if (ordenesProv.length === 0) return { pago: null, plazo: null };
 
     let sumaPago = 0, contPago = 0;
@@ -586,6 +612,12 @@ function cargarCalificacionExistente() {
         const oc = calcularPromediosPreEvaluacionOC(provNum, anio);
         if (oc.pago !== null) document.getElementById('stat-val-3').value = oc.pago;
         if (oc.plazo !== null) document.getElementById('stat-val-4').value = oc.plazo;
+    } else {
+        // Ocultar cajas si no hay proveedor seleccionado
+        const c1 = document.getElementById('info-caja-recepciones');
+        const c2 = document.getElementById('info-caja-oc');
+        if (c1) c1.style.display = 'none';
+        if (c2) c2.style.display = 'none';
     }
     calcularPuntajeClase();
 }
