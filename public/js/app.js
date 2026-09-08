@@ -905,6 +905,7 @@ function autoCompletarPuntajePago() {
 async function iniciarCompra(e) {
     if (e) e.preventDefault();
 
+    const editId = document.getElementById('compra-edit-id')?.value;
     const numFormulario = document.getElementById('num-formulario-comp').value.trim();
     const tipoOrden = document.getElementById('select-compra-tipo')?.value || 'Normal';
     const provNum = document.getElementById('select-compra-prov').value;
@@ -922,18 +923,21 @@ async function iniciarCompra(e) {
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
 
-    let nuevoNumero = 1001;
-    if (ordenesCompra.length > 0) {
-        const numerosExistentes = ordenesCompra.map(o => {
-            const num = parseInt(o.idOrden.replace('OC-', ''));
-            return isNaN(num) ? 0 : num;
-        });
-        nuevoNumero = Math.max(...numerosExistentes) + 1;
+    let idOrden = editId;
+
+    if (!idOrden) {
+        let nuevoNumero = 1001;
+        if (ordenesCompra.length > 0) {
+            const numerosExistentes = ordenesCompra.map(o => {
+                const num = parseInt(o.idOrden.replace('OC-', ''));
+                return isNaN(num) ? 0 : num;
+            });
+            nuevoNumero = Math.max(...numerosExistentes) + 1;
+        }
+        idOrden = `OC-${nuevoNumero}`;
     }
 
-    const idOrden = `OC-${nuevoNumero}`;
-
-    const nuevaOrden = {
+    const ordenGuardar = {
         idOrden,
         tipoOrden,
         numFormulario,
@@ -955,11 +959,11 @@ async function iniciarCompra(e) {
     await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevaOrden)
+        body: JSON.stringify(ordenGuardar)
     });
 
-    generarPDFOrden(nuevaOrden);
-    document.getElementById('form-compras').reset();
+    generarPDFOrden(ordenGuardar);
+    cancelarEdicionCompra();
     await cargarTodoDesdeServidor(true);
 }
 
@@ -975,8 +979,9 @@ function renderizarTablaCompras() {
         const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
-        const btnEliminar = oc.estado === 'Pendiente' 
-            ? `<button class="btn-danger" onclick="eliminarOrdenCompra('${oc.idOrden}')">Eliminar</button>` 
+        const botonesAcciones = oc.estado === 'Pendiente' 
+            ? `<button class="btn-warning" onclick="editarOrdenCompra('${oc.idOrden}')">Editar</button>
+               <button class="btn-danger" onclick="eliminarOrdenCompra('${oc.idOrden}')">Eliminar</button>` 
             : `<small style="color:#777;">No editable</small>`;
 
         tr.innerHTML = `
@@ -990,10 +995,61 @@ function renderizarTablaCompras() {
             <td>${fEmis}</td>
             <td>${fReq}</td>
             <td><span class="${badgeClass}">${oc.estado}</span></td>
-            <td>${btnEliminar}</td>
+            <td>${botonesAcciones}</td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function editarOrdenCompra(idOrden) {
+    const oc = ordenesCompra.find(o => o.idOrden === idOrden);
+    if (!oc) return;
+
+    const editIdInput = document.getElementById('compra-edit-id');
+    if (editIdInput) editIdInput.value = oc.idOrden;
+
+    document.getElementById('num-formulario-comp').value = oc.numFormulario || '';
+    
+    const tipoSelect = document.getElementById('select-compra-tipo');
+    if (tipoSelect) tipoSelect.value = oc.tipoOrden || 'Normal';
+
+    document.getElementById('select-compra-prov').value = oc.provNum || '';
+    document.getElementById('select-compra-req').value = oc.reqNum || '';
+    document.getElementById('compra-cantidad').value = oc.cantidad || '';
+    
+    if (oc.fechaEmision) {
+        document.getElementById('compra-fecha-emision').value = oc.fechaEmision.split('T')[0];
+    }
+    if (oc.fechaReq) {
+        document.getElementById('compra-fecha-req').value = oc.fechaReq.split('T')[0];
+    }
+
+    document.getElementById('select-compra-condicion-pago').value = oc.condicionPago || '';
+    document.getElementById('compra-pago-eval').value = oc.pagoEval || '';
+    document.getElementById('compra-plazo-eval').value = oc.plazoEval || '';
+    document.getElementById('compra-observaciones').value = oc.observaciones || '';
+
+    const btnSubmit = document.getElementById('btn-submit-compras');
+    if (btnSubmit) btnSubmit.innerText = `💾 Actualizar Orden (${oc.idOrden})`;
+
+    const btnCancel = document.getElementById('btn-cancel-edit-compras');
+    if (btnCancel) btnCancel.style.display = 'inline-block';
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelarEdicionCompra() {
+    const editIdInput = document.getElementById('compra-edit-id');
+    if (editIdInput) editIdInput.value = '';
+
+    const formCompras = document.getElementById('form-compras');
+    if (formCompras) formCompras.reset();
+
+    const btnSubmit = document.getElementById('btn-submit-compras');
+    if (btnSubmit) btnSubmit.innerText = '📄 Emitir y Generar PDF Orden de Compra';
+
+    const btnCancel = document.getElementById('btn-cancel-edit-compras');
+    if (btnCancel) btnCancel.style.display = 'none';
 }
 
 async function eliminarOrdenCompra(idOrden) {
