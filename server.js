@@ -86,7 +86,8 @@ async function initDB() {
                 tiempo VARCHAR(100),
                 calidad VARCHAR(100),
                 obs TEXT,
-                fecha_recepcion DATE
+                fecha_recepcion DATE,
+                usuario VARCHAR(255)
             );
 
             CREATE TABLE IF NOT EXISTS usuarios (
@@ -97,7 +98,7 @@ async function initDB() {
             );
         `);
 
-        // Migración automática por si las columnas no existen en instalaciones previas
+        // Migración automática por si las columnas faltan en bases de datos existentes
         await pool.query(`
             DO $$ 
             BEGIN 
@@ -106,6 +107,9 @@ async function initDB() {
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='tipo_orden') THEN
                     ALTER TABLE compras ADD COLUMN tipo_orden VARCHAR(50) DEFAULT 'Normal';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recepciones' AND column_name='usuario') THEN
+                    ALTER TABLE recepciones ADD COLUMN usuario VARCHAR(255);
                 END IF;
             END $$;
         `);
@@ -266,7 +270,7 @@ app.delete('/api/compras/:idOrden', async (req, res) => {
 // --- RUTAS RECEPCIONES ---
 app.get('/api/recepciones', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT id, num_formulario AS "numFormulario", id_orden AS "idOrden", prov_nombre AS "provNombre", remito, cant_recibida AS "cantRecibida", empaque, tiempo, calidad, obs, fecha_recepcion AS "fechaRecepcion" FROM recepciones ORDER BY id DESC');
+        const { rows } = await pool.query('SELECT id, num_formulario AS "numFormulario", id_orden AS "idOrden", prov_nombre AS "provNombre", remito, cant_recibida AS "cantRecibida", empaque, tiempo, calidad, obs, fecha_recepcion AS "fechaRecepcion", usuario FROM recepciones ORDER BY id DESC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -274,11 +278,11 @@ app.get('/api/recepciones', async (req, res) => {
 });
 
 app.post('/api/recepciones', async (req, res) => {
-    const { numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion } = req.body;
+    const { numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion, usuario } = req.body;
     try {
         await pool.query(
-            'INSERT INTO recepciones (num_formulario, id_orden, prov_nombre, remito, cant_recibida, empaque, tiempo, calidad, obs, fecha_recepcion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-            [numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion || null]
+            'INSERT INTO recepciones (num_formulario, id_orden, prov_nombre, remito, cant_recibida, empaque, tiempo, calidad, obs, fecha_recepcion, usuario) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+            [numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion || null, usuario || 'admin']
         );
         await pool.query('UPDATE compras SET estado = $1 WHERE id_orden = $2', ['Recibido', idOrden]);
         res.json({ success: true });
@@ -323,10 +327,10 @@ app.delete('/api/usuarios/:nombre', async (req, res) => {
 app.post('/api/master/limpiar-bd', async (req, res) => {
     try {
         await pool.query('TRUNCATE TABLE estadisticas, compras, recepciones RESTART IDENTITY CASCADE;');
-        res.json({ success: true, message: 'Se eliminaron correctamente todas las Evaluaciones (Pest. 3), Órdenes de Compra (Pest. 4) y Recepciones (Pest. 5).' });
+        res.json({ success: true, message: 'Se eliminaron correctamente todas las Evaluaciones, Órdenes y Recepciones.' });
     } catch (err) {
         console.error("Error al limpiar datos de pruebas:", err);
-        res.status(500).json({ error: 'Error al intentar vaciar Evaluaciones, Órdenes y Recepciones.' });
+        res.status(500).json({ error: 'Error al intentar vaciar las tablas.' });
     }
 });
 
