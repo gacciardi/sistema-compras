@@ -340,7 +340,7 @@ async function eliminarRequisito(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PROVEEDORES ---
+// --- PESTAÑA 2: PROVEEDORES (CON REGLAS DE VALIDACIÓN) ---
 async function guardarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`crit-nombre-${i}`);
@@ -362,16 +362,27 @@ function cargarNombresCriteriosProveedores() {
 
 async function guardarProveedor(e) {
     if (e) e.preventDefault();
-    await guardarNombresCriteriosProveedores();
+
+    // Reglas de validación Pestaña 2
     const numFormulario = document.getElementById('num-formulario-prov').value.trim();
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
 
+    if (!numFormulario || !num || !nombre) {
+        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, N° de Proveedor / CUIT y Razón Social.");
+        return;
+    }
+
+    await guardarNombresCriteriosProveedores();
+
     const criterios = [];
     for (let i = 1; i <= 6; i++) {
+        let puntos = parseFloat(document.getElementById(`crit-cant-${i}`)?.value);
+        if (isNaN(puntos)) puntos = 0;
+
         criterios.push({
             nombre: document.getElementById(`crit-nombre-${i}`)?.value.trim() || `Criterio ${i}`,
-            cantidad: parseFloat(document.getElementById(`crit-cant-${i}`)?.value) || 0
+            cantidad: puntos
         });
     }
 
@@ -429,7 +440,7 @@ async function eliminarProveedor(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- ESTADÍSTICAS ---
+// --- PESTAÑA 3: ESTADÍSTICAS Y EVALUACIÓN (CON REGLAS DE VALIDACIÓN) ---
 function calcularFechaProximaDesdeDias() {
     const fEvalVal = document.getElementById('fecha-evaluacion')?.value;
     const diasVal = parseInt(document.getElementById('dias-proxima-eval')?.value);
@@ -594,20 +605,32 @@ function calcularPuntajeClase() {
 
 async function calcularEstadistica(e) {
     if (e) e.preventDefault();
+
+    // Reglas de validación Pestaña 3
     const provNum = document.getElementById('select-prov-estadistica').value;
     const anio = document.getElementById('select-anio-estadistica').value;
-    if (!provNum || !anio) return;
+    const fechaEval = document.getElementById('fecha-evaluacion').value;
+    const numFormulario = document.getElementById('num-formulario').value.trim();
+
+    if (!numFormulario || !provNum || !anio || !fechaEval) {
+        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, Proveedor, Año de Evaluación y Fecha de Evaluación Real.");
+        return;
+    }
 
     await guardarNombresCriteriosEstadisticas();
-    const numFormulario = document.getElementById('num-formulario').value.trim();
     const proveedor = proveedores.find(p => p.num === provNum);
     const { promedio, clase, claseCSS } = calcularPuntajeClase();
-    const fechaEval = document.getElementById('fecha-evaluacion').value;
     const diasPlazo = parseInt(document.getElementById('dias-proxima-eval').value) || 0;
     const fechaProx = calcularFechaProximaDesdeDias();
 
     const puntajes = [];
-    for (let i = 1; i <= 6; i++) puntajes.push(parseFloat(document.getElementById(`stat-val-${i}`).value) || 0);
+    for (let i = 1; i <= 6; i++) {
+        let val = parseFloat(document.getElementById(`stat-val-${i}`).value);
+        if (isNaN(val)) val = 0;
+        if (val < 0) val = 0;
+        if (val > 100) val = 100; // Normalización estricta (0 a 100 puntos)
+        puntajes.push(val);
+    }
 
     await fetch('/api/estadisticas', {
         method: 'POST',
