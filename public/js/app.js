@@ -1149,6 +1149,9 @@ async function guardarRecepcion(e) {
     const fechaEl = document.getElementById('rec-fecha');
     const fechaRecepcion = fechaEl && fechaEl.value ? fechaEl.value : new Date().toISOString().split('T')[0];
 
+    // Se captura automáticamente el usuario actual conectado
+    const usuarioRecibio = usuarioActual ? usuarioActual.nombre : 'Sistema';
+
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
     const nuevaRec = {
@@ -1161,7 +1164,8 @@ async function guardarRecepcion(e) {
         tiempo: '',
         calidad,
         obs,
-        fechaRecepcion
+        fechaRecepcion,
+        usuarioRecibio
     };
 
     await fetch('/api/recepciones', {
@@ -1199,6 +1203,8 @@ function renderizarTablaRecepciones() {
     recepciones.forEach(r => {
         const tr = document.createElement('tr');
         const fRec = r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : '';
+        const usrRecibio = r.usuarioRecibio || 'Anónimo';
+
         tr.innerHTML = `
             <td><strong>${r.numFormulario || ''}</strong></td>
             <td><strong>${r.idOrden}</strong></td>
@@ -1207,6 +1213,7 @@ function renderizarTablaRecepciones() {
             <td>${r.cantRecibida}</td>
             <td>${r.calidad}</td>
             <td>${fRec}</td>
+            <td><strong>👤 ${usrRecibio}</strong></td>
             <td>${r.obs || '-'}</td>
             <td><span class="status-badge-received">Recibido</span></td>
         `;
