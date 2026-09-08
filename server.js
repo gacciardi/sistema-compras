@@ -11,16 +11,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Rutas de archivos de persistencia
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// Estructura de la base de datos local con usuario por defecto
+// Estructura por defecto para primer inicio únicamente
 let baseDeDatos = {
     requisitos: [],
     proveedores: [],
     estadisticas: [],
     compras: [],
     recepciones: [],
-    usuarios: [
-        { nombre: 'admin', pass: '1234', sector: 'Administración', estado: 'Activo' }
-    ],
+    usuarios: [],
     configuraciones: {
         master_password: '1234',
         sys_title: 'Sistema de Gestión e Inspección de Compras',
@@ -41,25 +39,24 @@ let baseDeDatos = {
     }
 };
 
-// Cargar datos al iniciar
+// Cargar datos preservando siempre lo existente en el JSON
 function cargarBaseDeDatos() {
     if (fs.existsSync(DATA_FILE)) {
         try {
             const rawData = fs.readFileSync(DATA_FILE, 'utf8');
             const datosGuardados = JSON.parse(rawData);
-            baseDeDatos = { ...baseDeDatos, ...datosGuardados };
 
-            // Garantizar que siempre haya al menos un usuario activo
-            if (!baseDeDatos.usuarios || baseDeDatos.usuarios.length === 0) {
-                baseDeDatos.usuarios = [
-                    { nombre: 'admin', pass: '1234', sector: 'Administración', estado: 'Activo' }
-                ];
-            }
+            // Respetar los arreglos previamente guardados
+            baseDeDatos.requisitos = datosGuardados.requisitos || [];
+            baseDeDatos.proveedores = datosGuardados.proveedores || [];
+            baseDeDatos.estadisticas = datosGuardados.estadisticas || [];
+            baseDeDatos.compras = datosGuardados.compras || [];
+            baseDeDatos.recepciones = datosGuardados.recepciones || [];
+            baseDeDatos.usuarios = datosGuardados.usuarios || [];
+            baseDeDatos.configuraciones = { ...baseDeDatos.configuraciones, ...(datosGuardados.configuraciones || {}) };
         } catch (e) {
             console.error("Error al leer data.json:", e);
         }
-    } else {
-        guardarBaseDeDatos();
     }
 }
 
