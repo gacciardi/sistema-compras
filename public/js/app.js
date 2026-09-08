@@ -447,7 +447,7 @@ async function eliminarProveedor(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 3: EVALUACIÓN Y CÁLCULOS AUTOMÁTICOS (INCLUYENDO LAS 2 CAJAS DE INFORMACIÓN) ---
+// --- PESTAÑA 3: EVALUACIÓN DE DESEMPEÑO Y VALORACIONES ---
 function calcularFechaProximaDesdeDias() {
     const fEvalVal = document.getElementById('fecha-evaluacion')?.value;
     const diasVal = parseInt(document.getElementById('dias-proxima-eval')?.value);
@@ -472,7 +472,6 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const nombreProv = provObj ? provObj.nombre : '';
     const recepcionesProv = recepciones.filter(r => r.provNombre === nombreProv);
     
-    // Actualización de la Caja de Información de Recepciones (Pest. 5)
     const infoCajaRec = document.getElementById('info-caja-recepciones');
     if (infoCajaRec) {
         if (recepcionesProv.length > 0) {
@@ -512,7 +511,6 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
 function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
     const ordenesProv = ordenesCompra.filter(oc => oc.provNum === provNum);
     
-    // Actualización de la Caja de Información de Órdenes de Compra (Pest. 4)
     const infoCajaOC = document.getElementById('info-caja-oc');
     if (infoCajaOC) {
         if (ordenesProv.length > 0) {
@@ -613,7 +611,6 @@ function cargarCalificacionExistente() {
         if (oc.pago !== null) document.getElementById('stat-val-3').value = oc.pago;
         if (oc.plazo !== null) document.getElementById('stat-val-4').value = oc.plazo;
     } else {
-        // Ocultar cajas si no hay proveedor seleccionado
         const c1 = document.getElementById('info-caja-recepciones');
         const c2 = document.getElementById('info-caja-oc');
         if (c1) c1.style.display = 'none';
@@ -719,7 +716,7 @@ function editarEstadistica(provNum, anio) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- PESTAÑA 4: ÓRDENES DE COMPRA ---
+// --- PESTAÑA 4: ÓRDENES DE COMPRA & TABLA DINÁMICA DE PAGOS ---
 function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
     if (selectProv) {
@@ -760,6 +757,8 @@ function actualizarSelectsCompras() {
             selectCondPago.appendChild(opt);
         });
     }
+
+    renderizarListaReglasPagoUI();
 }
 
 function autoCompletarPuntajePago() {
@@ -773,6 +772,126 @@ function autoCompletarPuntajePago() {
             inputPagoEval.value = '';
         }
     }
+}
+
+function renderizarListaReglasPagoUI() {
+    const ul = document.getElementById('lista-reglas-pago-ui');
+    if (!ul) return;
+    ul.innerHTML = '';
+    Object.keys(tablaCondicionPagoPuntos).forEach(cond => {
+        const pts = tablaCondicionPagoPuntos[cond];
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${cond}:</strong> ${pts} Puntos`;
+        ul.appendChild(li);
+    });
+}
+
+function abrirModalGestionPago() {
+    document.getElementById('modal-gestion-pago').style.display = 'flex';
+    renderizarTablaModalGestionPago();
+}
+
+function cerrarModalGestionPago() {
+    document.getElementById('modal-gestion-pago').style.display = 'none';
+}
+
+function renderizarTablaModalGestionPago() {
+    const container = document.getElementById('tabla-gestion-pago-container');
+    if (!container) return;
+
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Nombre Condición de Pago</th>
+                <th>Puntaje (0-100 pts)</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    Object.keys(tablaCondicionPagoPuntos).forEach((cond, idx) => {
+        const pts = tablaCondicionPagoPuntos[cond];
+        html += `<tr>
+            <td><input type="text" id="modal-cond-nombre-${idx}" value="${cond}" style="width: 100%; padding: 4px;"></td>
+            <td><input type="number" min="0" max="100" id="modal-cond-pts-${idx}" value="${pts}" style="width: 80px; padding: 4px;"> pts</td>
+            <td><button class="btn-danger" onclick="eliminarCondicionPagoModal('${cond}')">Eliminar</button></td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+function eliminarCondicionPagoModal(cond) {
+    if (Object.keys(tablaCondicionPagoPuntos).length <= 1) {
+        alert("Debe quedar al menos una condición de pago registrada.");
+        return;
+    }
+    delete tablaCondicionPagoPuntos[cond];
+    renderizarTablaModalGestionPago();
+}
+
+function agregarNuevaCondicionDirecta() {
+    const nombreInput = document.getElementById('nuevo-pago-nombre');
+    const puntosInput = document.getElementById('nuevo-pago-puntos');
+
+    const nombre = nombreInput.value.trim();
+    const puntos = parseInt(puntosInput.value);
+
+    if (!nombre) {
+        alert("Por favor ingresa un nombre para la nueva condición.");
+        return;
+    }
+    if (isNaN(puntos) || puntos < 0 || puntos > 100) {
+        alert("Por favor ingresa un puntaje válido entre 0 y 100.");
+        return;
+    }
+
+    tablaCondicionPagoPuntos[nombre] = puntos;
+    nombreInput.value = '';
+    puntosInput.value = '';
+
+    renderizarTablaModalGestionPago();
+}
+
+async function guardarCambiosModalPago() {
+    const nuevaTabla = {};
+    const keysOriginales = Object.keys(tablaCondicionPagoPuntos);
+
+    for (let i = 0; i < keysOriginales.length; i++) {
+        const inputNombre = document.getElementById(`modal-cond-nombre-${i}`);
+        const inputPts = document.getElementById(`modal-cond-pts-${i}`);
+
+        if (inputNombre && inputPts) {
+            const nombreVal = inputNombre.value.trim();
+            const ptsVal = parseInt(inputPts.value);
+
+            if (nombreVal && !isNaN(ptsVal)) {
+                nuevaTabla[nombreVal] = Math.min(100, Math.max(0, ptsVal));
+            }
+        }
+    }
+
+    if (Object.keys(nuevaTabla).length === 0) {
+        alert("La tabla no puede estar vacía.");
+        return;
+    }
+
+    tablaCondicionPagoPuntos = nuevaTabla;
+    opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
+
+    await fetch('/api/configuraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clave: 'tabla_condicion_pago_puntos', valor: tablaCondicionPagoPuntos })
+    });
+
+    actualizarSelectsCompras();
+    renderizarListaReglasPagoUI();
+    autoCompletarPuntajePago();
+    cerrarModalGestionPago();
+
+    alert("✅ Escala de valoración y condiciones de pago actualizadas correctamente.");
 }
 
 async function iniciarCompra(e) {
