@@ -107,7 +107,7 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA 2: PROVEEDORES (CON PRE-EVALUACIÓN AMARILLA) -->
+            <!-- PESTAÑA 2: PROVEEDORES (SOLO CRITERIOS Y ALTA) -->
             <section id="tab-proveedores" class="tab-content">
                 <div class="form-card">
                     <h2>🏬 Alta y Criterios de Selección de Proveedores</h2>
@@ -140,23 +140,6 @@
                             <div class="form-group"><input type="text" id="crit-nombre-6" placeholder="Nombre Criterio 6"><input type="number" id="crit-cant-6" min="0" max="100" placeholder="Puntos (0-100)"></div>
                         </div>
 
-                        <!-- CUADRO AMARILLO EN PESTAÑA 2 -->
-                        <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
-                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
-                            <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes asignados para la Pestaña 3 (No se imprimen en la Orden de Compra).</p>
-                            
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado 0-100 pts) *</label>
-                                    <input type="number" id="prov-pago-eval" min="0" max="100" placeholder="Puntaje Auto" style="border: 2px solid #ffb74d; background-color: #fff8e1;">
-                                </div>
-                                <div class="form-group">
-                                    <label style="color: #e65100; font-weight: bold;">Plazo de Entrega (0 - 100 pts) *</label>
-                                    <input type="number" id="prov-plazo-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;">
-                                </div>
-                            </div>
-                        </div>
-
                         <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Guardar Proveedor</button>
                     </form>
                 </div>
@@ -177,7 +160,7 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA 3: EVALUACIÓN DE DESEMPEÑO (CON REGLA DE CÁLCULO DE ENTREGA REAL) -->
+            <!-- PESTAÑA 3: EVALUACIÓN DE DESEMPEÑO (CON CUADRO AMARILLO AUTO-CALCULADO Y REGLA) -->
             <section id="tab-estadisticas" class="tab-content">
                 <div class="form-card">
                     <h2>📊 Evaluación Periódica de Desempeño de Proveedores</h2>
@@ -232,12 +215,27 @@
                             </ul>
                         </div>
 
-                        <h3 style="margin-top: 20px;">Calificación por Criterios (0 a 100 Puntos)</h3>
+                        <!-- CUADRO AMARILLO EN PESTAÑA 3 CON CAMPOS AUTO-CALCULADOS FIJOS -->
+                        <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
+                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
+                            <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes obtenidos automáticamente desde los registros del sistema.</p>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado de Pest. 4) *</label>
+                                    <input type="number" id="stat-val-3" min="0" max="100" placeholder="Puntaje Auto (Pest. 4)" style="border: 2px solid #ffb74d; background-color: #fff8e1;" readonly oninput="calcularPuntajeClase()">
+                                </div>
+                                <div class="form-group">
+                                    <label style="color: #e65100; font-weight: bold;">Cumplimiento de Entrega (Autocalculado de Pest. 5) *</label>
+                                    <input type="number" id="stat-val-1" min="0" max="100" placeholder="Puntaje Auto (Pest. 5)" style="border: 2px solid #ffb74d; background-color: #fff8e1;" readonly oninput="calcularPuntajeClase()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 20px;">Calificación Criterios Adicionales (0 a 100 Puntos)</h3>
                         <div class="form-grid-2col">
-                            <div class="form-group"><input type="text" id="lbl-stat-1" value="Cumplimiento de Entrega (Auto)"><input type="number" id="stat-val-1" min="0" max="100" oninput="calcularPuntajeClase()"></div>
                             <div class="form-group"><input type="text" id="lbl-stat-2" value="Calidad Insumos/Servicios"><input type="number" id="stat-val-2" min="0" max="100" oninput="calcularPuntajeClase()"></div>
-                            <div class="form-group"><input type="text" id="lbl-stat-3" value="Condicion de Pago (OC)"><input type="number" id="stat-val-3" min="0" max="100" oninput="calcularPuntajeClase()"></div>
-                            <div class="form-group"><input type="text" id="lbl-stat-4" value="Plazo de Entrega (OC)"><input type="number" id="stat-val-4" min="0" max="100" oninput="calcularPuntajeClase()"></div>
+                            <div class="form-group"><input type="text" id="lbl-stat-4" value="Plazo de Entrega"><input type="number" id="stat-val-4" min="0" max="100" oninput="calcularPuntajeClase()"></div>
                             <div class="form-group"><input type="text" id="lbl-stat-5" value="Atencion"><input type="number" id="stat-val-5" min="0" max="100" oninput="calcularPuntajeClase()"></div>
                             <div class="form-group"><input type="text" id="lbl-stat-6" value="Respuesta a Reclamos"><input type="number" id="stat-val-6" min="0" max="100" oninput="calcularPuntajeClase()"></div>
                         </div>
@@ -273,7 +271,7 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA 4: EMISIÓN ÓRDENES DE COMPRA (CON TABLA AZUL DE VALORACIÓN Y PRE-EVALUACIÓN) -->
+            <!-- PESTAÑA 4: EMISIÓN ÓRDENES DE COMPRA (CON TABLA AZUL DE VALORACIÓN Y PRE-EVALUACIÓN INTERNA) -->
             <section id="tab-compras" class="tab-content">
                 <div class="form-card">
                     <h2>🛍️ Emisión de Órdenes de Compra</h2>
