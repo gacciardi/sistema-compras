@@ -173,7 +173,10 @@ function showTab(tabId) {
     );
     if (activeButton) activeButton.classList.add('active');
 
-    if (tabId === 'tab-proveedores') cargarNombresCriteriosProveedores();
+    if (tabId === 'tab-proveedores') {
+        cargarNombresCriteriosProveedores();
+        renderizarListaReglasPagoUI();
+    }
     if (tabId === 'tab-estadisticas') actualizarSelectProveedoresEstadisticas();
     if (tabId === 'tab-compras') actualizarSelectsCompras();
     if (tabId === 'tab-recepcion') actualizarSelectOrdenesPendientes();
@@ -257,6 +260,7 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             actualizarSelectSectoresUsuarios();
             cargarNombresCriteriosProveedores();
             cargarNombresCriteriosEstadisticas();
+            renderizarListaReglasPagoUI();
 
             renderizarTablaRequisitos();
             renderizarTablaProveedores();
