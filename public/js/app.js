@@ -340,7 +340,7 @@ async function eliminarRequisito(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 2: PROVEEDORES (CON REGLAS DE VALIDACIÓN) ---
+// --- PESTAÑA 2: PROVEEDORES ---
 async function guardarNombresCriteriosProveedores() {
     for (let i = 1; i <= 6; i++) {
         const el = document.getElementById(`crit-nombre-${i}`);
@@ -363,7 +363,6 @@ function cargarNombresCriteriosProveedores() {
 async function guardarProveedor(e) {
     if (e) e.preventDefault();
 
-    // Reglas de validación Pestaña 2
     const numFormulario = document.getElementById('num-formulario-prov').value.trim();
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
@@ -440,7 +439,7 @@ async function eliminarProveedor(num) {
     await cargarTodoDesdeServidor(true);
 }
 
-// --- PESTAÑA 3: ESTADÍSTICAS Y EVALUACIÓN (CON REGLAS DE VALIDACIÓN) ---
+// --- PESTAÑA 3: EVALUACIÓN Y CÁLCULOS AUTOMÁTICOS ---
 function calcularFechaProximaDesdeDias() {
     const fEvalVal = document.getElementById('fecha-evaluacion')?.value;
     const diasVal = parseInt(document.getElementById('dias-proxima-eval')?.value);
@@ -460,6 +459,7 @@ function calcularFechaProximaDesdeDias() {
     }
 }
 
+// Cálculo automático de Cumplimiento de Entrega basado en Recepciones (Pest. 5) y OC (Pest. 4)
 function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const provObj = proveedores.find(p => p.num === provNum);
     const nombreProv = provObj ? provObj.nombre : '';
@@ -489,6 +489,7 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
     return contador > 0 ? Math.round(sumaPuntajes / contador) : null;
 }
 
+// Cálculo automático de promedios de Condición de Pago y Plazo de Entrega desde las OC (Pest. 4)
 function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
     const ordenesProv = ordenesCompra.filter(oc => oc.provNum === provNum);
     if (ordenesProv.length === 0) return { pago: null, plazo: null };
@@ -573,6 +574,7 @@ function cargarCalificacionExistente() {
         for (let i = 1; i <= 6; i++) document.getElementById(`stat-val-${i}`).value = '';
     }
 
+    // Inyección automática de puntajes basados en recepciones y órdenes de compra
     if (provNum) {
         const pc = calcularPuntajeTiemposReales(provNum, anio);
         if (pc !== null) document.getElementById('stat-val-1').value = pc;
@@ -606,7 +608,6 @@ function calcularPuntajeClase() {
 async function calcularEstadistica(e) {
     if (e) e.preventDefault();
 
-    // Reglas de validación Pestaña 3
     const provNum = document.getElementById('select-prov-estadistica').value;
     const anio = document.getElementById('select-anio-estadistica').value;
     const fechaEval = document.getElementById('fecha-evaluacion').value;
@@ -628,7 +629,7 @@ async function calcularEstadistica(e) {
         let val = parseFloat(document.getElementById(`stat-val-${i}`).value);
         if (isNaN(val)) val = 0;
         if (val < 0) val = 0;
-        if (val > 100) val = 100; // Normalización estricta (0 a 100 puntos)
+        if (val > 100) val = 100;
         puntajes.push(val);
     }
 
@@ -681,7 +682,7 @@ function editarEstadistica(provNum, anio) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- ÓRDENES DE COMPRA ---
+// --- PESTAÑA 4: ÓRDENES DE COMPRA ---
 function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
     if (selectProv) {
@@ -928,7 +929,7 @@ function generarPDFOrden(orden) {
     doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
 }
 
-// --- RECEPCIÓN ---
+// --- PESTAÑA 5: RECEPCIÓN ---
 function actualizarSelectOrdenesPendientes() {
     const select = document.getElementById('select-recepcion-orden');
     if (!select) return;
@@ -1025,7 +1026,7 @@ function renderizarTablaRecepciones() {
     });
 }
 
-// --- USUARIOS ---
+// --- PESTAÑA 6: USUARIOS ---
 async function guardarUsuario(e) {
     if (e) e.preventDefault();
     const nombre = document.getElementById('usr-nombre').value.trim();
