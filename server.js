@@ -1,7 +1,6 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const cors = require('cors');
+const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
@@ -11,196 +10,313 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuración de la Base de Datos PostgreSQL o fallback local JSON
-const usePostgres = !!process.env.DATABASE_URL;
-let pool = null;
+// Configuración de conexión a PostgreSQL
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
 
-if (usePostgres) {
-    pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
-    });
-}
-
-const DATA_FILE = path.join(__dirname, 'data.json');
-
-const defaultData = {
-    requisitos: [],
-    proveedores: [],
-    estadisticas: [],
-    compras: [],
-    recepciones: [],
-    usuarios: [{ nombre: "admin", pass: "1234", sector: "Administración", estado: "Activo" }],
-    configuraciones: {}
-};
-
-// Inicializar BD
+// Inicialización de Tablas en PostgreSQL
 async function initDB() {
-    if (usePostgres) {
-        try {
-            await pool.query(`
-                CREATE TABLE IF NOT EXISTS sistema_datos (
-                    id VARCHAR(50) PRIMARY KEY,
-                    contenido JSONB NOT NULL
-                )
-            `);
-            const res = await pool.query('SELECT contenido FROM sistema_datos WHERE id = $1', ['datos_principales']);
-            if (res.rows.length === 0) {
-                await pool.query('INSERT INTO sistema_datos (id, contenido) VALUES ($1, $2)', ['datos_principales', defaultData]);
-            }
-            console.log("✅ Conectado exitosamente a PostgreSQL en Render");
-        } catch (err) {
-            console.error("❌ Error inicializando PostgreSQL:", err);
-        }
-    } else {
-        if (!fs.existsSync(DATA_FILE)) {
-            fs.writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
-        }
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS configuraciones (
+                clave VARCHAR(255) PRIMARY KEY,
+                valor JSONB
+            );
+
+            CREATE TABLE IF NOT EXISTS requisitos (
+                num VARCHAR(100) PRIMARY KEY,
+                num_formulario VARCHAR(255),
+                nombre VARCHAR(255),
+                fecha DATE,
+                detalle TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS proveedores (
+                num VARCHAR(100) PRIMARY KEY,
+                num_formulario VARCHAR(255),
+                nombre VARCHAR(255),
+                criterios JSONB
+            );
+
+            CREATE TABLE IF NOT EXISTS estadisticas (
+                id SERIAL PRIMARY KEY,
+                num_formulario VARCHAR(255),
+                version VARCHAR(100),
+                prov_num VARCHAR(100),
+                prov_nombre VARCHAR(255),
+                anio VARCHAR(10),
+                fecha_eval DATE,
+                dias_plazo INT,
+                fecha_prox DATE,
+                promedio INT,
+                clase VARCHAR(50),
+                clase_css VARCHAR(50),
+                puntajes JSONB
+            );
+
+            CREATE TABLE IF NOT EXISTS compras (
+                id_orden VARCHAR(100) PRIMARY KEY,
+                num_formulario VARCHAR(255),
+                prov_num VARCHAR(100),
+                prov_nombre VARCHAR(255),
+                req_num VARCHAR(100),
+                req_nombre VARCHAR(255),
+                req_detalle TEXT,
+                cantidad INT,
+                fecha_emision DATE,
+                fecha_req DATE,
+                condicion_pago VARCHAR(255),
+                observaciones TEXT,
+                pago_eval INT,
+                plazo_eval INT,
+                estado VARCHAR(50)
+            );
+
+            CREATE TABLE IF NOT EXISTS recepciones (
+                id SERIAL PRIMARY KEY,
+                num_formulario VARCHAR(255),
+                id_orden VARCHAR(100),
+                prov_nombre VARCHAR(255),
+                remito VARCHAR(255),
+                cant_recibida INT,
+                empaque VARCHAR(100),
+                tiempo VARCHAR(100),
+                calidad VARCHAR(100),
+                obs TEXT,
+                fecha_recepcion DATE
+            );
+
+            CREATE TABLE IF NOT EXISTS usuarios (
+                nombre VARCHAR(255) PRIMARY KEY,
+                pass VARCHAR(255),
+                sector VARCHAR(100),
+                estado VARCHAR(50)
+            );
+        `);
+
+        // Migración automática por si la columna condicion_pago no existe
+        await pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='condicion_pago') THEN
+                    ALTER TABLE compras ADD COLUMN condicion_pago VARCHAR(255);
+                END IF;
+            END $$;
+        `);
+
+        console.log("✅ Tablas de PostgreSQL verificadas/creadas correctamente.");
+    } catch (err) {
+        console.error("❌ Error al inicializar tablas en PostgreSQL:", err);
     }
 }
 
 initDB();
 
-async function obtenerDatos() {
-    if (usePostgres) {
-        try {
-            const res = await pool.query('SELECT contenido FROM sistema_datos WHERE id = $1', ['datos_principales']);
-            return res.rows[0]?.contenido || defaultData;
-        } catch (e) {
-            console.error(e);
-            return defaultData;
-        }
-    } else {
-        try {
-            return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-        } catch (e) {
-            return defaultData;
-        }
+// --- RUTAS DE CONFIGURACIÓN ---
+app.get('/api/configuraciones', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT clave, valor FROM configuraciones');
+        const configMap = {};
+        rows.forEach(r => configMap[r.clave] = r.valor);
+        res.json(configMap);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-}
-
-async function guardarDatos(datos) {
-    if (usePostgres) {
-        try {
-            await pool.query(
-                'INSERT INTO sistema_datos (id, contenido) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET contenido = $2',
-                ['datos_principales', datos]
-            );
-        } catch (e) {
-            console.error("Error al guardar en PostgreSQL:", e);
-        }
-    } else {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(datos, null, 2));
-    }
-}
-
-// Rutas API
-app.get('/api/requisitos', async (req, res) => res.json((await obtenerDatos()).requisitos || []));
-app.post('/api/requisitos', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.requisitos = datos.requisitos || [];
-    const index = datos.requisitos.findIndex(r => r.num === req.body.num);
-    if (index !== -1) datos.requisitos[index] = req.body;
-    else datos.requisitos.push(req.body);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-app.delete('/api/requisitos/:num', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.requisitos = (datos.requisitos || []).filter(r => r.num !== req.params.num);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
 });
 
-app.get('/api/proveedores', async (req, res) => res.json((await obtenerDatos()).proveedores || []));
-app.post('/api/proveedores', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.proveedores = datos.proveedores || [];
-    const index = datos.proveedores.findIndex(p => p.num === req.body.num);
-    if (index !== -1) datos.proveedores[index] = req.body;
-    else datos.proveedores.push(req.body);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-app.delete('/api/proveedores/:num', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.proveedores = (datos.proveedores || []).filter(p => p.num !== req.params.num);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-
-app.get('/api/estadisticas', async (req, res) => res.json((await obtenerDatos()).estadisticas || []));
-app.post('/api/estadisticas', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.estadisticas = datos.estadisticas || [];
-    const index = datos.estadisticas.findIndex(e => e.provNum === req.body.provNum && e.anio === req.body.anio);
-    if (index !== -1) datos.estadisticas[index] = req.body;
-    else datos.estadisticas.push(req.body);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-
-app.get('/api/compras', async (req, res) => res.json((await obtenerDatos()).compras || []));
-app.post('/api/compras', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.compras = datos.compras || [];
-    const index = datos.compras.findIndex(c => c.idOrden === req.body.idOrden);
-    if (index !== -1) datos.compras[index] = req.body;
-    else datos.compras.push(req.body);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-app.delete('/api/compras/:idOrden', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.compras = (datos.compras || []).filter(c => c.idOrden !== req.params.idOrden);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-
-app.get('/api/recepciones', async (req, res) => res.json((await obtenerDatos()).recepciones || []));
-app.post('/api/recepciones', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.recepciones = datos.recepciones || [];
-    datos.recepciones.push(req.body);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-
-app.get('/api/usuarios', async (req, res) => res.json((await obtenerDatos()).usuarios || []));
-app.post('/api/usuarios', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.usuarios = datos.usuarios || [];
-    const index = datos.usuarios.findIndex(u => u.nombre.toLowerCase() === req.body.nombre.toLowerCase());
-    if (index !== -1) datos.usuarios[index] = req.body;
-    else datos.usuarios.push(req.body);
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-app.delete('/api/usuarios/:nombre', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.usuarios = (datos.usuarios || []).filter(u => u.nombre.toLowerCase() !== req.params.nombre.toLowerCase());
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
-});
-
-app.get('/api/configuraciones', async (req, res) => res.json((await obtenerDatos()).configuraciones || {}));
 app.post('/api/configuraciones', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.configuraciones = datos.configuraciones || {};
-    datos.configuraciones[req.body.clave] = req.body.valor;
-    await guardarDatos(datos);
-    res.json({ status: 'ok' });
+    const { clave, valor } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO configuraciones (clave, valor) VALUES ($1, $2) ON CONFLICT (clave) DO UPDATE SET valor = $2',
+            [clave, JSON.stringify(valor)]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
+// --- RUTAS REQUISITOS ---
+app.get('/api/requisitos', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", num, nombre, fecha, detalle FROM requisitos ORDER BY num ASC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/requisitos', async (req, res) => {
+    const { numFormulario, num, nombre, fecha, detalle } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO requisitos (num_formulario, num, nombre, fecha, detalle) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (num) DO UPDATE SET num_formulario = $1, nombre = $3, fecha = $4, detalle = $5',
+            [numFormulario, num, nombre, fecha || null, detalle]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/requisitos/:num', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM requisitos WHERE num = $1', [req.params.num]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- RUTAS PROVEEDORES ---
+app.get('/api/proveedores', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", num, nombre, criterios FROM proveedores ORDER BY num ASC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/proveedores', async (req, res) => {
+    const { numFormulario, num, nombre, criterios } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO proveedores (num_formulario, num, nombre, criterios) VALUES ($1, $2, $3, $4) ON CONFLICT (num) DO UPDATE SET num_formulario = $1, nombre = $3, criterios = $4',
+            [numFormulario, num, nombre, JSON.stringify(criterios)]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/proveedores/:num', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM proveedores WHERE num = $1', [req.params.num]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- RUTAS ESTADÍSTICAS ---
+app.get('/api/estadisticas', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", version, prov_num AS "provNum", prov_nombre AS "provNombre", anio, fecha_eval AS "fechaEval", dias_plazo AS "diasPlazo", fecha_prox AS "fechaProx", promedio, clase, clase_css AS "claseCSS", puntajes FROM estadisticas ORDER BY anio DESC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/estadisticas', async (req, res) => {
+    const { numFormulario, version, provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, puntajes } = req.body;
+    try {
+        await pool.query('DELETE FROM estadisticas WHERE prov_num = $1 AND anio = $2', [provNum, anio]);
+        await pool.query(
+            'INSERT INTO estadisticas (num_formulario, version, prov_num, prov_nombre, anio, fecha_eval, dias_plazo, fecha_prox, promedio, clase, clase_css, puntajes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+            [numFormulario, version, provNum, provNombre, anio, fechaEval || null, diasPlazo, fechaProx || null, promedio, clase, claseCSS, JSON.stringify(puntajes)]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- RUTAS COMPRAS ---
+app.get('/api/compras', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT id_orden AS "idOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/compras', async (req, res) => {
+    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, condicionPago, observaciones, pagoEval, plazoEval, estado } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, condicion_pago, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) ON CONFLICT (id_orden) DO UPDATE SET num_formulario = $2, prov_num = $3, prov_nombre = $4, req_num = $5, req_nombre = $6, req_detalle = $7, cantidad = $8, fecha_emision = $9, fecha_req = $10, condicion_pago = $11, observaciones = $12, pago_eval = $13, plazo_eval = $14, estado = $15',
+            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision || null, fechaReq || null, condicionPago, observaciones, pagoEval, plazoEval, estado]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- RUTAS RECEPCIONES ---
+app.get('/api/recepciones', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT id, num_formulario AS "numFormulario", id_orden AS "idOrden", prov_nombre AS "provNombre", remito, cant_recibida AS "cantRecibida", empaque, tiempo, calidad, obs, fecha_recepcion AS "fechaRecepcion" FROM recepciones ORDER BY id DESC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/recepciones', async (req, res) => {
+    const { numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO recepciones (num_formulario, id_orden, prov_nombre, remito, cant_recibida, empaque, tiempo, calidad, obs, fecha_recepcion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+            [numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion || null]
+        );
+        await pool.query('UPDATE compras SET estado = $1 WHERE id_orden = $2', ['Recibido', idOrden]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- RUTAS USUARIOS ---
+app.get('/api/usuarios', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT nombre, pass, sector, estado FROM usuarios ORDER BY nombre ASC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/usuarios', async (req, res) => {
+    const { nombre, pass, sector, estado } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO usuarios (nombre, pass, sector, estado) VALUES ($1, $2, $3, $4) ON CONFLICT (nombre) DO UPDATE SET pass = $2, sector = $3, estado = $4',
+            [nombre, pass, sector, estado]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/usuarios/:nombre', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM usuarios WHERE nombre = $1', [req.params.nombre]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- RUTA MASTER PARA VACIAR EVALUACIONES, COMPRAS Y RECEPCIONES ---
 app.post('/api/master/limpiar-bd', async (req, res) => {
-    const datos = await obtenerDatos();
-    datos.estadisticas = [];
-    datos.compras = [];
-    datos.recepciones = [];
-    await guardarDatos(datos);
-    res.json({ message: "Base de datos limpia correctamente." });
+    try {
+        await pool.query('TRUNCATE TABLE estadisticas, compras, recepciones RESTART IDENTITY CASCADE;');
+        res.json({ success: true, message: 'Se eliminaron correctamente todas las Evaluaciones (Pest. 3), Órdenes de Compra (Pest. 4) y Recepciones (Pest. 5).' });
+    } catch (err) {
+        console.error("Error al limpiar datos de pruebas:", err);
+        res.status(500).json({ error: 'Error al intentar vaciar Evaluaciones, Órdenes y Recepciones.' });
+    }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
+    console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
 });
