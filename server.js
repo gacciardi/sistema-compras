@@ -1,322 +1,220 @@
 const express = require('express');
-const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
-const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuración de conexión a PostgreSQL
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
-});
+// Rutas de archivos de persistencia
+const DATA_FILE = path.join(__dirname, 'data.json');
 
-// Inicialización de Tablas en PostgreSQL
-async function initDB() {
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS configuraciones (
-                clave VARCHAR(255) PRIMARY KEY,
-                valor JSONB
-            );
+// Estructura de la base de datos local
+let baseDeDatos = {
+    requisitos: [],
+    proveedores: [],
+    estadisticas: [],
+    compras: [],
+    recepciones: [],
+    usuarios: [],
+    configuraciones: {
+        master_password: '1234',
+        sys_title: 'Sistema de Gestión e Inspección de Compras',
+        sys_bg_color: '#e57373',
+        sys_logo: '',
+        lista_sectores: ['Compras', 'Almacén / Depósito', 'Calidad', 'Expedición', 'Administración'],
+        permisos_sectores: {
+            'Compras': [1, 2, 3, 4, 5],
+            'Almacén / Depósito': [1, 5],
+            'Calidad': [1, 3, 5],
+            'Expedición': [1, 5],
+            'Administración': [1, 2, 3, 4, 5, 6]
+        },
+        permisos_proveedores_usuarios: {},
+        crit_prov_labels: ["Cumplimiento de Entrega", "Calidad Insumos/Servicios", "Condicion de Pago", "Plazo de Entrega", "Atencion", "Respuesta a Reclamos"],
+        crit_stat_labels: ["Cumplimiento de Entrega (Auto)", "Calidad Insumos/Servicios", "Condicion de Pago (OC)", "Plazo de Entrega (OC)", "Atencion", "Respuesta a Reclamos"],
+        tabla_condicion_pago_puntos: { 'Prepago': 10, 'Contado': 35, 'Cuenta corriente': 70, 'Plazos': 95 }
+    }
+};
 
-            CREATE TABLE IF NOT EXISTS requisitos (
-                num VARCHAR(100) PRIMARY KEY,
-                num_formulario VARCHAR(255),
-                nombre VARCHAR(255),
-                fecha DATE,
-                detalle TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS proveedores (
-                num VARCHAR(100) PRIMARY KEY,
-                num_formulario VARCHAR(255),
-                nombre VARCHAR(255),
-                criterios JSONB
-            );
-
-            CREATE TABLE IF NOT EXISTS estadisticas (
-                id SERIAL PRIMARY KEY,
-                num_formulario VARCHAR(255),
-                version VARCHAR(100),
-                prov_num VARCHAR(100),
-                prov_nombre VARCHAR(255),
-                anio VARCHAR(10),
-                fecha_eval DATE,
-                dias_plazo INT,
-                fecha_prox DATE,
-                promedio INT,
-                clase VARCHAR(50),
-                clase_css VARCHAR(50),
-                puntajes JSONB
-            );
-
-            CREATE TABLE IF NOT EXISTS compras (
-                id_orden VARCHAR(100) PRIMARY KEY,
-                num_formulario VARCHAR(255),
-                prov_num VARCHAR(100),
-                prov_nombre VARCHAR(255),
-                req_num VARCHAR(100),
-                req_nombre VARCHAR(255),
-                req_detalle TEXT,
-                cantidad INT,
-                fecha_emision DATE,
-                fecha_req DATE,
-                condicion_pago VARCHAR(255),
-                observaciones TEXT,
-                pago_eval INT,
-                plazo_eval INT,
-                estado VARCHAR(50)
-            );
-
-            CREATE TABLE IF NOT EXISTS recepciones (
-                id SERIAL PRIMARY KEY,
-                num_formulario VARCHAR(255),
-                id_orden VARCHAR(100),
-                prov_nombre VARCHAR(255),
-                remito VARCHAR(255),
-                cant_recibida INT,
-                empaque VARCHAR(100),
-                tiempo VARCHAR(100),
-                calidad VARCHAR(100),
-                obs TEXT,
-                fecha_recepcion DATE
-            );
-
-            CREATE TABLE IF NOT EXISTS usuarios (
-                nombre VARCHAR(255) PRIMARY KEY,
-                pass VARCHAR(255),
-                sector VARCHAR(100),
-                estado VARCHAR(50)
-            );
-        `);
-
-        // Migración automática por si la columna condicion_pago no existe
-        await pool.query(`
-            DO $$ 
-            BEGIN 
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='condicion_pago') THEN
-                    ALTER TABLE compras ADD COLUMN condicion_pago VARCHAR(255);
-                END IF;
-            END $$;
-        `);
-
-        console.log("✅ Tablas de PostgreSQL verificadas/creadas correctamente.");
-    } catch (err) {
-        console.error("❌ Error al inicializar tablas en PostgreSQL:", err);
+// Cargar datos al iniciar
+function cargarBaseDeDatos() {
+    if (fs.existsSync(DATA_FILE)) {
+        try {
+            const rawData = fs.readFileSync(DATA_FILE, 'utf8');
+            baseDeDatos = { ...baseDeDatos, ...JSON.parse(rawData) };
+        } catch (e) {
+            console.error("Error al leer data.json:", e);
+        }
     }
 }
 
-initDB();
-
-// --- RUTAS DE CONFIGURACIÓN ---
-app.get('/api/configuraciones', async (req, res) => {
+function guardarBaseDeDatos() {
     try {
-        const { rows } = await pool.query('SELECT clave, valor FROM configuraciones');
-        const configMap = {};
-        rows.forEach(r => configMap[r.clave] = r.valor);
-        res.json(configMap);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        fs.writeFileSync(DATA_FILE, JSON.stringify(baseDeDatos, null, 2), 'utf8');
+    } catch (e) {
+        console.error("Error al guardar data.json:", e);
     }
+}
+
+cargarBaseDeDatos();
+
+// --- ENDPOINTS DE CONFIGURACIONES ---
+app.get('/api/configuraciones', (req, res) => {
+    res.json(baseDeDatos.configuraciones || {});
 });
 
-app.post('/api/configuraciones', async (req, res) => {
+app.post('/api/configuraciones', (req, res) => {
     const { clave, valor } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO configuraciones (clave, valor) VALUES ($1, $2) ON CONFLICT (clave) DO UPDATE SET valor = $2',
-            [clave, JSON.stringify(valor)]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (clave) {
+        baseDeDatos.configuraciones[clave] = valor;
+        guardarBaseDeDatos();
+        res.json({ status: 'ok' });
+    } else {
+        res.status(400).json({ error: 'Falta la clave' });
     }
 });
 
-// --- RUTAS REQUISITOS ---
-app.get('/api/requisitos', async (req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", num, nombre, fecha, detalle FROM requisitos ORDER BY num ASC');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// --- ENDPOINTS DE REQUISITOS ---
+app.get('/api/requisitos', (req, res) => {
+    res.json(baseDeDatos.requisitos || []);
 });
 
-app.post('/api/requisitos', async (req, res) => {
-    const { numFormulario, num, nombre, fecha, detalle } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO requisitos (num_formulario, num, nombre, fecha, detalle) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (num) DO UPDATE SET num_formulario = $1, nombre = $3, fecha = $4, detalle = $5',
-            [numFormulario, num, nombre, fecha || null, detalle]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+app.post('/api/requisitos', (req, res) => {
+    const reqItem = req.body;
+    const index = baseDeDatos.requisitos.findIndex(r => r.num === reqItem.num);
+    if (index !== -1) {
+        baseDeDatos.requisitos[index] = { ...baseDeDatos.requisitos[index], ...reqItem };
+    } else {
+        baseDeDatos.requisitos.push(reqItem);
     }
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-app.delete('/api/requisitos/:num', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM requisitos WHERE num = $1', [req.params.num]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.delete('/api/requisitos/:num', (req, res) => {
+    baseDeDatos.requisitos = baseDeDatos.requisitos.filter(r => r.num !== req.params.num);
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-// --- RUTAS PROVEEDORES ---
-app.get('/api/proveedores', async (req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", num, nombre, criterios FROM proveedores ORDER BY num ASC');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// --- ENDPOINTS DE PROVEEDORES ---
+app.get('/api/proveedores', (req, res) => {
+    res.json(baseDeDatos.proveedores || []);
 });
 
-app.post('/api/proveedores', async (req, res) => {
-    const { numFormulario, num, nombre, criterios } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO proveedores (num_formulario, num, nombre, criterios) VALUES ($1, $2, $3, $4) ON CONFLICT (num) DO UPDATE SET num_formulario = $1, nombre = $3, criterios = $4',
-            [numFormulario, num, nombre, JSON.stringify(criterios)]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+app.post('/api/proveedores', (req, res) => {
+    const provItem = req.body;
+    const index = baseDeDatos.proveedores.findIndex(p => p.num === provItem.num);
+    if (index !== -1) {
+        baseDeDatos.proveedores[index] = { ...baseDeDatos.proveedores[index], ...provItem };
+    } else {
+        baseDeDatos.proveedores.push(provItem);
     }
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-app.delete('/api/proveedores/:num', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM proveedores WHERE num = $1', [req.params.num]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.delete('/api/proveedores/:num', (req, res) => {
+    baseDeDatos.proveedores = baseDeDatos.proveedores.filter(p => p.num !== req.params.num);
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-// --- RUTAS ESTADÍSTICAS ---
-app.get('/api/estadisticas', async (req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", version, prov_num AS "provNum", prov_nombre AS "provNombre", anio, fecha_eval AS "fechaEval", dias_plazo AS "diasPlazo", fecha_prox AS "fechaProx", promedio, clase, clase_css AS "claseCSS", puntajes FROM estadisticas ORDER BY anio DESC');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// --- ENDPOINTS DE EVALUACIONES/ESTADÍSTICAS ---
+app.get('/api/estadisticas', (req, res) => {
+    res.json(baseDeDatos.estadisticas || []);
 });
 
-app.post('/api/estadisticas', async (req, res) => {
-    const { numFormulario, version, provNum, provNombre, anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, puntajes } = req.body;
-    try {
-        await pool.query('DELETE FROM estadisticas WHERE prov_num = $1 AND anio = $2', [provNum, anio]);
-        await pool.query(
-            'INSERT INTO estadisticas (num_formulario, version, prov_num, prov_nombre, anio, fecha_eval, dias_plazo, fecha_prox, promedio, clase, clase_css, puntajes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
-            [numFormulario, version, provNum, provNombre, anio, fechaEval || null, diasPlazo, fechaProx || null, promedio, clase, claseCSS, JSON.stringify(puntajes)]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+app.post('/api/estadisticas', (req, res) => {
+    const statItem = req.body;
+    const index = baseDeDatos.estadisticas.findIndex(s => s.provNum === statItem.provNum && s.anio === statItem.anio);
+    if (index !== -1) {
+        baseDeDatos.estadisticas[index] = { ...baseDeDatos.estadisticas[index], ...statItem };
+    } else {
+        baseDeDatos.estadisticas.push(statItem);
     }
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-// --- RUTAS COMPRAS ---
-app.get('/api/compras', async (req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT id_orden AS "idOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// --- ENDPOINTS DE ÓRDENES DE COMPRA (P4) ---
+app.get('/api/compras', (req, res) => {
+    res.json(baseDeDatos.compras || []);
 });
 
-app.post('/api/compras', async (req, res) => {
-    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, condicionPago, observaciones, pagoEval, plazoEval, estado } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, condicion_pago, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) ON CONFLICT (id_orden) DO UPDATE SET num_formulario = $2, prov_num = $3, prov_nombre = $4, req_num = $5, req_nombre = $6, req_detalle = $7, cantidad = $8, fecha_emision = $9, fecha_req = $10, condicion_pago = $11, observaciones = $12, pago_eval = $13, plazo_eval = $14, estado = $15',
-            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision || null, fechaReq || null, condicionPago, observaciones, pagoEval, plazoEval, estado]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+app.post('/api/compras', (req, res) => {
+    const nuevaOrden = req.body;
+    const index = baseDeDatos.compras.findIndex(o => o.idOrden === nuevaOrden.idOrden);
+
+    if (index !== -1) {
+        // ACTUALIZACIÓN EXPLÍCITA: Reemplazar completamente las propiedades
+        baseDeDatos.compras[index] = {
+            ...baseDeDatos.compras[index],
+            ...nuevaOrden,
+            tipoOrden: nuevaOrden.tipoOrden // Forzar actualización de tipo de orden
+        };
+    } else {
+        baseDeDatos.compras.push(nuevaOrden);
     }
+
+    guardarBaseDeDatos();
+    res.json({ status: 'ok', orden: baseDeDatos.compras[index !== -1 ? index : baseDeDatos.compras.length - 1] });
 });
 
-// --- RUTAS RECEPCIONES ---
-app.get('/api/recepciones', async (req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT id, num_formulario AS "numFormulario", id_orden AS "idOrden", prov_nombre AS "provNombre", remito, cant_recibida AS "cantRecibida", empaque, tiempo, calidad, obs, fecha_recepcion AS "fechaRecepcion" FROM recepciones ORDER BY id DESC');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.delete('/api/compras/:idOrden', (req, res) => {
+    baseDeDatos.compras = baseDeDatos.compras.filter(o => o.idOrden !== req.params.idOrden);
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-app.post('/api/recepciones', async (req, res) => {
-    const { numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO recepciones (num_formulario, id_orden, prov_nombre, remito, cant_recibida, empaque, tiempo, calidad, obs, fecha_recepcion) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-            [numFormulario, idOrden, provNombre, remito, cantRecibida, empaque, tiempo, calidad, obs, fechaRecepcion || null]
-        );
-        await pool.query('UPDATE compras SET estado = $1 WHERE id_orden = $2', ['Recibido', idOrden]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// --- ENDPOINTS DE RECEPCIONES (P5) ---
+app.get('/api/recepciones', (req, res) => {
+    res.json(baseDeDatos.recepciones || []);
 });
 
-// --- RUTAS USUARIOS ---
-app.get('/api/usuarios', async (req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT nombre, pass, sector, estado FROM usuarios ORDER BY nombre ASC');
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+app.post('/api/recepciones', (req, res) => {
+    const recItem = req.body;
+    baseDeDatos.recepciones.push(recItem);
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-app.post('/api/usuarios', async (req, res) => {
-    const { nombre, pass, sector, estado } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO usuarios (nombre, pass, sector, estado) VALUES ($1, $2, $3, $4) ON CONFLICT (nombre) DO UPDATE SET pass = $2, sector = $3, estado = $4',
-            [nombre, pass, sector, estado]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// --- ENDPOINTS DE USUARIOS (P6) ---
+app.get('/api/usuarios', (req, res) => {
+    res.json(baseDeDatos.usuarios || []);
 });
 
-app.delete('/api/usuarios/:nombre', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM usuarios WHERE nombre = $1', [req.params.nombre]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+app.post('/api/usuarios', (req, res) => {
+    const usrItem = req.body;
+    const index = baseDeDatos.usuarios.findIndex(u => u.nombre.toLowerCase() === usrItem.nombre.toLowerCase());
+    if (index !== -1) {
+        baseDeDatos.usuarios[index] = { ...baseDeDatos.usuarios[index], ...usrItem };
+    } else {
+        baseDeDatos.usuarios.push(usrItem);
     }
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
 });
 
-// --- RUTA MASTER PARA VACIAR EVALUACIONES, COMPRAS Y RECEPCIONES ---
-app.post('/api/master/limpiar-bd', async (req, res) => {
-    try {
-        await pool.query('TRUNCATE TABLE estadisticas, compras, recepciones RESTART IDENTITY CASCADE;');
-        res.json({ success: true, message: 'Se eliminaron correctamente todas las Evaluaciones (Pest. 3), Órdenes de Compra (Pest. 4) y Recepciones (Pest. 5).' });
-    } catch (err) {
-        console.error("Error al limpiar datos de pruebas:", err);
-        res.status(500).json({ error: 'Error al intentar vaciar Evaluaciones, Órdenes y Recepciones.' });
-    }
+app.delete('/api/usuarios/:nombre', (req, res) => {
+    const usrNombre = decodeURIComponent(req.params.nombre).toLowerCase();
+    baseDeDatos.usuarios = baseDeDatos.usuarios.filter(u => u.nombre.toLowerCase() !== usrNombre);
+    guardarBaseDeDatos();
+    res.json({ status: 'ok' });
+});
+
+// Limpieza de datos desde Panel Master
+app.post('/api/master/limpiar-bd', (req, res) => {
+    baseDeDatos.estadisticas = [];
+    baseDeDatos.compras = [];
+    baseDeDatos.recepciones = [];
+    guardarBaseDeDatos();
+    res.json({ message: 'Base de datos de pruebas limpiada exitosamente.' });
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
+    console.log(`Servidor corriendo en puerto ${PORT}`);
 });
