@@ -11,14 +11,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Rutas de archivos de persistencia
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// Estructura de la base de datos local
+// Estructura de la base de datos local con usuario por defecto
 let baseDeDatos = {
     requisitos: [],
     proveedores: [],
     estadisticas: [],
     compras: [],
     recepciones: [],
-    usuarios: [],
+    usuarios: [
+        { nombre: 'admin', pass: '1234', sector: 'Administración', estado: 'Activo' }
+    ],
     configuraciones: {
         master_password: '1234',
         sys_title: 'Sistema de Gestión e Inspección de Compras',
@@ -44,10 +46,20 @@ function cargarBaseDeDatos() {
     if (fs.existsSync(DATA_FILE)) {
         try {
             const rawData = fs.readFileSync(DATA_FILE, 'utf8');
-            baseDeDatos = { ...baseDeDatos, ...JSON.parse(rawData) };
+            const datosGuardados = JSON.parse(rawData);
+            baseDeDatos = { ...baseDeDatos, ...datosGuardados };
+
+            // Garantizar que siempre haya al menos un usuario activo
+            if (!baseDeDatos.usuarios || baseDeDatos.usuarios.length === 0) {
+                baseDeDatos.usuarios = [
+                    { nombre: 'admin', pass: '1234', sector: 'Administración', estado: 'Activo' }
+                ];
+            }
         } catch (e) {
             console.error("Error al leer data.json:", e);
         }
+    } else {
+        guardarBaseDeDatos();
     }
 }
 
@@ -150,11 +162,10 @@ app.post('/api/compras', (req, res) => {
     const index = baseDeDatos.compras.findIndex(o => o.idOrden === nuevaOrden.idOrden);
 
     if (index !== -1) {
-        // ACTUALIZACIÓN EXPLÍCITA: Reemplazar completamente las propiedades
         baseDeDatos.compras[index] = {
             ...baseDeDatos.compras[index],
             ...nuevaOrden,
-            tipoOrden: nuevaOrden.tipoOrden // Forzar actualización de tipo de orden
+            tipoOrden: nuevaOrden.tipoOrden
         };
     } else {
         baseDeDatos.compras.push(nuevaOrden);
