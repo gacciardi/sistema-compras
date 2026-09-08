@@ -58,6 +58,7 @@ async function initDB() {
 
             CREATE TABLE IF NOT EXISTS compras (
                 id_orden VARCHAR(100) PRIMARY KEY,
+                tipo_orden VARCHAR(50) DEFAULT 'Normal',
                 num_formulario VARCHAR(255),
                 prov_num VARCHAR(100),
                 prov_nombre VARCHAR(255),
@@ -96,12 +97,15 @@ async function initDB() {
             );
         `);
 
-        // Migración automática por si la columna condicion_pago no existe
+        // Migración automática por si las columnas no existen en instalaciones previas
         await pool.query(`
             DO $$ 
             BEGIN 
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='condicion_pago') THEN
                     ALTER TABLE compras ADD COLUMN condicion_pago VARCHAR(255);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='tipo_orden') THEN
+                    ALTER TABLE compras ADD COLUMN tipo_orden VARCHAR(50) DEFAULT 'Normal';
                 END IF;
             END $$;
         `);
@@ -230,7 +234,7 @@ app.post('/api/estadisticas', async (req, res) => {
 // --- RUTAS COMPRAS ---
 app.get('/api/compras', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT id_orden AS "idOrden", tipo_orden AS "tipoOrden"num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
+        const { rows } = await pool.query('SELECT id_orden AS "idOrden", tipo_orden AS "tipoOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -238,11 +242,11 @@ app.get('/api/compras', async (req, res) => {
 });
 
 app.post('/api/compras', async (req, res) => {
-    const { idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, condicionPago, observaciones, pagoEval, plazoEval, estado } = req.body;
+    const { idOrden, tipoOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, condicionPago, observaciones, pagoEval, plazoEval, estado } = req.body;
     try {
         await pool.query(
-            'INSERT INTO compras (id_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, condicion_pago, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) ON CONFLICT (id_orden) DO UPDATE SET num_formulario = $2, prov_num = $3, prov_nombre = $4, req_num = $5, req_nombre = $6, req_detalle = $7, cantidad = $8, fecha_emision = $9, fecha_req = $10, condicion_pago = $11, observaciones = $12, pago_eval = $13, plazo_eval = $14, estado = $15',
-            [idOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision || null, fechaReq || null, condicionPago, observaciones, pagoEval, plazoEval, estado]
+            'INSERT INTO compras (id_orden, tipo_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, condicion_pago, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) ON CONFLICT (id_orden) DO UPDATE SET tipo_orden = $2, num_formulario = $3, prov_num = $4, prov_nombre = $5, req_num = $6, req_nombre = $7, req_detalle = $8, cantidad = $9, fecha_emision = $10, fecha_req = $11, condicion_pago = $12, observaciones = $13, pago_eval = $14, plazo_eval = $15, estado = $16',
+            [idOrden, tipoOrden || 'Normal', numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision || null, fechaReq || null, condicionPago, observaciones, pagoEval, plazoEval, estado]
         );
         res.json({ success: true });
     } catch (err) {
