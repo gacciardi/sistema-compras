@@ -1,204 +1,206 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
+const cors = require('cors');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Configuración de la Base de Datos PostgreSQL o fallback local JSON
+const usePostgres = !!process.env.DATABASE_URL;
+let pool = null;
+
+if (usePostgres) {
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+}
+
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-let baseDeDatos = {
+const defaultData = {
     requisitos: [],
     proveedores: [],
     estadisticas: [],
     compras: [],
     recepciones: [],
-    usuarios: [
-        { nombre: 'admin', pass: '1234', sector: 'Administración', estado: 'Activo' }
-    ],
-    configuraciones: {
-        master_password: '1234',
-        sys_title: 'Sistema de Gestión e Inspección de Compras',
-        sys_bg_color: '#e57373',
-        sys_logo: '',
-        lista_sectores: ['Compras', 'Almacén / Depósito', 'Calidad', 'Expedición', 'Administración'],
-        permisos_sectores: {
-            'Compras': [1, 2, 3, 4, 5],
-            'Almacén / Depósito': [1, 5],
-            'Calidad': [1, 3, 5],
-            'Expedición': [1, 5],
-            'Administración': [1, 2, 3, 4, 5, 6]
-        },
-        permisos_proveedores_usuarios: {},
-        crit_prov_labels: ["Cumplimiento de Entrega", "Calidad Insumos/Servicios", "Condicion de Pago", "Plazo de Entrega", "Atencion", "Respuesta a Reclamos"],
-        crit_stat_labels: ["Cumplimiento de Entrega (Auto)", "Calidad Insumos/Servicios", "Condicion de Pago (OC)", "Plazo de Entrega (OC)", "Atencion", "Respuesta a Reclamos"],
-        tabla_condicion_pago_puntos: { 'Prepago': 10, 'Contado': 35, 'Cuenta corriente': 70, 'Plazos': 95 }
-    }
+    usuarios: [{ nombre: "admin", pass: "1234", sector: "Administración", estado: "Activo" }],
+    configuraciones: {}
 };
 
-function cargarBaseDeDatos() {
-    if (fs.existsSync(DATA_FILE)) {
+// Inicializar BD
+async function initDB() {
+    if (usePostgres) {
         try {
-            const rawData = fs.readFileSync(DATA_FILE, 'utf8');
-            const datosGuardados = JSON.parse(rawData);
-
-            baseDeDatos.requisitos = datosGuardados.requisitos || [];
-            baseDeDatos.proveedores = datosGuardados.proveedores || [];
-            baseDeDatos.estadisticas = datosGuardados.estadisticas || [];
-            baseDeDatos.compras = datosGuardados.compras || [];
-            baseDeDatos.recepciones = datosGuardados.recepciones || [];
-            baseDeDatos.usuarios = datosGuardados.usuarios && datosGuardados.usuarios.length > 0 
-                ? datosGuardados.usuarios 
-                : [{ nombre: 'admin', pass: '1234', sector: 'Administración', estado: 'Activo' }];
-
-            baseDeDatos.configuraciones = { ...baseDeDatos.configuraciones, ...(datosGuardados.configuraciones || {}) };
-        } catch (e) {
-            console.error("Error al leer data.json:", e);
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS sistema_datos (
+                    id VARCHAR(50) PRIMARY KEY,
+                    contenido JSONB NOT NULL
+                )
+            `);
+            const res = await pool.query('SELECT contenido FROM sistema_datos WHERE id = $1', ['datos_principales']);
+            if (res.rows.length === 0) {
+                await pool.query('INSERT INTO sistema_datos (id, contenido) VALUES ($1, $2)', ['datos_principales', defaultData]);
+            }
+            console.log("✅ Conectado exitosamente a PostgreSQL en Render");
+        } catch (err) {
+            console.error("❌ Error inicializando PostgreSQL:", err);
+        }
+    } else {
+        if (!fs.existsSync(DATA_FILE)) {
+            fs.writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
         }
     }
 }
 
-function guardarBaseDeDatos() {
-    try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(baseDeDatos, null, 2), 'utf8');
-    } catch (e) {
-        console.error("Error al guardar data.json:", e);
+initDB();
+
+async function obtenerDatos() {
+    if (usePostgres) {
+        try {
+            const res = await pool.query('SELECT contenido FROM sistema_datos WHERE id = $1', ['datos_principales']);
+            return res.rows[0]?.contenido || defaultData;
+        } catch (e) {
+            console.error(e);
+            return defaultData;
+        }
+    } else {
+        try {
+            return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        } catch (e) {
+            return defaultData;
+        }
     }
 }
 
-cargarBaseDeDatos();
-
-// API CONFIGURACIONES
-app.get('/api/configuraciones', (req, res) => res.json(baseDeDatos.configuraciones || {}));
-app.post('/api/configuraciones', (req, res) => {
-    const { clave, valor } = req.body;
-    if (clave) {
-        baseDeDatos.configuraciones[clave] = valor;
-        guardarBaseDeDatos();
-        res.json({ status: 'ok' });
+async function guardarDatos(datos) {
+    if (usePostgres) {
+        try {
+            await pool.query(
+                'INSERT INTO sistema_datos (id, contenido) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET contenido = $2',
+                ['datos_principales', datos]
+            );
+        } catch (e) {
+            console.error("Error al guardar en PostgreSQL:", e);
+        }
     } else {
-        res.status(400).json({ error: 'Falta la clave' });
+        fs.writeFileSync(DATA_FILE, JSON.stringify(datos, null, 2));
     }
-});
+}
 
-// API REQUISITOS
-app.get('/api/requisitos', (req, res) => res.json(baseDeDatos.requisitos || []));
-app.post('/api/requisitos', (req, res) => {
-    const reqItem = req.body;
-    const index = baseDeDatos.requisitos.findIndex(r => r.num === reqItem.num);
-    if (index !== -1) {
-        baseDeDatos.requisitos[index] = { ...baseDeDatos.requisitos[index], ...reqItem };
-    } else {
-        baseDeDatos.requisitos.push(reqItem);
-    }
-    guardarBaseDeDatos();
+// Rutas API
+app.get('/api/requisitos', async (req, res) => res.json((await obtenerDatos()).requisitos || []));
+app.post('/api/requisitos', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.requisitos = datos.requisitos || [];
+    const index = datos.requisitos.findIndex(r => r.num === req.body.num);
+    if (index !== -1) datos.requisitos[index] = req.body;
+    else datos.requisitos.push(req.body);
+    await guardarDatos(datos);
     res.json({ status: 'ok' });
 });
-app.delete('/api/requisitos/:num', (req, res) => {
-    baseDeDatos.requisitos = baseDeDatos.requisitos.filter(r => r.num !== req.params.num);
-    guardarBaseDeDatos();
-    res.json({ status: 'ok' });
-});
-
-// API PROVEEDORES
-app.get('/api/proveedores', (req, res) => res.json(baseDeDatos.proveedores || []));
-app.post('/api/proveedores', (req, res) => {
-    const provItem = req.body;
-    const index = baseDeDatos.proveedores.findIndex(p => p.num === provItem.num);
-    if (index !== -1) {
-        baseDeDatos.proveedores[index] = { ...baseDeDatos.proveedores[index], ...provItem };
-    } else {
-        baseDeDatos.proveedores.push(provItem);
-    }
-    guardarBaseDeDatos();
-    res.json({ status: 'ok' });
-});
-app.delete('/api/proveedores/:num', (req, res) => {
-    baseDeDatos.proveedores = baseDeDatos.proveedores.filter(r => r.num !== req.params.num);
-    guardarBaseDeDatos();
+app.delete('/api/requisitos/:num', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.requisitos = (datos.requisitos || []).filter(r => r.num !== req.params.num);
+    await guardarDatos(datos);
     res.json({ status: 'ok' });
 });
 
-// API ESTADÍSTICAS
-app.get('/api/estadisticas', (req, res) => res.json(baseDeDatos.estadisticas || []));
-app.post('/api/estadisticas', (req, res) => {
-    const statItem = req.body;
-    const index = baseDeDatos.estadisticas.findIndex(s => s.provNum === statItem.provNum && s.anio === statItem.anio);
-    if (index !== -1) {
-        baseDeDatos.estadisticas[index] = { ...baseDeDatos.estadisticas[index], ...statItem };
-    } else {
-        baseDeDatos.estadisticas.push(statItem);
-    }
-    guardarBaseDeDatos();
+app.get('/api/proveedores', async (req, res) => res.json((await obtenerDatos()).proveedores || []));
+app.post('/api/proveedores', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.proveedores = datos.proveedores || [];
+    const index = datos.proveedores.findIndex(p => p.num === req.body.num);
+    if (index !== -1) datos.proveedores[index] = req.body;
+    else datos.proveedores.push(req.body);
+    await guardarDatos(datos);
+    res.json({ status: 'ok' });
+});
+app.delete('/api/proveedores/:num', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.proveedores = (datos.proveedores || []).filter(p => p.num !== req.params.num);
+    await guardarDatos(datos);
     res.json({ status: 'ok' });
 });
 
-// API COMPRAS
-app.get('/api/compras', (req, res) => res.json(baseDeDatos.compras || []));
-app.post('/api/compras', (req, res) => {
-    const nuevaOrden = req.body;
-    const index = baseDeDatos.compras.findIndex(o => o.idOrden === nuevaOrden.idOrden);
-
-    if (index !== -1) {
-        baseDeDatos.compras[index] = {
-            ...baseDeDatos.compras[index],
-            ...nuevaOrden,
-            tipoOrden: nuevaOrden.tipoOrden
-        };
-    } else {
-        baseDeDatos.compras.push(nuevaOrden);
-    }
-
-    guardarBaseDeDatos();
-    res.json({ status: 'ok', orden: baseDeDatos.compras[index !== -1 ? index : baseDeDatos.compras.length - 1] });
-});
-app.delete('/api/compras/:idOrden', (req, res) => {
-    baseDeDatos.compras = baseDeDatos.compras.filter(o => o.idOrden !== req.params.idOrden);
-    guardarBaseDeDatos();
+app.get('/api/estadisticas', async (req, res) => res.json((await obtenerDatos()).estadisticas || []));
+app.post('/api/estadisticas', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.estadisticas = datos.estadisticas || [];
+    const index = datos.estadisticas.findIndex(e => e.provNum === req.body.provNum && e.anio === req.body.anio);
+    if (index !== -1) datos.estadisticas[index] = req.body;
+    else datos.estadisticas.push(req.body);
+    await guardarDatos(datos);
     res.json({ status: 'ok' });
 });
 
-// API RECEPCIONES
-app.get('/api/recepciones', (req, res) => res.json(baseDeDatos.recepciones || []));
-app.post('/api/recepciones', (req, res) => {
-    const recItem = req.body;
-    baseDeDatos.recepciones.push(recItem);
-    guardarBaseDeDatos();
+app.get('/api/compras', async (req, res) => res.json((await obtenerDatos()).compras || []));
+app.post('/api/compras', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.compras = datos.compras || [];
+    const index = datos.compras.findIndex(c => c.idOrden === req.body.idOrden);
+    if (index !== -1) datos.compras[index] = req.body;
+    else datos.compras.push(req.body);
+    await guardarDatos(datos);
+    res.json({ status: 'ok' });
+});
+app.delete('/api/compras/:idOrden', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.compras = (datos.compras || []).filter(c => c.idOrden !== req.params.idOrden);
+    await guardarDatos(datos);
     res.json({ status: 'ok' });
 });
 
-// API USUARIOS
-app.get('/api/usuarios', (req, res) => res.json(baseDeDatos.usuarios || []));
-app.post('/api/usuarios', (req, res) => {
-    const usrItem = req.body;
-    const index = baseDeDatos.usuarios.findIndex(u => u.nombre.toLowerCase() === usrItem.nombre.toLowerCase());
-    if (index !== -1) {
-        baseDeDatos.usuarios[index] = { ...baseDeDatos.usuarios[index], ...usrItem };
-    } else {
-        baseDeDatos.usuarios.push(usrItem);
-    }
-    guardarBaseDeDatos();
-    res.json({ status: 'ok' });
-});
-app.delete('/api/usuarios/:nombre', (req, res) => {
-    const usrNombre = decodeURIComponent(req.params.nombre).toLowerCase();
-    baseDeDatos.usuarios = baseDeDatos.usuarios.filter(u => u.nombre.toLowerCase() !== usrNombre);
-    guardarBaseDeDatos();
+app.get('/api/recepciones', async (req, res) => res.json((await obtenerDatos()).recepciones || []));
+app.post('/api/recepciones', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.recepciones = datos.recepciones || [];
+    datos.recepciones.push(req.body);
+    await guardarDatos(datos);
     res.json({ status: 'ok' });
 });
 
-// LIMPIEZA
-app.post('/api/master/limpiar-bd', (req, res) => {
-    baseDeDatos.estadisticas = [];
-    baseDeDatos.compras = [];
-    baseDeDatos.recepciones = [];
-    guardarBaseDeDatos();
-    res.json({ message: 'Base de datos limpia' });
+app.get('/api/usuarios', async (req, res) => res.json((await obtenerDatos()).usuarios || []));
+app.post('/api/usuarios', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.usuarios = datos.usuarios || [];
+    const index = datos.usuarios.findIndex(u => u.nombre.toLowerCase() === req.body.nombre.toLowerCase());
+    if (index !== -1) datos.usuarios[index] = req.body;
+    else datos.usuarios.push(req.body);
+    await guardarDatos(datos);
+    res.json({ status: 'ok' });
+});
+app.delete('/api/usuarios/:nombre', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.usuarios = (datos.usuarios || []).filter(u => u.nombre.toLowerCase() !== req.params.nombre.toLowerCase());
+    await guardarDatos(datos);
+    res.json({ status: 'ok' });
+});
+
+app.get('/api/configuraciones', async (req, res) => res.json((await obtenerDatos()).configuraciones || {}));
+app.post('/api/configuraciones', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.configuraciones = datos.configuraciones || {};
+    datos.configuraciones[req.body.clave] = req.body.valor;
+    await guardarDatos(datos);
+    res.json({ status: 'ok' });
+});
+
+app.post('/api/master/limpiar-bd', async (req, res) => {
+    const datos = await obtenerDatos();
+    datos.estadisticas = [];
+    datos.compras = [];
+    datos.recepciones = [];
+    await guardarDatos(datos);
+    res.json({ message: "Base de datos limpia correctamente." });
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en puerto ${PORT}`);
+    console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
 });
