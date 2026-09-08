@@ -956,6 +956,14 @@ async function iniciarCompra(e) {
         estado: 'Pendiente'
     };
 
+    // Actualizamos explícitamente en el arreglo local para refresco inmediato
+    const indexExistente = ordenesCompra.findIndex(o => o.idOrden === idOrden);
+    if (indexExistente !== -1) {
+        ordenesCompra[indexExistente] = ordenGuardar;
+    } else {
+        ordenesCompra.push(ordenGuardar);
+    }
+
     await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -975,7 +983,10 @@ function renderizarTablaCompras() {
     ordenesCompra.forEach(oc => {
         const tr = document.createElement('tr');
         const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
-        const tipoText = oc.tipoOrden === 'Abierta' ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
+        const tipoText = oc.tipoOrden === 'Abierta' 
+            ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' 
+            : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
+        
         const fEmis = oc.fechaEmision ? oc.fechaEmision.split('T')[0] : '';
         const fReq = oc.fechaReq ? oc.fechaReq.split('T')[0] : '';
 
