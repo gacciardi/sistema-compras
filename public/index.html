@@ -179,14 +179,14 @@
                             </div>
                             <div class="form-group">
                                 <label>Proveedor:</label>
-                                <select id="select-prov-estadistica" onchange="cargarCalificacionExistente()" required></select>
+                                <select id="select-prov-estadistica" onchange="evaluarAnioSeleccionado(); cargarCalificacionExistente();" required></select>
                             </div>
                             <div class="form-group">
                                 <label>Año de Evaluación:</label>
-                                <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()">
-                                    <option value="2026" selected>2026</option>
-                                    <option value="2025">2025</option>
-                                    <option value="2024">2024</option>
+                                <select id="select-anio-estadistica" onchange="evaluarAnioSeleccionado(); cargarCalificacionExistente();">
+                                    <option value="2026" selected>2026 (Año Actual)</option>
+                                    <option value="2025">2025 (Histórico)</option>
+                                    <option value="2024">2024 (Histórico)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -203,6 +203,17 @@
                             </div>
                         </div>
 
+                        <!-- BANNER Y BOTÓN SEGURO PARA AÑOS ANTERIORES (SE MUESTRA SOLO EN AÑOS PASADOS) -->
+                        <div id="caja-alerta-historica" style="display:none; margin-top: 15px; padding: 12px; background: #fff3e0; border-left: 5px solid #ff9800; border-radius: 4px; font-size: 0.9em;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="color: #e65100;">🕒 Registro de Evaluación Histórica Detectado:</strong>
+                                    <p style="margin: 3px 0 0 0; color: #5d4037;">Está evaluando un año anterior al actual. Si no existen remitos u órdenes registradas de ese período, puede habilitar el ingreso manual de puntajes.</p>
+                                </div>
+                                <button type="button" id="btn-habilitar-historico" class="btn-warning" style="white-space: nowrap; font-size: 0.85em; padding: 6px 10px;" onclick="desbloquearCamposHistoricos()">✏️ Habilitar Edición Manual</button>
+                            </div>
+                        </div>
+
                         <!-- REGLA DE CÁLCULO DE PUNTAJE DE ENTREGA REAL -->
                         <div style="margin-top: 20px; padding: 12px; background: #fffde7; border-left: 4px solid #fbc02d; border-radius: 4px; font-size: 0.9em;">
                             <h5 style="margin: 0 0 5px 0; color: #f57f17;">📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
@@ -215,7 +226,7 @@
                             </ul>
                         </div>
 
-                        <!-- CUADRO AMARILLO EN PESTAÑA 3 CON LOS CAMPOS AUTO-CALCULADOS FIJOS (PRE-EVALUACIÓN) -->
+                        <!-- CUADRO AMARILLO EN PESTAÑA 3 CON CAMPOS AUTO-CALCULADOS (PROTEGIDOS EN AÑO ACTUAL) -->
                         <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
                             <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
                             <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes obtenidos automáticamente desde los registros del sistema.</p>
