@@ -177,7 +177,10 @@ function showTab(tabId) {
         cargarNombresCriteriosProveedores();
         renderizarListaReglasPagoUI();
     }
-    if (tabId === 'tab-estadisticas') actualizarSelectProveedoresEstadisticas();
+    if (tabId === 'tab-estadisticas') {
+        actualizarSelectProveedoresEstadisticas();
+        renderizarGraficosPestaña3();
+    }
     if (tabId === 'tab-compras') actualizarSelectsCompras();
     if (tabId === 'tab-recepcion') actualizarSelectOrdenesPendientes();
     if (tabId === 'tab-usuarios') actualizarSelectSectoresUsuarios();
@@ -268,6 +271,8 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             renderizarTablaCompras();
             renderizarTablaRecepciones();
             renderizarTablaUsuarios();
+            
+            renderizarGraficosPestaña3();
         }
     } catch (e) {
         console.error("Error al cargar datos:", e);
@@ -620,7 +625,9 @@ function cargarCalificacionExistente() {
         if (c1) c1.style.display = 'none';
         if (c2) c2.style.display = 'none';
     }
+    
     calcularPuntajeClase();
+    renderizarGraficosPestaña3();
 }
 
 function calcularPuntajeClase() {
@@ -640,6 +647,8 @@ function calcularPuntajeClase() {
     else if (promedio >= 61) { clase = 'Clase C'; claseCSS = 'badge-c'; }
 
     if (badgeClase) { badgeClase.innerText = clase; badgeClase.className = `clase-badge ${claseCSS}`; }
+    
+    actualizarGraficoRadar();
     return { promedio, clase, claseCSS };
 }
 
@@ -1458,6 +1467,7 @@ async function limpiarBaseDeDatosMaster() {
         console.error(e);
     }
 }
+
 // ==========================================
 // FUNCIONES DE GRÁFICOS PARA PESTAÑA 3
 // ==========================================
@@ -1522,12 +1532,10 @@ function renderizarGraficoPie() {
 
     if (pieChartInstance) pieChartInstance.destroy();
 
-    // Lee la BD existente desde getDB() sin alterar el login
-    const db = typeof getDB === 'function' ? getDB() : { evaluaciones: [] };
     let ca = 0, cb = 0, cc = 0, cd = 0;
 
-    if (db.evaluaciones && Array.isArray(db.evaluaciones)) {
-        db.evaluaciones.forEach(e => {
+    if (Array.isArray(estadisticas)) {
+        estadisticas.forEach(e => {
             if (e.clase === 'Clase A') ca++;
             else if (e.clase === 'Clase B') cb++;
             else if (e.clase === 'Clase C') cc++;
