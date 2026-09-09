@@ -1343,19 +1343,70 @@ function renderizarMatrizPermisosProveedores() {
         container.innerHTML = '<p style="color:#777;">Registre usuarios y proveedores primero.</p>';
         return;
     }
-    let html = '<table><thead><tr><th>Usuario</th>';
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Contraseña</th>
+                <th>Acción</th>`;
+    
     proveedores.forEach(p => html += `<th>${p.nombre}<br><small>(${p.num})</small></th>`);
     html += '</tr></thead><tbody>';
-    usuarios.forEach(u => {
-        html += `<tr><td><strong>${u.nombre}</strong></td>`;
+
+    usuarios.forEach((u, idx) => {
+        html += `<tr>
+            <td><strong>${u.nombre}</strong></td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <input type="password" id="master-pass-input-${idx}" value="${u.pass || ''}" style="width: 100px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                    <button type="button" class="btn-warning" onclick="togglePasswordMaster(${idx})" style="padding: 2px 6px; font-size: 0.85em;" title="Mostrar/Ocultar">👁️</button>
+                </div>
+            </td>
+            <td>
+                <button type="button" class="btn-warning" onclick="guardarPasswordUsuarioMaster('${u.nombre}', ${idx})" style="padding: 2px 6px; font-size: 0.85em;">💾 Guardar</button>
+            </td>`;
+        
         const asignados = permisosProveedoresPorUsuario[u.nombre] || [];
         proveedores.forEach(p => {
             html += `<td style="text-align:center;"><input type="checkbox" data-usuario-prov="${u.nombre}" data-prov-num="${p.num}" ${asignados.includes(p.num) ? 'checked' : ''}></td>`;
         });
         html += '</tr>';
     });
+    
     html += '</tbody></table>';
     container.innerHTML = html;
+}
+
+function togglePasswordMaster(index) {
+    const input = document.getElementById(`master-pass-input-${index}`);
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function guardarPasswordUsuarioMaster(nombreUsuario, index) {
+    const input = document.getElementById(`master-pass-input-${index}`);
+    if (!input) return;
+    
+    const nuevaPass = input.value.trim();
+    const usrObj = usuarios.find(u => u.nombre === nombreUsuario);
+    
+    if (!usrObj) return alert("Usuario no encontrado.");
+    if (!nuevaPass) return alert("La contraseña no puede estar vacía.");
+
+    usrObj.pass = nuevaPass;
+
+    try {
+        await fetch('/api/usuarios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(usrObj)
+        });
+        alert(`🔐 Contraseña de "${nombreUsuario}" actualizada con éxito.`);
+        await cargarTodoDesdeServidor(true);
+    } catch (e) {
+        console.error("Error al actualizar la contraseña:", e);
+        alert("⚠️ Hubo un error al guardar la contraseña.");
+    }
 }
 
 async function guardarPermisosProveedoresMaster() {
