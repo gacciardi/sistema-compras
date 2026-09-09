@@ -604,28 +604,29 @@ function cargarCalificacionExistente() {
         document.getElementById('dias-proxima-eval').value = registro.diasPlazo || '';
         calcularFechaProximaDesdeDias();
         if (registro.puntajes) {
-            for (let i = 1; i <= 6; i++) document.getElementById(`stat-val-${i}`).value = registro.puntajes[i - 1] || '';
+            for (let i = 1; i <= 6; i++) {
+                const el = document.getElementById(`stat-val-${i}`);
+                if (el) el.value = registro.puntajes[i - 1] !== undefined ? registro.puntajes[i - 1] : '';
+            }
         }
     } else {
         document.getElementById('fecha-evaluacion').value = '';
         document.getElementById('dias-proxima-eval').value = '';
         document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
-        for (let i = 1; i <= 6; i++) document.getElementById(`stat-val-${i}`).value = '';
+        for (let i = 1; i <= 6; i++) {
+            const el = document.getElementById(`stat-val-${i}`);
+            if (el) el.value = '';
+        }
     }
 
-    if (provNum) {
+    if (provNum && !registro) {
         const pc = calcularPuntajeTiemposReales(provNum, anio);
         if (pc !== null) document.getElementById('stat-val-1').value = pc;
         const oc = calcularPromediosPreEvaluacionOC(provNum, anio);
         if (oc.pago !== null) document.getElementById('stat-val-3').value = oc.pago;
         if (oc.plazo !== null) document.getElementById('stat-val-4').value = oc.plazo;
-    } else {
-        const c1 = document.getElementById('info-caja-recepciones');
-        const c2 = document.getElementById('info-caja-oc');
-        if (c1) c1.style.display = 'none';
-        if (c2) c2.style.display = 'none';
     }
-    
+
     calcularPuntajeClase();
     renderizarGraficosPestaña3();
 }
@@ -673,7 +674,7 @@ async function calcularEstadistica(e) {
 
     const puntajes = [];
     for (let i = 1; i <= 6; i++) {
-        let val = parseFloat(document.getElementById(`stat-val-${i}`).value);
+        let val = parseFloat(document.getElementById(`stat-val-${i}`)?.value);
         if (isNaN(val)) val = 0;
         if (val < 0) val = 0;
         if (val > 100) val = 100;
