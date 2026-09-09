@@ -1458,3 +1458,103 @@ async function limpiarBaseDeDatosMaster() {
         console.error(e);
     }
 }
+// ==========================================
+// FUNCIONES DE GRÁFICOS PARA PESTAÑA 3
+// ==========================================
+let radarChartInstance = null;
+let pieChartInstance = null;
+
+function renderizarGraficosPestaña3() {
+    renderizarGraficoRadar();
+    renderizarGraficoPie();
+}
+
+// 1. Gráfico Radar / Araña por Proveedor
+function renderizarGraficoRadar() {
+    const ctx = document.getElementById('chart-radar-proveedor');
+    if (!ctx) return;
+
+    if (radarChartInstance) radarChartInstance.destroy();
+
+    const v1 = parseFloat(document.getElementById('stat-val-1')?.value) || 0;
+    const v2 = parseFloat(document.getElementById('stat-val-2')?.value) || 0;
+    const v3 = parseFloat(document.getElementById('stat-val-3')?.value) || 0;
+    const v5 = parseFloat(document.getElementById('stat-val-5')?.value) || 0;
+    const v6 = parseFloat(document.getElementById('stat-val-6')?.value) || 0;
+
+    radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['Cumplimiento Entrega', 'Calidad Insumos', 'Condición Pago', 'Atención', 'Resp. Reclamos'],
+            datasets: [{
+                label: 'Desempeño Obtenido (0-100)',
+                data: [v1, v2, v3, v5, v6],
+                backgroundColor: 'rgba(33, 150, 243, 0.25)',
+                borderColor: '#2196F3',
+                pointBackgroundColor: '#1976D2',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { r: { suggestedMin: 0, suggestedMax: 100 } }
+        }
+    });
+}
+
+function actualizarGraficoRadar() {
+    if (!radarChartInstance) return;
+    const v1 = parseFloat(document.getElementById('stat-val-1')?.value) || 0;
+    const v2 = parseFloat(document.getElementById('stat-val-2')?.value) || 0;
+    const v3 = parseFloat(document.getElementById('stat-val-3')?.value) || 0;
+    const v5 = parseFloat(document.getElementById('stat-val-5')?.value) || 0;
+    const v6 = parseFloat(document.getElementById('stat-val-6')?.value) || 0;
+
+    radarChartInstance.data.datasets[0].data = [v1, v2, v3, v5, v6];
+    radarChartInstance.update();
+}
+
+// 2. Gráfico Donut de Clasificación % (A, B, C, D)
+function renderizarGraficoPie() {
+    const ctx = document.getElementById('chart-pie-clasificacion');
+    if (!ctx) return;
+
+    if (pieChartInstance) pieChartInstance.destroy();
+
+    // Lee la BD existente desde getDB() sin alterar el login
+    const db = typeof getDB === 'function' ? getDB() : { evaluaciones: [] };
+    let ca = 0, cb = 0, cc = 0, cd = 0;
+
+    if (db.evaluaciones && Array.isArray(db.evaluaciones)) {
+        db.evaluaciones.forEach(e => {
+            if (e.clase === 'Clase A') ca++;
+            else if (e.clase === 'Clase B') cb++;
+            else if (e.clase === 'Clase C') cc++;
+            else cd++;
+        });
+    }
+
+    const total = (ca + cb + cc + cd) || 1;
+
+    pieChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Clase A', 'Clase B', 'Clase C', 'Clase D'],
+            datasets: [{
+                data: [
+                    Math.round((ca / total) * 100),
+                    Math.round((cb / total) * 100),
+                    Math.round((cc / total) * 100),
+                    Math.round((cd / total) * 100)
+                ],
+                backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#F44336']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '55%'
+        }
+    });
+}
