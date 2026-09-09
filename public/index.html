@@ -107,7 +107,7 @@
                 </div>
             </section>
 
-            <!-- PESTAÑA 2: PROVEEDORES (SOLO CRITERIOS Y ALTA) -->
+            <!-- PESTAÑA 2: PROVEEDORES -->
             <section id="tab-proveedores" class="tab-content">
                 <div class="form-card">
                     <h2>🏬 Alta y Criterios de Selección de Proveedores</h2>
@@ -179,11 +179,11 @@
                             </div>
                             <div class="form-group">
                                 <label>Proveedor:</label>
-                                <select id="select-prov-estadistica" onchange="evaluarAnioSeleccionado(); cargarCalificacionExistente();" required></select>
+                                <select id="select-prov-estadistica" onchange="cargarCalificacionExistente()" required></select>
                             </div>
                             <div class="form-group">
                                 <label>Año de Evaluación:</label>
-                                <select id="select-anio-estadistica" onchange="evaluarAnioSeleccionado(); cargarCalificacionExistente();">
+                                <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()">
                                     <option value="2026" selected>2026 (Año Actual)</option>
                                     <option value="2025">2025 (Histórico)</option>
                                     <option value="2024">2024 (Histórico)</option>
@@ -203,18 +203,18 @@
                             </div>
                         </div>
 
-                        <!-- BANNER Y BOTÓN SEGURO PARA AÑOS ANTERIORES (SE MUESTRA SOLO EN AÑOS PASADOS) -->
+                        <!-- ALERTA CON LÁPIZ DE MODO HISTÓRICO -->
                         <div id="caja-alerta-historica" style="display:none; margin-top: 15px; padding: 12px; background: #fff3e0; border-left: 5px solid #ff9800; border-radius: 4px; font-size: 0.9em;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 1.5em;">✏️</span>
                                 <div>
-                                    <strong style="color: #e65100;">🕒 Registro de Evaluación Histórica Detectado:</strong>
-                                    <p style="margin: 3px 0 0 0; color: #5d4037;">Está evaluando un año anterior al actual. Si no existen remitos u órdenes registradas de ese período, puede habilitar el ingreso manual de puntajes.</p>
+                                    <strong style="color: #e65100;">Modo Edición Histórica Activo:</strong>
+                                    <p style="margin: 2px 0 0 0; color: #5d4037;">Está registrando un año anterior. Los campos de <i>Condición de Pago</i> y <i>Cumplimiento de Entrega</i> se han habilitado para el ingreso manual de puntajes.</p>
                                 </div>
-                                <button type="button" id="btn-habilitar-historico" class="btn-warning" style="white-space: nowrap; font-size: 0.85em; padding: 6px 10px;" onclick="desbloquearCamposHistoricos()">✏️ Habilitar Edición Manual</button>
                             </div>
                         </div>
 
-                        <!-- REGLA DE CÁLCULO DE PUNTAJE DE ENTREGA REAL -->
+                        <!-- REGLA DE CÁLCULO DE ENTREGA REAL -->
                         <div style="margin-top: 20px; padding: 12px; background: #fffde7; border-left: 4px solid #fbc02d; border-radius: 4px; font-size: 0.9em;">
                             <h5 style="margin: 0 0 5px 0; color: #f57f17;">📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
                             <p style="margin: 0;">El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
@@ -226,18 +226,18 @@
                             </ul>
                         </div>
 
-                        <!-- CUADRO AMARILLO EN PESTAÑA 3 CON CAMPOS AUTO-CALCULADOS (PROTEGIDOS EN AÑO ACTUAL) -->
+                        <!-- CUADRO AMARILLO PRE-EVALUACIÓN -->
                         <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
-                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
-                            <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes obtenidos automáticamente desde los registros del sistema.</p>
+                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno)</h4>
+                            <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes obtenidos automáticamente (o manuales en años anteriores).</p>
                             
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado de Pest. 4) *</label>
+                                    <label style="color: #e65100; font-weight: bold;">Condición de Pago (Pest. 4) *</label>
                                     <input type="number" id="stat-val-3" min="0" max="100" placeholder="Puntaje Auto (Pest. 4)" style="border: 2px solid #ffb74d; background-color: #fff8e1;" readonly oninput="calcularPuntajeClase()">
                                 </div>
                                 <div class="form-group">
-                                    <label style="color: #e65100; font-weight: bold;">Cumplimiento de Entrega (Autocalculado de Pest. 5) *</label>
+                                    <label style="color: #e65100; font-weight: bold;">Cumplimiento de Entrega (Pest. 5) *</label>
                                     <input type="number" id="stat-val-1" min="0" max="100" placeholder="Puntaje Auto (Pest. 5)" style="border: 2px solid #ffb74d; background-color: #fff8e1;" readonly oninput="calcularPuntajeClase()">
                                 </div>
                             </div>
@@ -257,6 +257,22 @@
 
                         <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Guardar Evaluación de Desempeño</button>
                     </form>
+                </div>
+
+                <!-- SECCIÓN DE GRÁFICOS RESTAURADA -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div class="form-card" style="margin: 0;">
+                        <h3>📈 Radar de Desempeño por Variables (5 Variables)</h3>
+                        <div style="position: relative; height: 300px; width: 100%;">
+                            <canvas id="chart-radar-proveedor"></canvas>
+                        </div>
+                    </div>
+                    <div class="form-card" style="margin: 0;">
+                        <h3>🍩 Distribución de Clasificación de Proveedores (% A, B, C, D)</h3>
+                        <div style="position: relative; height: 300px; width: 100%;">
+                            <canvas id="chart-pie-clasificacion"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="table-card" style="margin-top: 20px;">
@@ -344,7 +360,7 @@
 
                         <!-- PRE-EVALUACIÓN INTERNA EN PESTAÑA 4 -->
                         <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
-                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
+                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno)</h4>
                             <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes asignados automáticamente por Compras para la Pestaña 3 (No se imprimen en el PDF).</p>
                             
                             <div class="form-grid">
@@ -361,7 +377,7 @@
 
                         <div class="form-group" style="margin-top: 15px;">
                             <label>Observaciones de la Orden:</label>
-                            <textarea id="compra-observaciones" rows="2" placeholder="Observaciones de entrega, aclaraciones para orden abierta..."></textarea>
+                            <textarea id="compra-observaciones" rows="2" placeholder="Observaciones de entrega..."></textarea>
                         </div>
 
                         <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -443,7 +459,7 @@
 
                         <div class="form-group" style="margin-top: 15px;">
                             <label>Observaciones de Recepción / Faltantes:</label>
-                            <textarea id="rec-campo-6" rows="2" placeholder="Detalles de inspección de esta visita o entrega parcial..."></textarea>
+                            <textarea id="rec-campo-6" rows="2" placeholder="Detalles de inspección..."></textarea>
                         </div>
 
                         <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Registrar Recepción de Remito</button>
