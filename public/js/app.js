@@ -5,13 +5,15 @@ let usuarioActual = null;
 let radarChartInstance = null;
 let pieChartInstance = null;
 
-// Datos por defecto si el LocalStorage está vacío
+// Usuarios por defecto garantizados para el sistema
+const USUARIOS_DEFAULT = [
+    { usuario: 'admin', pass: 'admin123', sector: 'Administración', estado: 'Activo' },
+    { usuario: 'compras', pass: '1234', sector: 'Compras', estado: 'Activo' },
+    { usuario: 'recepcion', pass: '1234', sector: 'Recepción', estado: 'Activo' }
+];
+
 const DB_INICIAL = {
-    usuarios: [
-        { usuario: 'admin', pass: 'admin123', sector: 'Administración', estado: 'Activo' },
-        { usuario: 'compras', pass: '1234', sector: 'Compras', estado: 'Activo' },
-        { usuario: 'recepcion', pass: '1234', sector: 'Recepción', estado: 'Activo' }
-    ],
+    usuarios: USUARIOS_DEFAULT,
     sectores: ['Administración', 'Compras', 'Recepción', 'Auditoría'],
     requisitos: [
         { formulario: 'F-COM-01', codigo: 'REQ-001', nombre: 'Garrafas de Gas 45kg', fecha: '2026-09-01', detalle: 'Gas propano para producción' }
@@ -33,12 +35,25 @@ const DB_INICIAL = {
 };
 
 function getDB() {
-    const data = localStorage.getItem('SISTEMA_COMPRAS_DB');
-    if (!data) {
+    try {
+        const data = localStorage.getItem('SISTEMA_COMPRAS_DB');
+        if (!data) {
+            localStorage.setItem('SISTEMA_COMPRAS_DB', JSON.stringify(DB_INICIAL));
+            return DB_INICIAL;
+        }
+        const db = JSON.parse(data);
+        
+        // Verificación de seguridad: si no existen usuarios en el LocalStorage, los reinyecta
+        if (!db.usuarios || !Array.isArray(db.usuarios) || db.usuarios.length === 0) {
+            db.usuarios = USUARIOS_DEFAULT;
+            saveDB(db);
+        }
+        return db;
+    } catch (e) {
+        // En caso de corrupción de datos local, reinicia la BD de forma limpia
         localStorage.setItem('SISTEMA_COMPRAS_DB', JSON.stringify(DB_INICIAL));
         return DB_INICIAL;
     }
-    return JSON.parse(data);
 }
 
 function saveDB(db) {
@@ -46,7 +61,7 @@ function saveDB(db) {
 }
 
 // ==========================================
-// INICIALIZACIÓN
+// INICIALIZACIÓN DE LA APLICACIÓN
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     getDB();
@@ -55,38 +70,60 @@ document.addEventListener('DOMContentLoaded', () => {
     renderizarTablas();
     evaluarAnioSeleccionado();
     
-    // Verificar si hay sesión guardada
+    // Verificar si existe sesión activa guardada
     const session = sessionStorage.getItem('USUARIO_SESION');
     if (session) {
-        usuarioActual = JSON.parse(session);
-        iniciarPantallaPrincipal();
+        try {
+            usuarioActual = JSON.parse(session);
+            iniciarPantallaPrincipal();
+        } catch (e) {
+            sessionStorage.removeItem('USUARIO_SESION');
+        }
     }
 });
 
 // ==========================================
-// LOGIN Y SESIÓN DE USUARIOS
+// LOGIN Y AUTENTICACIÓN
 // ==========================================
 function iniciarSesionUsuario(event) {
-    event.preventDefault();
-    const userIn = document.getElementById('login-user').value.trim();
-    const passIn = document.getElementById('login-pass').value.trim();
+    if (event) event.preventDefault();
+    
+    const userEl = document.getElementById('login-user');
+    const passEl = document.getElementById('login-pass');
+
+    if (!userEl || !passEl) return;
+
+    const userIn = userEl.value.trim().toLowerCase();
+    const passIn = passEl.value.trim();
 
     const db = getDB();
-    const usuarioEncontrado = db.usuarios.find(u => u.usuario === userIn && u.pass === passIn && u.estado === 'Activo');
+    
+    // Búsqueda flexible (insensible a mayúsculas/minúsculas en el usuario)
+    const usuarioEncontrado = db.usuarios.find(u => 
+        u.usuario.toLowerCase() === userIn && 
+        u.pass === passIn && 
+        (u.estado === 'Activo' || !u.estado)
+    );
 
     if (usuarioEncontrado) {
         usuarioActual = usuarioEncontrado;
         sessionStorage.setItem('USUARIO_SESION', JSON.stringify(usuarioActual));
         iniciarPantallaPrincipal();
     } else {
-        alert('Usuario o contraseña incorrectos, o usuario inactivo.');
+        alert('Credenciales incorrectas.\n\nUsuarios disponibles:\n• Usuario: admin / Clave: admin123\n• Usuario: compras / Clave: 1234');
     }
 }
 
 function iniciarPantallaPrincipal() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
-    document.getElementById('user-session-info').innerText = `👤 ${usuarioActual.usuario} (${usuarioActual.sector})`;
+    const loginScreen = document.getElementById('login-screen');
+    const appScreen = document.getElementById('app-screen');
+    const userBadge = document.getElementById('user-session-info');
+
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appScreen) appScreen.style.display = 'block';
+    if (userBadge && usuarioActual) {
+        userBadge.innerText = `👤 ${usuarioActual.usuario} (${usuarioActual.sector || 'General'})`;
+    }
     
     showTab('tab-requisitos');
 }
@@ -94,8 +131,11 @@ function iniciarPantallaPrincipal() {
 function cerrarSesionUsuario() {
     sessionStorage.removeItem('USUARIO_SESION');
     usuarioActual = null;
-    document.getElementById('app-screen').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
+    const loginScreen = document.getElementById('login-screen');
+    const appScreen = document.getElementById('app-screen');
+
+    if (appScreen) appScreen.style.display = 'none';
+    if (loginScreen) loginScreen.style.display = 'flex';
 }
 
 // ==========================================
@@ -118,7 +158,7 @@ function showTab(tabId) {
 }
 
 // ==========================================
-// PESTAÑA 3: EVALUACIÓN DE DESEMPEÑO
+// PESTAÑA 3: EVALUACIÓN DE DESEMPEÑO Y MODO HISTÓRICO
 // ==========================================
 function evaluarAnioSeleccionado() {
     const selectAnio = document.getElementById('select-anio-estadistica');
@@ -225,15 +265,14 @@ function calcularFechaProximaDesdeDias() {
     if (fechaEval && dias > 0) {
         const fecha = new Date(fechaEval);
         fecha.setDate(fecha.getDate() + dias);
-        const formatted = fecha.toLocaleDateString('es-AR');
-        badge.innerText = formatted;
+        badge.innerText = fecha.toLocaleDateString('es-AR');
     } else {
         badge.innerText = '-- / -- / ----';
     }
 }
 
 function calcularEstadistica(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     const db = getDB();
 
     const prov = document.getElementById('select-prov-estadistica').value;
@@ -279,7 +318,7 @@ function calcularEstadistica(event) {
 }
 
 // ==========================================
-// GRÁFICOS (CHART.JS)
+// RENDERIZADO DE GRÁFICOS (CHART.JS)
 // ==========================================
 function renderizarGraficosPestaña3() {
     renderizarGraficoRadar();
@@ -372,17 +411,17 @@ function renderizarGraficoPie() {
 }
 
 // ==========================================
-// AUXILIARES Y RENDER DE TABLAS
+// CARGA DE SELECTS Y TABLAS DE DATOS
 // ==========================================
 function cargarSelectsProveedores() {
     const db = getDB();
     const selectP3 = document.getElementById('select-prov-estadistica');
     const selectP4 = document.getElementById('select-compra-prov');
 
-    if (selectP3) {
+    if (selectP3 && db.proveedores) {
         selectP3.innerHTML = db.proveedores.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
     }
-    if (selectP4) {
+    if (selectP4 && db.proveedores) {
         selectP4.innerHTML = db.proveedores.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
     }
 }
@@ -392,10 +431,10 @@ function cargarCondicionesPagoSelect() {
     const selectPago = document.getElementById('select-compra-condicion-pago');
     const listaUI = document.getElementById('lista-reglas-pago-ui');
 
-    if (selectPago) {
+    if (selectPago && db.condicionesPago) {
         selectPago.innerHTML = db.condicionesPago.map(c => `<option value="${c.nombre}">${c.nombre} (${c.puntos} pts)</option>`).join('');
     }
-    if (listaUI) {
+    if (listaUI && db.condicionesPago) {
         listaUI.innerHTML = db.condicionesPago.map(c => `<li><strong>${c.nombre}:</strong> ${c.puntos} Puntos</li>`).join('');
     }
 }
@@ -416,7 +455,7 @@ function renderizarTablas() {
 
     // Tabla P1 Requisitos
     const tbodyP1 = document.getElementById('tabla-requisitos-body');
-    if (tbodyP1) {
+    if (tbodyP1 && db.requisitos) {
         tbodyP1.innerHTML = db.requisitos.map(r => `
             <tr>
                 <td>${r.formulario}</td>
@@ -431,7 +470,7 @@ function renderizarTablas() {
 
     // Tabla P2 Proveedores
     const tbodyP2 = document.getElementById('tabla-proveedores-body');
-    if (tbodyP2) {
+    if (tbodyP2 && db.proveedores) {
         tbodyP2.innerHTML = db.proveedores.map(p => `
             <tr>
                 <td>${p.formulario}</td>
@@ -444,7 +483,7 @@ function renderizarTablas() {
 
     // Tabla P3 Evaluaciones
     const tbodyP3 = document.getElementById('tabla-estadisticas-body');
-    if (tbodyP3) {
+    if (tbodyP3 && db.evaluaciones) {
         tbodyP3.innerHTML = db.evaluaciones.map(e => `
             <tr>
                 <td>${e.formulario}</td>
@@ -463,9 +502,9 @@ function renderizarTablas() {
 }
 
 function guardarNumeroFormularioDirecto(key, inputId) {
-    const val = document.getElementById(inputId).value;
+    const val = document.getElementById(inputId)?.value;
     if (val) {
-        alert(`Número de formulario ${val} fijado correctamente.`);
+        alert(`Número de formulario ${val} asignado.`);
     }
 }
 
@@ -492,6 +531,7 @@ function eliminarEvaluacion(prov, anio) {
     renderizarGraficosPestaña3();
 }
 
+// Modales Master y Configuración
 function abrirModalMaster() { document.getElementById('modal-master').style.display = 'flex'; }
 function cerrarModalMaster() { document.getElementById('modal-master').style.display = 'none'; }
 function abrirModalGestionPago() { document.getElementById('modal-gestion-pago').style.display = 'flex'; }
