@@ -641,6 +641,47 @@ function habilitarCampoManual(inputEl, esAutomatico, valorAuto) {
     }
 }
 
+// Las evaluaciones anteriores a agosto de 2026 son registros históricos.
+// En esos casos, los puntajes automáticos de las pestañas 4 y 5 son editables.
+function esEvaluacionHistorica() {
+    const fechaEval = document.getElementById('fecha-evaluacion')?.value;
+    return Boolean(fechaEval && fechaEval < '2026-08-01');
+}
+
+function actualizarModoCamposAutomaticosPorFecha() {
+    const inputEntregaAuto = document.getElementById('stat-val-1');
+    const inputPagoAuto = document.getElementById('stat-val-3');
+
+    if (esEvaluacionHistorica()) {
+        [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
+            if (!inputEl) return;
+            inputEl.readOnly = false;
+            inputEl.disabled = false;
+            inputEl.removeAttribute('readonly');
+            inputEl.removeAttribute('disabled');
+            inputEl.style.backgroundColor = '#ffffff';
+            inputEl.style.pointerEvents = 'auto';
+            inputEl.placeholder = 'Puntaje histórico manual (0-100)';
+            inputEl.title = 'Editable por corresponder a una evaluación anterior a agosto de 2026';
+        });
+        return;
+    }
+
+    const provNum = document.getElementById('select-prov-estadistica')?.value;
+    const anio = document.getElementById('select-anio-estadistica')?.value;
+    if (!provNum || !anio) return;
+
+    // Desde el 01/08/2026 se conserva el cálculo y bloqueo automático actual.
+    const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
+    if (!registro) {
+        const puntajeEntrega = calcularPuntajeTiemposReales(provNum, anio);
+        habilitarCampoManual(inputEntregaAuto, puntajeEntrega !== null, puntajeEntrega);
+
+        const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
+        habilitarCampoManual(inputPagoAuto, promediosOC.pago !== null, promediosOC.pago);
+    }
+}
+
 function cargarCalificacionExistente() {
     const provSelect = document.getElementById('select-prov-estadistica');
     const anioSelect = document.getElementById('select-anio-estadistica');
@@ -701,6 +742,10 @@ function cargarCalificacionExistente() {
             inputPlazoAuto.style.pointerEvents = 'auto';
         }
     }
+
+    // Debe ejecutarse al final para que el modo histórico prevalezca sobre
+    // cualquier bloqueo automático aplicado durante la carga.
+    actualizarModoCamposAutomaticosPorFecha();
 
     calcularPuntajeClase();
     renderizarGraficosPestaña3();
