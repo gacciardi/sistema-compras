@@ -615,6 +615,25 @@ function actualizarSelectProveedoresEstadisticas() {
     renderizarTablaEstadisticas();
 }
 
+function habilitarCampoManual(inputEl, esAutomatico, valorAuto) {
+    if (!inputEl) return;
+    if (esAutomatico && valorAuto !== null) {
+        inputEl.value = valorAuto;
+        inputEl.readOnly = true;
+        inputEl.disabled = true;
+        inputEl.style.backgroundColor = '#fff8e1';
+        inputEl.style.pointerEvents = 'none';
+    } else {
+        inputEl.readOnly = false;
+        inputEl.disabled = false;
+        inputEl.removeAttribute('readonly');
+        inputEl.removeAttribute('disabled');
+        inputEl.style.backgroundColor = '#ffffff';
+        inputEl.style.pointerEvents = 'auto';
+        inputEl.placeholder = "Ingrese puntaje (0-100)";
+    }
+}
+
 function cargarCalificacionExistente() {
     const provSelect = document.getElementById('select-prov-estadistica');
     const anioSelect = document.getElementById('select-anio-estadistica');
@@ -636,7 +655,15 @@ function cargarCalificacionExistente() {
         if (registro.puntajes) {
             for (let i = 1; i <= 6; i++) {
                 const el = document.getElementById(`stat-val-${i}`);
-                if (el) el.value = registro.puntajes[i - 1] !== undefined ? registro.puntajes[i - 1] : '';
+                if (el) {
+                    el.value = registro.puntajes[i - 1] !== undefined ? registro.puntajes[i - 1] : '';
+                    el.readOnly = false;
+                    el.disabled = false;
+                    el.removeAttribute('readonly');
+                    el.removeAttribute('disabled');
+                    el.style.backgroundColor = '#ffffff';
+                    el.style.pointerEvents = 'auto';
+                }
             }
         }
     } else {
@@ -651,34 +678,10 @@ function cargarCalificacionExistente() {
 
     if (provNum && !registro) {
         const pc = calcularPuntajeTiemposReales(provNum, anio);
-        if (pc !== null) {
-            if (inputEntregaAuto) {
-                inputEntregaAuto.value = pc;
-                inputEntregaAuto.readOnly = true;
-                inputEntregaAuto.disabled = false;
-            }
-        } else {
-            if (inputEntregaAuto) {
-                inputEntregaAuto.readOnly = false;
-                inputEntregaAuto.disabled = false;
-                inputEntregaAuto.placeholder = "Puntaje manual (0-100)";
-            }
-        }
+        habilitarCampoManual(inputEntregaAuto, pc !== null, pc);
 
         const oc = calcularPromediosPreEvaluacionOC(provNum, anio);
-        if (oc.pago !== null) {
-            if (inputPagoAuto) {
-                inputPagoAuto.value = oc.pago;
-                inputPagoAuto.readOnly = true;
-                inputPagoAuto.disabled = false;
-            }
-        } else {
-            if (inputPagoAuto) {
-                inputPagoAuto.readOnly = false;
-                inputPagoAuto.disabled = false;
-                inputPagoAuto.placeholder = "Puntaje manual (0-100)";
-            }
-        }
+        habilitarCampoManual(inputPagoAuto, oc.pago !== null, oc.pago);
 
         if (oc.plazo !== null) {
             if (inputPlazoAuto) inputPlazoAuto.value = oc.plazo;
