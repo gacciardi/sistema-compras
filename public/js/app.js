@@ -62,6 +62,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+function poblarSelectAnios() {
+    const select = document.getElementById('select-anio-estadistica');
+    if (!select) return;
+    
+    const valActual = select.value;
+    const anioActual = new Date().getFullYear();
+    const anioInicio = 2024;
+    
+    select.innerHTML = '';
+    
+    for (let anio = anioActual + 1; anio >= anioInicio; anio--) {
+        const opt = document.createElement('option');
+        opt.value = String(anio);
+        opt.innerText = String(anio);
+        select.appendChild(opt);
+    }
+
+    if (valActual) {
+        select.value = valActual;
+    } else {
+        select.value = String(anioActual);
+    }
+}
+
 async function iniciarSesionUsuario(e) {
     if (e) e.preventDefault();
 
@@ -258,6 +282,8 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.sys_logo && config.sys_logo.startsWith('data:image')) {
             cambiarLogo(config.sys_logo, false);
         }
+
+        poblarSelectAnios();
 
         if (renderCompleto) {
             actualizarSelectSectoresUsuarios();
@@ -691,7 +717,8 @@ async function calcularEstadistica(e) {
     });
 
     document.getElementById('form-estadisticas').reset();
-    document.getElementById('select-anio-estadistica').value = "2026";
+    
+    poblarSelectAnios();
     document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
     cargarNombresCriteriosEstadisticas();
     document.getElementById('stat-promedio').innerText = '0 pts';
