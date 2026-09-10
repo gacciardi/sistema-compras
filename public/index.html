@@ -65,7 +65,7 @@
                                 <label>N° de Formulario:</label>
                                 <div style="display: flex; gap: 5px;">
                                     <input type="text" id="num-formulario-req" placeholder="Ej: F-COM-01" required>
-                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num-form-req', 'num-formulario-req')">💾</button>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_req', 'num-formulario-req')">💾</button>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -117,7 +117,7 @@
                                 <label>N° de Formulario:</label>
                                 <div style="display: flex; gap: 5px;">
                                     <input type="text" id="num-formulario-prov" placeholder="Ej: F-PROV-01" required>
-                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num-form-prov', 'num-formulario-prov')">💾</button>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_prov', 'num-formulario-prov')">💾</button>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -174,7 +174,7 @@
                                 <label>N° de Formulario:</label>
                                 <div style="display: flex; gap: 5px;">
                                     <input type="text" id="num-formulario" placeholder="Ej: F-EVAL-2026" required>
-                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num-form-stat', 'num-formulario')">💾</button>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_stat', 'num-formulario')">💾</button>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -183,11 +183,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Año de Evaluación:</label>
-                                <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()">
-                                    <option value="2026" selected>2026</option>
-                                    <option value="2025">2025</option>
-                                    <option value="2024">2024</option>
-                                </select>
+                                <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()"></select>
                             </div>
                             <div class="form-group">
                                 <label>Fecha de Evaluación Real:</label>
@@ -223,11 +219,11 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado de Pest. 4) *</label>
-                                    <input type="number" id="stat-val-3" min="0" max="100" placeholder="Puntaje Auto (Pest. 4)" style="border: 2px solid #ffb74d; background-color: #fff8e1;" readonly oninput="calcularPuntajeClase()">
+                                    <input type="number" id="stat-val-3" min="0" max="100" placeholder="Puntaje (0-100)" oninput="calcularPuntajeClase()">
                                 </div>
                                 <div class="form-group">
                                     <label style="color: #e65100; font-weight: bold;">Cumplimiento de Entrega (Autocalculado de Pest. 5) *</label>
-                                    <input type="number" id="stat-val-1" min="0" max="100" placeholder="Puntaje Auto (Pest. 5)" style="border: 2px solid #ffb74d; background-color: #fff8e1;" readonly oninput="calcularPuntajeClase()">
+                                    <input type="number" id="stat-val-1" min="0" max="100" placeholder="Puntaje (0-100)" oninput="calcularPuntajeClase()">
                                 </div>
                             </div>
                         </div>
@@ -235,6 +231,7 @@
                         <h3 style="margin-top: 20px;">Calificación Criterios Adicionales (0 a 100 Puntos)</h3>
                         <div class="form-grid-2col">
                             <div class="form-group"><input type="text" id="lbl-stat-2" value="Calidad Insumos/Servicios"><input type="number" id="stat-val-2" min="0" max="100" oninput="calcularPuntajeClase()"></div>
+                            <div class="form-group"><input type="text" id="lbl-stat-4" value="Plazo de Entrega (OC)"><input type="number" id="stat-val-4" min="0" max="100" oninput="calcularPuntajeClase()"></div>
                             <div class="form-group"><input type="text" id="lbl-stat-5" value="Atencion"><input type="number" id="stat-val-5" min="0" max="100" oninput="calcularPuntajeClase()"></div>
                             <div class="form-group"><input type="text" id="lbl-stat-6" value="Respuesta a Reclamos"><input type="number" id="stat-val-6" min="0" max="100" oninput="calcularPuntajeClase()"></div>
                         </div>
@@ -251,7 +248,7 @@
                 <!-- SECCIÓN DE LOS DOS GRÁFICOS DE P3 -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
                     <div class="form-card" style="margin: 0;">
-                        <h3>📈 Radar de Desempeño por Variables (5 Variables)</h3>
+                        <h3>📈 Radar de Desempeño por Variables</h3>
                         <div style="position: relative; height: 300px; width: 100%;">
                             <canvas id="chart-radar-proveedor"></canvas>
                         </div>
@@ -298,7 +295,7 @@
                                 <label>N° de Formulario:</label>
                                 <div style="display: flex; gap: 5px;">
                                     <input type="text" id="num-formulario-comp" placeholder="Ej: F-OC-01" required>
-                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num-form-comp', 'num-formulario-comp')">💾</button>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_comp', 'num-formulario-comp')">💾</button>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -409,7 +406,7 @@
                                 <label>N° de Formulario:</label>
                                 <div style="display: flex; gap: 5px;">
                                     <input type="text" id="num-formulario-rec" placeholder="Ej: F-REC-01" required>
-                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num-form-rec', 'num-formulario-rec')">💾</button>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_rec', 'num-formulario-rec')">💾</button>
                                 </div>
                             </div>
                             <div class="form-group">
