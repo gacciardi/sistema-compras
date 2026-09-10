@@ -680,15 +680,25 @@ function actualizarModoCamposAutomaticosPorFecha() {
     const anio = document.getElementById('select-anio-estadistica')?.value;
     if (!provNum || !anio) return;
 
-    // Desde el 01/08/2026 se conserva el cálculo y bloqueo automático actual.
-    const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
-    if (!registro) {
-        const puntajeEntrega = calcularPuntajeTiemposReales(provNum, anio);
-        habilitarCampoManual(inputEntregaAuto, puntajeEntrega !== null, puntajeEntrega);
+    // Desde el 01/08/2026 ambos campos son siempre automáticos y no editables,
+    // incluso cuando se carga una evaluación que ya estaba guardada.
+    const puntajeEntrega = calcularPuntajeTiemposReales(provNum, anio);
+    const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
 
-        const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
-        habilitarCampoManual(inputPagoAuto, promediosOC.pago !== null, promediosOC.pago);
-    }
+    if (puntajeEntrega !== null && inputEntregaAuto) inputEntregaAuto.value = puntajeEntrega;
+    if (promediosOC.pago !== null && inputPagoAuto) inputPagoAuto.value = promediosOC.pago;
+
+    [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
+        if (!inputEl) return;
+        inputEl.readOnly = true;
+        inputEl.disabled = true;
+        inputEl.setAttribute('readonly', 'readonly');
+        inputEl.setAttribute('disabled', 'disabled');
+        inputEl.style.backgroundColor = '#fff8e1';
+        inputEl.style.pointerEvents = 'none';
+        inputEl.placeholder = 'Puntaje automático';
+        inputEl.title = 'Campo automático: se completa desde las pestañas 4 y 5';
+    });
 }
 
 function cargarCalificacionExistente() {
