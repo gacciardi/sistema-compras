@@ -624,6 +624,10 @@ function cargarCalificacionExistente() {
     const anio = anioSelect.value;
     const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
 
+    const inputEntregaAuto = document.getElementById('stat-val-1');
+    const inputPagoAuto = document.getElementById('stat-val-3');
+    const inputPlazoAuto = document.getElementById('stat-val-4');
+
     if (registro) {
         if (registro.numFormulario) document.getElementById('num-formulario').value = registro.numFormulario;
         if (registro.fechaEval) document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
@@ -647,10 +651,38 @@ function cargarCalificacionExistente() {
 
     if (provNum && !registro) {
         const pc = calcularPuntajeTiemposReales(provNum, anio);
-        if (pc !== null) document.getElementById('stat-val-1').value = pc;
+        if (pc !== null) {
+            if (inputEntregaAuto) {
+                inputEntregaAuto.value = pc;
+                inputEntregaAuto.readOnly = true;
+                inputEntregaAuto.disabled = false;
+            }
+        } else {
+            if (inputEntregaAuto) {
+                inputEntregaAuto.readOnly = false;
+                inputEntregaAuto.disabled = false;
+                inputEntregaAuto.placeholder = "Puntaje manual (0-100)";
+            }
+        }
+
         const oc = calcularPromediosPreEvaluacionOC(provNum, anio);
-        if (oc.pago !== null) document.getElementById('stat-val-3').value = oc.pago;
-        if (oc.plazo !== null) document.getElementById('stat-val-4').value = oc.plazo;
+        if (oc.pago !== null) {
+            if (inputPagoAuto) {
+                inputPagoAuto.value = oc.pago;
+                inputPagoAuto.readOnly = true;
+                inputPagoAuto.disabled = false;
+            }
+        } else {
+            if (inputPagoAuto) {
+                inputPagoAuto.readOnly = false;
+                inputPagoAuto.disabled = false;
+                inputPagoAuto.placeholder = "Puntaje manual (0-100)";
+            }
+        }
+
+        if (oc.plazo !== null) {
+            if (inputPlazoAuto) inputPlazoAuto.value = oc.plazo;
+        }
     }
 
     calcularPuntajeClase();
