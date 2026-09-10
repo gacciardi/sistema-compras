@@ -84,6 +84,9 @@ function poblarSelectAnios() {
     } else {
         select.value = String(anioActual);
     }
+
+    // Vincular evento de cambio para que ejecute la carga automáticamente al cambiar el año
+    select.onchange = cargarCalificacionExistente;
 }
 
 async function iniciarSesionUsuario(e) {
@@ -605,6 +608,10 @@ function actualizarSelectProveedoresEstadisticas() {
     const select = document.getElementById('select-prov-estadistica');
     if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione un Proveedor --</option>';
+    
+    // Asignar función al evento onchange del selector de proveedores
+    select.onchange = cargarCalificacionExistente;
+
     [...proveedores].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.num;
@@ -630,7 +637,7 @@ function habilitarCampoManual(inputEl, esAutomatico, valorAuto) {
         inputEl.removeAttribute('disabled');
         inputEl.style.backgroundColor = '#ffffff';
         inputEl.style.pointerEvents = 'auto';
-        inputEl.placeholder = "Ingrese puntaje (0-100)";
+        inputEl.placeholder = "Puntaje manual (0-100)";
     }
 }
 
@@ -685,6 +692,13 @@ function cargarCalificacionExistente() {
 
         if (oc.plazo !== null) {
             if (inputPlazoAuto) inputPlazoAuto.value = oc.plazo;
+        } else if (inputPlazoAuto) {
+            inputPlazoAuto.readOnly = false;
+            inputPlazoAuto.disabled = false;
+            inputPlazoAuto.removeAttribute('readonly');
+            inputPlazoAuto.removeAttribute('disabled');
+            inputPlazoAuto.style.backgroundColor = '#ffffff';
+            inputPlazoAuto.style.pointerEvents = 'auto';
         }
     }
 
