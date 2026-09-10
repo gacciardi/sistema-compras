@@ -644,15 +644,22 @@ function habilitarCampoManual(inputEl, esAutomatico, valorAuto) {
 // Las evaluaciones anteriores a agosto de 2026 son registros históricos.
 // En esos casos, los puntajes automáticos de las pestañas 4 y 5 son editables.
 function esEvaluacionHistorica() {
+    const anioSeleccionado = parseInt(document.getElementById('select-anio-estadistica')?.value, 10);
     const fechaEval = document.getElementById('fecha-evaluacion')?.value;
+
+    if (!isNaN(anioSeleccionado) && anioSeleccionado < 2026) return true;
+    if (!isNaN(anioSeleccionado) && anioSeleccionado > 2026) return false;
+
     return Boolean(fechaEval && fechaEval < '2026-08-01');
 }
 
 function actualizarModoCamposAutomaticosPorFecha() {
     const inputEntregaAuto = document.getElementById('stat-val-1');
     const inputPagoAuto = document.getElementById('stat-val-3');
+    const avisoModoHistorico = document.getElementById('aviso-modo-historico');
 
     if (esEvaluacionHistorica()) {
+        if (avisoModoHistorico) avisoModoHistorico.style.display = 'block';
         [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
             if (!inputEl) return;
             inputEl.readOnly = false;
@@ -666,6 +673,8 @@ function actualizarModoCamposAutomaticosPorFecha() {
         });
         return;
     }
+
+    if (avisoModoHistorico) avisoModoHistorico.style.display = 'none';
 
     const provNum = document.getElementById('select-prov-estadistica')?.value;
     const anio = document.getElementById('select-anio-estadistica')?.value;
