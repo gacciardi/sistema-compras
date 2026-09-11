@@ -678,16 +678,9 @@ function actualizarModoCamposAutomaticosPorFecha() {
 
     const provNum = document.getElementById('select-prov-estadistica')?.value;
     const anio = document.getElementById('select-anio-estadistica')?.value;
-    if (!provNum || !anio) return;
 
-    // Desde el 01/08/2026 ambos campos son siempre automáticos y no editables,
-    // incluso cuando se carga una evaluación que ya estaba guardada.
-    const puntajeEntrega = calcularPuntajeTiemposReales(provNum, anio);
-    const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
-
-    if (puntajeEntrega !== null && inputEntregaAuto) inputEntregaAuto.value = puntajeEntrega;
-    if (promediosOC.pago !== null && inputPagoAuto) inputPagoAuto.value = promediosOC.pago;
-
+    // El bloqueo se aplica antes de buscar datos para que los campos tampoco
+    // puedan editarse mientras aún no se seleccionó un proveedor.
     [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
         if (!inputEl) return;
         inputEl.readOnly = true;
@@ -699,6 +692,16 @@ function actualizarModoCamposAutomaticosPorFecha() {
         inputEl.placeholder = 'Puntaje automático';
         inputEl.title = 'Campo automático: se completa desde las pestañas 4 y 5';
     });
+
+    if (!provNum || !anio) return;
+
+    // Desde el 01/08/2026 se reemplaza cualquier valor guardado por el valor
+    // vigente calculado desde las pestañas 4 y 5.
+    const puntajeEntrega = calcularPuntajeTiemposReales(provNum, anio);
+    const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
+
+    if (inputEntregaAuto) inputEntregaAuto.value = puntajeEntrega !== null ? puntajeEntrega : '';
+    if (inputPagoAuto) inputPagoAuto.value = promediosOC.pago !== null ? promediosOC.pago : '';
 }
 
 function cargarCalificacionExistente() {
@@ -1671,50 +1674,87 @@ function renderizarGraficosPestaña3() {
     renderizarGraficoPie();
 }
 
-// 1. Gráfico Radar / Araña por Proveedor
+// 1. Gráfico de barras: evolución histórica anual del proveedor seleccionado
 function renderizarGraficoRadar() {
     const ctx = document.getElementById('chart-radar-proveedor');
     if (!ctx) return;
 
     if (radarChartInstance) radarChartInstance.destroy();
 
-    const v1 = parseFloat(document.getElementById('stat-val-1')?.value) || 0;
-    const v2 = parseFloat(document.getElementById('stat-val-2')?.value) || 0;
-    const v3 = parseFloat(document.getElementById('stat-val-3')?.value) || 0;
-    const v5 = parseFloat(document.getElementById('stat-val-5')?.value) || 0;
-    const v6 = parseFloat(document.getElementById('stat-val-6')?.value) || 0;
+    const provNum = document.getElementById('select-prov-estadistica')?.value;
+    const provObj = proveedores.find(p => p.num === provNum);
+    const resumen = document.getElementById('resumen-tendencia-proveedor');
+
+    const historial = estadisticas
+        .filter(e => e.provNum === provNum)
+        .sort((a, b) => Number(a.anio) - Number(b.anio));
+
+    const anios = historial.map(e => e.anio);
+    const promedios = historial.map(e => Number(e.promedio) || 0);
+    const colores = promedios.map((valor, i) => {
+        if (i === 0) return '#2196F3';
+        if (valor > promedios[i - 1]) return '#4CAF50';
+        if (valor < promedios[i - 1]) return '#F44336';
+        return '#FF9800';
+    });
+
+    if (resumen) {
+        if (!provNum) {
+            resumen.innerText = 'Seleccione un proveedor para visualizar su evolución histórica.';
+            resumen.style.color = '#374151';
+        } else if (historial.length === 0) {
+            resumen.innerText = `${provObj?.nombre || provNum}: todavía no tiene evaluaciones guardadas.`;
+            resumen.style.color = '#374151';
+        } else if (historial.length === 1) {
+            resumen.innerText = `${provObj?.nombre || provNum}: se necesita más de un año para calcular una tendencia.`;
+            resumen.style.color = '#1976D2';
+        } else {
+            const variacion = promedios[promedios.length - 1] - promedios[0];
+            const signo = variacion > 0 ? '+' : '';
+            const tendencia = variacion > 0 ? '↗ Crecimiento' : variacion < 0 ? '↘ Decrecimiento' : '→ Sin variación';
+            resumen.innerText = `${tendencia}: ${signo}${variacion} puntos entre ${anios[0]} y ${anios[anios.length - 1]}.`;
+            resumen.style.color = variacion > 0 ? '#2E7D32' : variacion < 0 ? '#C62828' : '#E65100';
+        }
+    }
 
     radarChartInstance = new Chart(ctx, {
-        type: 'radar',
+        type: 'bar',
         data: {
-            labels: ['Cumplimiento Entrega', 'Calidad Insumos', 'Condición Pago', 'Atención', 'Resp. Reclamos'],
+            labels: anios,
             datasets: [{
-                label: 'Desempeño Obtenido (0-100)',
-                data: [v1, v2, v3, v5, v6],
-                backgroundColor: 'rgba(33, 150, 243, 0.25)',
-                borderColor: '#2196F3',
-                pointBackgroundColor: '#1976D2',
-                borderWidth: 2
+                label: `Promedio anual - ${provObj?.nombre || 'Proveedor'}`,
+                data: promedios,
+                backgroundColor: colores,
+                borderColor: colores,
+                borderWidth: 1,
+                borderRadius: 5
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { r: { suggestedMin: 0, suggestedMax: 100 } }
+            plugins: {
+                legend: { display: true },
+                tooltip: {
+                    callbacks: {
+                        label: context => `${context.parsed.y} puntos`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: { display: true, text: 'Promedio (0-100)' }
+                },
+                x: { title: { display: true, text: 'Año de evaluación' } }
+            }
         }
     });
 }
 
 function actualizarGraficoRadar() {
-    if (!radarChartInstance) return;
-    const v1 = parseFloat(document.getElementById('stat-val-1')?.value) || 0;
-    const v2 = parseFloat(document.getElementById('stat-val-2')?.value) || 0;
-    const v3 = parseFloat(document.getElementById('stat-val-3')?.value) || 0;
-    const v5 = parseFloat(document.getElementById('stat-val-5')?.value) || 0;
-    const v6 = parseFloat(document.getElementById('stat-val-6')?.value) || 0;
-
-    radarChartInstance.data.datasets[0].data = [v1, v2, v3, v5, v6];
-    radarChartInstance.update();
+    renderizarGraficoRadar();
 }
 
 // 2. Gráfico Donut de Clasificación % (A, B, C, D)
