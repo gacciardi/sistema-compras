@@ -1674,7 +1674,7 @@ function renderizarGraficosPestaña3() {
     renderizarGraficoPie();
 }
 
-// 1. Gráfico de barras: evolución histórica anual del proveedor seleccionado
+// 1. Gráfico combinado: seis criterios por año + tendencia del promedio general
 function renderizarGraficoRadar() {
     const ctx = document.getElementById('chart-radar-proveedor');
     if (!ctx) return;
@@ -1691,12 +1691,41 @@ function renderizarGraficoRadar() {
 
     const anios = historial.map(e => e.anio);
     const promedios = historial.map(e => Number(e.promedio) || 0);
-    const colores = promedios.map((valor, i) => {
-        if (i === 0) return '#2196F3';
-        if (valor > promedios[i - 1]) return '#4CAF50';
-        if (valor < promedios[i - 1]) return '#F44336';
-        return '#FF9800';
-    });
+    const criterios = [
+        { nombre: 'Cumplimiento Entrega', indice: 0, color: '#1565C0' },
+        { nombre: 'Calidad', indice: 1, color: '#43A047' },
+        { nombre: 'Condición Pago', indice: 2, color: '#FB8C00' },
+        { nombre: 'Plazo Entrega', indice: 3, color: '#8E24AA' },
+        { nombre: 'Atención', indice: 4, color: '#00ACC1' },
+        { nombre: 'Respuesta Reclamos', indice: 5, color: '#E53935' }
+    ];
+
+    const datasetsCriterios = criterios.map(criterio => ({
+        type: 'bar',
+        label: criterio.nombre,
+        data: historial.map(e => Number(e.puntajes?.[criterio.indice]) || 0),
+        backgroundColor: criterio.color,
+        borderColor: criterio.color,
+        borderWidth: 1,
+        borderRadius: 3,
+        order: 2
+    }));
+
+    const datasetPromedio = {
+        type: 'line',
+        label: 'Promedio general',
+        data: promedios,
+        borderColor: '#212121',
+        backgroundColor: '#212121',
+        pointBackgroundColor: '#FFFFFF',
+        pointBorderColor: '#212121',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        borderWidth: 3,
+        tension: 0.25,
+        fill: false,
+        order: 1
+    };
 
     if (resumen) {
         if (!provNum) {
@@ -1721,23 +1750,20 @@ function renderizarGraficoRadar() {
         type: 'bar',
         data: {
             labels: anios,
-            datasets: [{
-                label: `Promedio anual - ${provObj?.nombre || 'Proveedor'}`,
-                data: promedios,
-                backgroundColor: colores,
-                borderColor: colores,
-                borderWidth: 1,
-                borderRadius: 5
-            }]
+            datasets: [...datasetsCriterios, datasetPromedio]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: true },
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { boxWidth: 14, padding: 12 }
+                },
                 tooltip: {
                     callbacks: {
-                        label: context => `${context.parsed.y} puntos`
+                        label: context => `${context.dataset.label}: ${context.parsed.y} puntos`
                     }
                 }
             },
