@@ -1,1869 +1,635 @@
-let usuarioActual = null;
-let masterPasswordActual = '1234';
-
-let listaSectoresGlobal = [
-    'Compras',
-    'Almacén / Depósito',
-    'Calidad',
-    'Expedición',
-    'Administración'
-];
-
-let tablaCondicionPagoPuntos = {
-    'Prepago': 10,
-    'Contado': 35,
-    'Cuenta corriente': 70,
-    'Plazos': 95
-};
-
-let opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
-
-let permisosPorSector = {
-    'Compras': [1, 2, 3, 4, 5],
-    'Almacén / Depósito': [1, 5],
-    'Calidad': [1, 3, 5],
-    'Expedición': [1, 5],
-    'Administración': [1, 2, 3, 4, 5, 6]
-};
-
-let permisosProveedoresPorUsuario = {};
-
-let requisitos = [];
-let proveedores = [];
-let estadisticas = [];
-let ordenesCompra = [];
-let recepciones = [];
-let usuarios = [];
-
-let nombresCriteriosProveedores = [
-    "Cumplimiento de Entrega",
-    "Calidad Insumos/Servicios",
-    "Condicion de Pago",
-    "Plazo de Entrega",
-    "Atencion",
-    "Respuesta a Reclamos"
-];
-
-let nombresCriteriosEstadisticas = [
-    "Cumplimiento de Entrega (Auto)",
-    "Calidad Insumos/Servicios",
-    "Condicion de Pago (OC)",
-    "Plazo de Entrega (OC)",
-    "Atencion",
-    "Respuesta a Reclamos"
-];
-
-document.addEventListener('DOMContentLoaded', async () => {
-    await cargarTodoDesdeServidor();
-
-    const formUsuarios = document.getElementById('form-usuarios');
-    if (formUsuarios) {
-        formUsuarios.addEventListener('submit', guardarUsuario);
-    }
-});
-
-function poblarSelectAnios() {
-    const select = document.getElementById('select-anio-estadistica');
-    if (!select) return;
-    
-    const valActual = select.value;
-    const anioActual = new Date().getFullYear();
-    const anioInicio = 2024;
-    
-    select.innerHTML = '';
-    
-    for (let anio = anioActual + 1; anio >= anioInicio; anio--) {
-        const opt = document.createElement('option');
-        opt.value = String(anio);
-        opt.innerText = String(anio);
-        select.appendChild(opt);
-    }
-
-    if (valActual) {
-        select.value = valActual;
-    } else {
-        select.value = String(anioActual);
-    }
-
-    // Vincular evento de cambio para que ejecute la carga automáticamente al cambiar el año
-    select.onchange = cargarCalificacionExistente;
-}
-
-async function iniciarSesionUsuario(e) {
-    if (e) e.preventDefault();
-
-    const usrInput = document.getElementById('login-user');
-    const passInput = document.getElementById('login-pass');
-    if (!usrInput || !passInput) return;
-
-    const usrName = usrInput.value.trim();
-    const pass = passInput.value.trim();
-
-    if (!usrName || !pass) {
-        alert("Por favor ingrese usuario y contraseña.");
-        return;
-    }
-
-    if (usrName.toLowerCase() === 'admin' && pass === masterPasswordActual) {
-        usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app-screen').style.display = 'block';
-        document.getElementById('user-session-info').innerText = `👤 admin (Administración)`;
-        aplicarPermisosUsuario('Administración');
-        return;
-    }
-
-    if (!usuarios || usuarios.length === 0) {
-        await cargarTodoDesdeServidor(false);
-    }
-
-    const usrObj = usuarios.find(u => 
-        u.nombre.toLowerCase() === usrName.toLowerCase() && 
-        String(u.pass).trim() === pass
-    );
-
-    if (!usrObj) {
-        alert("Usuario o contraseña incorrectos.");
-        return;
-    }
-
-    if (usrObj.estado !== 'Activo') {
-        alert("Su usuario está Inactivo. Consulte con el Administrador.");
-        return;
-    }
-
-    usuarioActual = usrObj;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
-    document.getElementById('user-session-info').innerText = `👤 ${usrObj.nombre} (${usrObj.sector})`;
-
-    aplicarPermisosUsuario(usrObj.sector);
-}
-
-function cerrarSesionUsuario() {
-    usuarioActual = null;
-    document.getElementById('app-screen').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
-    const formLogin = document.getElementById('form-login');
-    if (formLogin) formLogin.reset();
-}
-
-function aplicarPermisosUsuario(sectorUsuario) {
-    if (!sectorUsuario) return;
-    const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    const sectorBuscadoNorm = normalizar(sectorUsuario);
-    let pestañasPermitidas = null;
-
-    for (const secKey of Object.keys(permisosPorSector)) {
-        const secKeyNorm = normalizar(secKey);
-        if (secKeyNorm === sectorBuscadoNorm || secKeyNorm.includes(sectorBuscadoNorm) || sectorBuscadoNorm.includes(secKeyNorm)) {
-            pestañasPermitidas = permisosPorSector[secKey];
-            break;
-        }
-    }
-
-    if (!pestañasPermitidas) pestañasPermitidas = [1];
-
-    const mapaPestañas = {
-        1: { id: 'tab-requisitos', btn: 'btn-tab-requisitos' },
-        2: { id: 'tab-proveedores', btn: 'btn-tab-proveedores' },
-        3: { id: 'tab-estadisticas', btn: 'btn-tab-estadisticas' },
-        4: { id: 'tab-compras', btn: 'btn-tab-compras' },
-        5: { id: 'tab-recepcion', btn: 'btn-tab-recepcion' },
-        6: { id: 'tab-usuarios', btn: 'btn-tab-usuarios' }
-    };
-
-    let primeraDisponible = null;
-    for (let num = 1; num <= 6; num++) {
-        const p = mapaPestañas[num];
-        const btnEl = document.getElementById(p.btn);
-        if (pestañasPermitidas.includes(num)) {
-            if (btnEl) btnEl.style.display = 'inline-block';
-            if (!primeraDisponible) primeraDisponible = p.id;
-        } else {
-            if (btnEl) btnEl.style.display = 'none';
-        }
-    }
-
-    if (primeraDisponible) showTab(primeraDisponible);
-}
-
-function showTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(sec => sec.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-
-    const activeSection = document.getElementById(tabId);
-    if (activeSection) activeSection.classList.add('active');
-
-    const activeButton = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
-        btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(tabId)
-    );
-    if (activeButton) activeButton.classList.add('active');
-
-    if (tabId === 'tab-proveedores') {
-        cargarNombresCriteriosProveedores();
-        renderizarListaReglasPagoUI();
-    }
-    if (tabId === 'tab-estadisticas') {
-        actualizarSelectProveedoresEstadisticas();
-        renderizarGraficosPestaña3();
-    }
-    if (tabId === 'tab-compras') actualizarSelectsCompras();
-    if (tabId === 'tab-recepcion') actualizarSelectOrdenesPendientes();
-    if (tabId === 'tab-usuarios') actualizarSelectSectoresUsuarios();
-}
-
-async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
-    const el = document.getElementById(idInput);
-    if (!el) return;
-    const valor = el.value.trim();
-    if (!valor) return alert("Ingrese un N° de Formulario.");
-
-    try {
-        await fetch('/api/configuraciones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clave: claveConfig, valor: valor })
-        });
-        alert(`✅ N° de Formulario "${valor}" guardado.`);
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-async function cargarTodoDesdeServidor(renderCompleto = true) {
-    try {
-        const [resReq, resProv, resStat, resComp, resRec, resUsr, resConfig] = await Promise.all([
-            fetch('/api/requisitos'),
-            fetch('/api/proveedores'),
-            fetch('/api/estadisticas'),
-            fetch('/api/compras'),
-            fetch('/api/recepciones'),
-            fetch('/api/usuarios'),
-            fetch('/api/configuraciones')
-        ]);
-
-        requisitos = await resReq.json();
-        proveedores = await resProv.json();
-        estadisticas = await resStat.json();
-        ordenesCompra = await resComp.json();
-        recepciones = await resRec.json();
-        usuarios = await resUsr.json();
-
-        const config = await resConfig.json();
-        const activeEl = document.activeElement;
-
-        if (config.num_form_req && activeEl !== document.getElementById('num-formulario-req')) document.getElementById('num-formulario-req').value = config.num_form_req;
-        if (config.num_form_prov && activeEl !== document.getElementById('num-formulario-prov')) document.getElementById('num-formulario-prov').value = config.num_form_prov;
-        if (config.num_form_stat && activeEl !== document.getElementById('num-formulario')) document.getElementById('num-formulario').value = config.num_form_stat;
-        if (config.num_form_comp && activeEl !== document.getElementById('num-formulario-comp')) document.getElementById('num-formulario-comp').value = config.num_form_comp;
-        if (config.num_form_rec && activeEl !== document.getElementById('num-formulario-rec')) document.getElementById('num-formulario-rec').value = config.num_form_rec;
-
-        if (config.master_password) masterPasswordActual = config.master_password;
-        if (config.lista_sectores && Array.isArray(config.lista_sectores)) listaSectoresGlobal = config.lista_sectores;
-        if (config.tabla_condicion_pago_puntos) {
-            tablaCondicionPagoPuntos = config.tabla_condicion_pago_puntos;
-            opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
-        }
-        if (config.permisos_proveedores_usuarios) permisosProveedoresPorUsuario = config.permisos_proveedores_usuarios;
-        if (config.crit_prov_labels && Array.isArray(config.crit_prov_labels)) nombresCriteriosProveedores = config.crit_prov_labels;
-        if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) nombresCriteriosEstadisticas = config.crit_stat_labels;
-        if (config.permisos_sectores) permisosPorSector = config.permisos_sectores;
-
-        if (config.sys_title) {
-            const hTitle = document.getElementById('header-system-title');
-            if (hTitle) hTitle.innerText = config.sys_title;
-            const lTitle = document.getElementById('login-title');
-            if (lTitle) lTitle.innerText = config.sys_title;
-            const pTitle = document.getElementById('page-title');
-            if (pTitle) pTitle.innerText = config.sys_title;
-            const el4 = document.getElementById('master-system-title');
-            if (el4) el4.value = config.sys_title;
-        }
-
-        if (config.sys_bg_color) cambiarColorBg(config.sys_bg_color, false);
-        if (config.sys_logo && config.sys_logo.startsWith('data:image')) {
-            cambiarLogo(config.sys_logo, false);
-        }
-
-        poblarSelectAnios();
-
-        if (renderCompleto) {
-            actualizarSelectSectoresUsuarios();
-            cargarNombresCriteriosProveedores();
-            cargarNombresCriteriosEstadisticas();
-            renderizarListaReglasPagoUI();
-
-            renderizarTablaRequisitos();
-            renderizarTablaProveedores();
-            renderizarTablaEstadisticas();
-            renderizarTablaCompras();
-            renderizarTablaRecepciones();
-            renderizarTablaUsuarios();
-            
-            renderizarGraficosPestaña3();
-        }
-    } catch (e) {
-        console.error("Error al cargar datos:", e);
-    }
-}
-
-function actualizarSelectSectoresUsuarios() {
-    const selects = [document.getElementById('usr-sector'), document.getElementById('master-usr-sector')];
-    const sectoresOrdenados = [...listaSectoresGlobal].sort((a, b) => a.localeCompare(b));
-
-    selects.forEach(select => {
-        if (!select) return;
-        const valActual = select.value;
-        select.innerHTML = '<option value="">-- Seleccione Sector --</option>';
-        sectoresOrdenados.forEach(sec => {
-            const opt = document.createElement('option');
-            opt.value = sec;
-            opt.innerText = sec;
-            select.appendChild(opt);
-        });
-        if (valActual && listaSectoresGlobal.includes(valActual)) select.value = valActual;
-    });
-}
-
-// --- REQUISITOS ---
-async function guardarRequisito(e) {
-    if (e) e.preventDefault();
-    const numFormulario = document.getElementById('num-formulario-req').value.trim();
-    const num = document.getElementById('num-requisito').value.trim();
-    const nombre = document.getElementById('nombre-requisito').value.trim();
-    const fecha = document.getElementById('fecha-requisito').value || new Date().toISOString().split('T')[0];
-    const detalle = document.getElementById('detalle-requisito').value.trim();
-
-    await fetch('/api/requisitos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numFormulario, num, nombre, fecha, detalle })
-    });
-
-    document.getElementById('form-requisito').reset();
-    await cargarTodoDesdeServidor(true);
-}
-
-function renderizarTablaRequisitos() {
-    const tbody = document.getElementById('tabla-requisitos-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    requisitos.forEach((req) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${req.numFormulario || ''}</strong></td>
-            <td><strong>${req.num}</strong></td>
-            <td>${req.nombre}</td>
-            <td>${req.fecha ? req.fecha.split('T')[0] : ''}</td>
-            <td>${req.detalle || ''}</td>
-            <td>
-                <button class="btn-warning" onclick="editarRequisito('${req.num}')">Editar</button>
-                <button class="btn-danger" onclick="eliminarRequisito('${req.num}')">Eliminar</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function editarRequisito(num) {
-    const req = requisitos.find(r => r.num === num);
-    if (!req) return;
-    document.getElementById('num-formulario-req').value = req.numFormulario || '';
-    document.getElementById('num-requisito').value = req.num;
-    document.getElementById('nombre-requisito').value = req.nombre;
-    if (req.fecha) document.getElementById('fecha-requisito').value = req.fecha.split('T')[0];
-    document.getElementById('detalle-requisito').value = req.detalle || '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function eliminarRequisito(num) {
-    if (!confirm(`¿Eliminar requisito "${num}"?`)) return;
-    await fetch(`/api/requisitos/${num}`, { method: 'DELETE' });
-    await cargarTodoDesdeServidor(true);
-}
-
-// --- PESTAÑA 2: PROVEEDORES ---
-async function guardarNombresCriteriosProveedores() {
-    for (let i = 1; i <= 6; i++) {
-        const el = document.getElementById(`crit-nombre-${i}`);
-        if (el && el.value.trim()) nombresCriteriosProveedores[i - 1] = el.value.trim();
-    }
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'crit_prov_labels', valor: nombresCriteriosProveedores })
-    });
-}
-
-function cargarNombresCriteriosProveedores() {
-    for (let i = 1; i <= 6; i++) {
-        const el = document.getElementById(`crit-nombre-${i}`);
-        if (el) {
-            el.value = nombresCriteriosProveedores[i - 1] || `Criterio ${i}`;
-            el.readOnly = false;
-        }
-    }
-}
-
-async function guardarProveedor(e) {
-    if (e) e.preventDefault();
-
-    const numFormulario = document.getElementById('num-formulario-prov').value.trim();
-    const num = document.getElementById('num-proveedor').value.trim();
-    const nombre = document.getElementById('nombre-proveedor').value.trim();
-    const fechaAlta = document.getElementById('fecha-alta-proveedor').value;
-
-    if (!numFormulario || !num || !nombre || !fechaAlta) {
-        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, N° de Proveedor / CUIT, Razón Social y Fecha de Alta.");
-        return;
-    }
-
-    await guardarNombresCriteriosProveedores();
-
-    const criterios = [];
-    for (let i = 1; i <= 6; i++) {
-        let puntos = parseFloat(document.getElementById(`crit-cant-${i}`)?.value);
-        if (isNaN(puntos)) puntos = 0;
-
-        criterios.push({
-            nombre: document.getElementById(`crit-nombre-${i}`)?.value.trim() || `Criterio ${i}`,
-            cantidad: puntos
-        });
-    }
-
-    await fetch('/api/proveedores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numFormulario, num, nombre, fechaAlta, criterios })
-    });
-
-    document.getElementById('form-proveedor').reset();
-    cargarNombresCriteriosProveedores();
-    await cargarTodoDesdeServidor(true);
-}
-
-function renderizarTablaProveedores() {
-    const tbody = document.getElementById('tabla-proveedores-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    proveedores.forEach((p) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${p.numFormulario || ''}</strong></td>
-            <td><strong>${p.num}</strong></td>
-            <td>${p.nombre}</td>
-            <td>${p.fechaAlta ? p.fechaAlta.split('T')[0] : 'Sin fecha'}</td>
-            <td>
-                <button class="btn-warning" onclick="editarProveedor('${p.num}')">Editar</button>
-                <button class="btn-danger" onclick="eliminarProveedor('${p.num}')">Eliminar</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function editarProveedor(num) {
-    const p = proveedores.find(prov => prov.num === num);
-    if (!p) return;
-    document.getElementById('num-formulario-prov').value = p.numFormulario || '';
-    document.getElementById('num-proveedor').value = p.num;
-    document.getElementById('nombre-proveedor').value = p.nombre;
-    document.getElementById('fecha-alta-proveedor').value = p.fechaAlta ? p.fechaAlta.split('T')[0] : '';
-
-    if (p.criterios && Array.isArray(p.criterios)) {
-        p.criterios.forEach((crit, index) => {
-            const i = index + 1;
-            const lbl = document.getElementById(`crit-nombre-${i}`);
-            const val = document.getElementById(`crit-cant-${i}`);
-            if (lbl) { lbl.value = crit.nombre; lbl.readOnly = false; }
-            if (val) val.value = crit.cantidad;
-        });
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function eliminarProveedor(num) {
-    await fetch(`/api/proveedores/${num}`, { method: 'DELETE' });
-    await cargarTodoDesdeServidor(true);
-}
-
-// --- PESTAÑA 3: EVALUACIÓN DE DESEMPEÑO Y VALORACIONES ---
-function calcularFechaProximaDesdeDias() {
-    const fEvalVal = document.getElementById('fecha-evaluacion')?.value;
-    const diasVal = parseInt(document.getElementById('dias-proxima-eval')?.value);
-    const badgeFechaCalc = document.getElementById('fecha-calculada-prox');
-
-    if (fEvalVal && !isNaN(diasVal) && diasVal > 0) {
-        const fechaBase = new Date(fEvalVal + 'T00:00:00');
-        fechaBase.setDate(fechaBase.getDate() + diasVal);
-        const dia = String(fechaBase.getDate()).padStart(2, '0');
-        const mes = String(fechaBase.getMonth() + 1).padStart(2, '0');
-        const anio = fechaBase.getFullYear();
-        if (badgeFechaCalc) badgeFechaCalc.innerText = `${dia}/${mes}/${anio}`;
-        return `${anio}-${mes}-${dia}`;
-    } else {
-        if (badgeFechaCalc) badgeFechaCalc.innerText = '-- / -- / ----';
-        return '';
-    }
-}
-
-function calcularPuntajeTiemposReales(provNum, anioTarget) {
-    const provObj = proveedores.find(p => p.num === provNum);
-    const nombreProv = provObj ? provObj.nombre : '';
-    const recepcionesProv = recepciones.filter(r => r.provNombre === nombreProv);
-    
-    const infoCajaRec = document.getElementById('info-caja-recepciones');
-    if (infoCajaRec) {
-        if (recepcionesProv.length > 0) {
-            infoCajaRec.innerHTML = `📦 <b>Recepciones evaluadas:</b> ${recepcionesProv.length} remito(s) encontrados para ${nombreProv}.`;
-            infoCajaRec.style.display = 'block';
-        } else {
-            infoCajaRec.innerHTML = `⚠️ <b>Aviso:</b> No se registran remitos de recepción (Pest. 5) para este proveedor.`;
-            infoCajaRec.style.display = 'block';
-        }
-    }
-
-    if (recepcionesProv.length === 0) return null;
-
-    let sumaPuntajes = 0, contador = 0;
-    recepcionesProv.forEach(rec => {
-        const orden = ordenesCompra.find(oc => oc.idOrden === rec.idOrden);
-        if (orden && orden.fechaReq && rec.fechaRecepcion) {
-            const anioOrden = orden.fechaEmision ? orden.fechaEmision.split('-')[0] : '';
-            if (anioTarget && anioOrden !== anioTarget) return;
-
-            const fRequerida = new Date(orden.fechaReq.split('T')[0] + 'T00:00:00');
-            const fReal = new Date(rec.fechaRecepcion.split('T')[0] + 'T00:00:00');
-            const diffDias = Math.ceil((fReal - fRequerida) / (1000 * 60 * 60 * 24));
-            
-            let puntajeEntrega = 100;
-            if (diffDias > 0 && diffDias <= 3) puntajeEntrega = 80;
-            else if (diffDias > 3 && diffDias <= 7) puntajeEntrega = 50;
-            else if (diffDias > 7) puntajeEntrega = 20;
-
-            sumaPuntajes += puntajeEntrega;
-            contador++;
-        }
-    });
-    return contador > 0 ? Math.round(sumaPuntajes / contador) : null;
-}
-
-function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
-    const ordenesProv = ordenesCompra.filter(oc => oc.provNum === provNum);
-    
-    const infoCajaOC = document.getElementById('info-caja-oc');
-    if (infoCajaOC) {
-        if (ordenesProv.length > 0) {
-            infoCajaOC.innerHTML = `📋 <b>Órdenes de Compra evaluadas:</b> ${ordenesProv.length} OC(s) encontradas. Promedios calculados automáticamente.`;
-            infoCajaOC.style.display = 'block';
-        } else {
-            infoCajaOC.innerHTML = `⚠️ <b>Aviso:</b> No se registran Órdenes de Compra (Pest. 4) para este proveedor.`;
-            infoCajaOC.style.display = 'block';
-        }
-    }
-
-    if (ordenesProv.length === 0) return { pago: null, plazo: null };
-
-    let sumaPago = 0, contPago = 0;
-    let sumaPlazo = 0, contPlazo = 0;
-
-    ordenesProv.forEach(oc => {
-        const anioOrden = oc.fechaEmision ? oc.fechaEmision.split('-')[0] : '';
-        if (anioTarget && anioOrden !== anioTarget) return;
-
-        if (oc.pagoEval !== undefined && oc.pagoEval !== null) {
-            sumaPago += parseFloat(oc.pagoEval);
-            contPago++;
-        }
-        if (oc.plazoEval !== undefined && oc.plazoEval !== null) {
-            sumaPlazo += parseFloat(oc.plazoEval);
-            contPlazo++;
-        }
-    });
-
-    return {
-        pago: contPago > 0 ? Math.round(sumaPago / contPago) : null,
-        plazo: contPlazo > 0 ? Math.round(sumaPlazo / contPlazo) : null
-    };
-}
-
-async function guardarNombresCriteriosEstadisticas() {
-    for (let i = 1; i <= 6; i++) {
-        const el = document.getElementById(`lbl-stat-${i}`);
-        if (el && el.value.trim()) nombresCriteriosEstadisticas[i - 1] = el.value.trim();
-    }
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'crit_stat_labels', valor: nombresCriteriosEstadisticas })
-    });
-}
-
-function cargarNombresCriteriosEstadisticas() {
-    for (let i = 1; i <= 6; i++) {
-        const el = document.getElementById(`lbl-stat-${i}`);
-        if (el) el.value = nombresCriteriosEstadisticas[i - 1] || `Criterio ${i}`;
-    }
-}
-
-function actualizarSelectProveedoresEstadisticas() {
-    const select = document.getElementById('select-prov-estadistica');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Seleccione un Proveedor --</option>';
-    
-    // Asignar función al evento onchange del selector de proveedores
-    select.onchange = cargarCalificacionExistente;
-
-    [...proveedores].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.num;
-        opt.innerText = `${p.nombre} (${p.num})`;
-        select.appendChild(opt);
-    });
-    cargarNombresCriteriosEstadisticas();
-    renderizarTablaEstadisticas();
-}
-
-function habilitarCampoManual(inputEl, esAutomatico, valorAuto) {
-    if (!inputEl) return;
-    if (esAutomatico && valorAuto !== null) {
-        inputEl.value = valorAuto;
-        inputEl.readOnly = true;
-        inputEl.disabled = true;
-        inputEl.style.backgroundColor = '#fff8e1';
-        inputEl.style.pointerEvents = 'none';
-    } else {
-        inputEl.readOnly = false;
-        inputEl.disabled = false;
-        inputEl.removeAttribute('readonly');
-        inputEl.removeAttribute('disabled');
-        inputEl.style.backgroundColor = '#ffffff';
-        inputEl.style.pointerEvents = 'auto';
-        inputEl.placeholder = "Puntaje manual (0-100)";
-    }
-}
-
-// Las evaluaciones anteriores a agosto de 2026 son registros históricos.
-// En esos casos, los puntajes automáticos de las pestañas 4 y 5 son editables.
-function esEvaluacionHistorica() {
-    const anioSeleccionado = parseInt(document.getElementById('select-anio-estadistica')?.value, 10);
-    const fechaEval = document.getElementById('fecha-evaluacion')?.value;
-
-    if (!isNaN(anioSeleccionado) && anioSeleccionado < 2026) return true;
-    if (!isNaN(anioSeleccionado) && anioSeleccionado > 2026) return false;
-
-    return Boolean(fechaEval && fechaEval < '2026-08-01');
-}
-
-function actualizarModoCamposAutomaticosPorFecha() {
-    const inputEntregaAuto = document.getElementById('stat-val-1');
-    const inputPagoAuto = document.getElementById('stat-val-3');
-    const avisoModoHistorico = document.getElementById('aviso-modo-historico');
-
-    if (esEvaluacionHistorica()) {
-        if (avisoModoHistorico) avisoModoHistorico.style.display = 'block';
-        [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
-            if (!inputEl) return;
-            inputEl.readOnly = false;
-            inputEl.disabled = false;
-            inputEl.removeAttribute('readonly');
-            inputEl.removeAttribute('disabled');
-            inputEl.style.backgroundColor = '#ffffff';
-            inputEl.style.pointerEvents = 'auto';
-            inputEl.placeholder = 'Puntaje histórico manual (0-100)';
-            inputEl.title = 'Editable por corresponder a una evaluación anterior a agosto de 2026';
-        });
-        return;
-    }
-
-    if (avisoModoHistorico) avisoModoHistorico.style.display = 'none';
-
-    const provNum = document.getElementById('select-prov-estadistica')?.value;
-    const anio = document.getElementById('select-anio-estadistica')?.value;
-
-    // El bloqueo se aplica antes de buscar datos para que los campos tampoco
-    // puedan editarse mientras aún no se seleccionó un proveedor.
-    [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
-        if (!inputEl) return;
-        inputEl.readOnly = true;
-        inputEl.disabled = true;
-        inputEl.setAttribute('readonly', 'readonly');
-        inputEl.setAttribute('disabled', 'disabled');
-        inputEl.style.backgroundColor = '#fff8e1';
-        inputEl.style.pointerEvents = 'none';
-        inputEl.placeholder = 'Puntaje automático';
-        inputEl.title = 'Campo automático: se completa desde las pestañas 4 y 5';
-    });
-
-    if (!provNum || !anio) return;
-
-    // Desde el 01/08/2026 se reemplaza cualquier valor guardado por el valor
-    // vigente calculado desde las pestañas 4 y 5.
-    const puntajeEntrega = calcularPuntajeTiemposReales(provNum, anio);
-    const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
-
-    if (inputEntregaAuto) inputEntregaAuto.value = puntajeEntrega !== null ? puntajeEntrega : '';
-    if (inputPagoAuto) inputPagoAuto.value = promediosOC.pago !== null ? promediosOC.pago : '';
-}
-
-function cargarCalificacionExistente() {
-    const provSelect = document.getElementById('select-prov-estadistica');
-    const anioSelect = document.getElementById('select-anio-estadistica');
-    if (!provSelect || !anioSelect) return;
-
-    const provNum = provSelect.value;
-    const anio = anioSelect.value;
-    const registro = estadisticas.find(e => e.provNum === provNum && e.anio === anio);
-
-    const inputEntregaAuto = document.getElementById('stat-val-1');
-    const inputPagoAuto = document.getElementById('stat-val-3');
-    const inputPlazoAuto = document.getElementById('stat-val-4');
-
-    if (registro) {
-        if (registro.numFormulario) document.getElementById('num-formulario').value = registro.numFormulario;
-        if (registro.fechaEval) document.getElementById('fecha-evaluacion').value = registro.fechaEval.split('T')[0];
-        document.getElementById('dias-proxima-eval').value = registro.diasPlazo || '';
-        calcularFechaProximaDesdeDias();
-        if (registro.puntajes) {
-            for (let i = 1; i <= 6; i++) {
-                const el = document.getElementById(`stat-val-${i}`);
-                if (el) {
-                    el.value = registro.puntajes[i - 1] !== undefined ? registro.puntajes[i - 1] : '';
-                    el.readOnly = false;
-                    el.disabled = false;
-                    el.removeAttribute('readonly');
-                    el.removeAttribute('disabled');
-                    el.style.backgroundColor = '#ffffff';
-                    el.style.pointerEvents = 'auto';
-                }
-            }
-        }
-    } else {
-        document.getElementById('fecha-evaluacion').value = '';
-        document.getElementById('dias-proxima-eval').value = '';
-        document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
-        for (let i = 1; i <= 6; i++) {
-            const el = document.getElementById(`stat-val-${i}`);
-            if (el) el.value = '';
-        }
-    }
-
-    if (provNum && !registro) {
-        const pc = calcularPuntajeTiemposReales(provNum, anio);
-        habilitarCampoManual(inputEntregaAuto, pc !== null, pc);
-
-        const oc = calcularPromediosPreEvaluacionOC(provNum, anio);
-        habilitarCampoManual(inputPagoAuto, oc.pago !== null, oc.pago);
-
-        if (oc.plazo !== null) {
-            if (inputPlazoAuto) inputPlazoAuto.value = oc.plazo;
-        } else if (inputPlazoAuto) {
-            inputPlazoAuto.readOnly = false;
-            inputPlazoAuto.disabled = false;
-            inputPlazoAuto.removeAttribute('readonly');
-            inputPlazoAuto.removeAttribute('disabled');
-            inputPlazoAuto.style.backgroundColor = '#ffffff';
-            inputPlazoAuto.style.pointerEvents = 'auto';
-        }
-    }
-
-    // Debe ejecutarse al final para que el modo histórico prevalezca sobre
-    // cualquier bloqueo automático aplicado durante la carga.
-    actualizarModoCamposAutomaticosPorFecha();
-
-    calcularPuntajeClase();
-    renderizarGraficosPestaña3();
-}
-
-function calcularPuntajeClase() {
-    let suma = 0, contador = 0;
-    for (let i = 1; i <= 6; i++) {
-        const val = parseFloat(document.getElementById(`stat-val-${i}`)?.value);
-        if (!isNaN(val)) { suma += val; contador++; }
-    }
-    const promedio = contador > 0 ? Math.round(suma / contador) : 0;
-    const promEl = document.getElementById('stat-promedio');
-    if (promEl) promEl.innerText = `${promedio} pts`;
-
-    const badgeClase = document.getElementById('stat-clase');
-    let clase = 'Clase D', claseCSS = 'badge-d';
-    if (promedio >= 91) { clase = 'Clase A'; claseCSS = 'badge-a'; }
-    else if (promedio >= 76) { clase = 'Clase B'; claseCSS = 'badge-b'; }
-    else if (promedio >= 61) { clase = 'Clase C'; claseCSS = 'badge-c'; }
-
-    if (badgeClase) { badgeClase.innerText = clase; badgeClase.className = `clase-badge ${claseCSS}`; }
-    
-    actualizarGraficoRadar();
-    return { promedio, clase, claseCSS };
-}
-
-async function calcularEstadistica(e) {
-    if (e) e.preventDefault();
-
-    const provNum = document.getElementById('select-prov-estadistica').value;
-    const anio = document.getElementById('select-anio-estadistica').value;
-    const fechaEval = document.getElementById('fecha-evaluacion').value;
-    const numFormulario = document.getElementById('num-formulario').value.trim();
-
-    if (!numFormulario || !provNum || !anio || !fechaEval) {
-        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, Proveedor, Año de Evaluación y Fecha de Evaluación Real.");
-        return;
-    }
-
-    await guardarNombresCriteriosEstadisticas();
-    const proveedor = proveedores.find(p => p.num === provNum);
-    const { promedio, clase, claseCSS } = calcularPuntajeClase();
-    const diasPlazo = parseInt(document.getElementById('dias-proxima-eval').value) || 0;
-    const fechaProx = calcularFechaProximaDesdeDias();
-
-    const puntajes = [];
-    for (let i = 1; i <= 6; i++) {
-        let val = parseFloat(document.getElementById(`stat-val-${i}`)?.value);
-        if (isNaN(val)) val = 0;
-        if (val < 0) val = 0;
-        if (val > 100) val = 100;
-        puntajes.push(val);
-    }
-
-    await fetch('/api/estadisticas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            numFormulario, version: '', provNum, provNombre: proveedor ? proveedor.nombre : 'Desconocido',
-            anio, fechaEval, diasPlazo, fechaProx, promedio, clase, claseCSS, puntajes
-        })
-    });
-
-    document.getElementById('form-estadisticas').reset();
-    
-    poblarSelectAnios();
-    document.getElementById('fecha-calculada-prox').innerText = '-- / -- / ----';
-    cargarNombresCriteriosEstadisticas();
-    document.getElementById('stat-promedio').innerText = '0 pts';
-    document.getElementById('stat-clase').innerText = 'Clase D';
-    document.getElementById('stat-clase').className = 'clase-badge badge-d';
-
-    await cargarTodoDesdeServidor(true);
-}
-
-function renderizarTablaEstadisticas() {
-    const tbody = document.getElementById('tabla-estadisticas-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    [...estadisticas].sort((a, b) => b.anio.localeCompare(a.anio)).forEach((s) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${s.numFormulario || ''}</strong></td>
-            <td><strong>${s.anio}</strong></td>
-            <td>${s.provNum}</td>
-            <td>${s.provNombre}</td>
-            <td>${s.fechaEval ? s.fechaEval.split('T')[0] : ''}</td>
-            <td><strong>${s.diasPlazo || 0} días</strong></td>
-            <td><strong>${s.fechaProx ? s.fechaProx.split('T')[0] : ''}</strong></td>
-            <td>${s.promedio} pts</td>
-            <td><span class="clase-badge ${s.claseCSS}">${s.clase}</span></td>
-            <td><button class="btn-warning" onclick="editarEstadistica('${s.provNum}', '${s.anio}')">Editar</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function editarEstadistica(provNum, anio) {
-    document.getElementById('select-prov-estadistica').value = provNum;
-    document.getElementById('select-anio-estadistica').value = anio;
-    cargarCalificacionExistente();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// --- PESTAÑA 4: ÓRDENES DE COMPRA & TABLA DINÁMICA DE PAGOS ---
-function actualizarSelectsCompras() {
-    const selectProv = document.getElementById('select-compra-prov');
-    if (selectProv) {
-        selectProv.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
-        let proveedoresPermitidos = proveedores;
-        if (usuarioActual && usuarioActual.nombre !== 'admin') {
-            const provsAsignados = permisosProveedoresPorUsuario[usuarioActual.nombre];
-            if (Array.isArray(provsAsignados) && provsAsignados.length > 0) {
-                proveedoresPermitidos = proveedores.filter(p => provsAsignados.includes(p.num));
-            }
-        }
-        [...proveedoresPermitidos].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.num;
-            opt.innerText = `${p.nombre} (${p.num})`;
-            selectProv.appendChild(opt);
-        });
-    }
-
-    const selectReq = document.getElementById('select-compra-req');
-    if (selectReq) {
-        selectReq.innerHTML = '<option value="">-- Seleccione Requisito --</option>';
-        [...requisitos].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r.num;
-            opt.innerText = `${r.nombre} [${r.num}]`;
-            selectReq.appendChild(opt);
-        });
-    }
-
-    const selectCondPago = document.getElementById('select-compra-condicion-pago');
-    if (selectCondPago) {
-        selectCondPago.innerHTML = '<option value="">-- Seleccione Condición --</option>';
-        [...opcionesCondicionPago].sort((a, b) => a.localeCompare(b)).forEach(optVal => {
-            const opt = document.createElement('option');
-            opt.value = optVal;
-            opt.innerText = optVal;
-            selectCondPago.appendChild(opt);
-        });
-    }
-
-    renderizarListaReglasPagoUI();
-}
-
-function autoCompletarPuntajePago() {
-    const condEl = document.getElementById('select-compra-condicion-pago');
-    const inputPagoEval = document.getElementById('compra-pago-eval');
-    if (condEl && inputPagoEval) {
-        const condicionSelect = condEl.value;
-        if (condicionSelect && tablaCondicionPagoPuntos[condicionSelect] !== undefined) {
-            inputPagoEval.value = tablaCondicionPagoPuntos[condicionSelect];
-        } else {
-            inputPagoEval.value = '';
-        }
-    }
-}
-
-function renderizarListaReglasPagoUI() {
-    const ul = document.getElementById('lista-reglas-pago-ui');
-    if (!ul) return;
-    ul.innerHTML = '';
-    Object.keys(tablaCondicionPagoPuntos).forEach(cond => {
-        const pts = tablaCondicionPagoPuntos[cond];
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>${cond}:</strong> ${pts} Puntos`;
-        ul.appendChild(li);
-    });
-}
-
-function abrirModalGestionPago() {
-    document.getElementById('modal-gestion-pago').style.display = 'flex';
-    renderizarTablaModalGestionPago();
-}
-
-function cerrarModalGestionPago() {
-    document.getElementById('modal-gestion-pago').style.display = 'none';
-}
-
-function renderizarTablaModalGestionPago() {
-    const container = document.getElementById('tabla-gestion-pago-container');
-    if (!container) return;
-
-    let html = `<table>
-        <thead>
-            <tr>
-                <th>Nombre Condición de Pago</th>
-                <th>Puntaje (0-100 pts)</th>
-                <th>Acción</th>
-            </tr>
-        </thead>
-        <tbody>`;
-
-    Object.keys(tablaCondicionPagoPuntos).forEach((cond, idx) => {
-        const pts = tablaCondicionPagoPuntos[cond];
-        html += `<tr>
-            <td><input type="text" id="modal-cond-nombre-${idx}" value="${cond}" style="width: 100%; padding: 4px;"></td>
-            <td><input type="number" min="0" max="100" id="modal-cond-pts-${idx}" value="${pts}" style="width: 80px; padding: 4px;"> pts</td>
-            <td><button class="btn-danger" onclick="eliminarCondicionPagoModal('${cond}')">Eliminar</button></td>
-        </tr>`;
-    });
-
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-}
-
-function eliminarCondicionPagoModal(cond) {
-    if (Object.keys(tablaCondicionPagoPuntos).length <= 1) {
-        alert("Debe quedar al menos una condición de pago registrada.");
-        return;
-    }
-    delete tablaCondicionPagoPuntos[cond];
-    renderizarTablaModalGestionPago();
-}
-
-function agregarNuevaCondicionDirecta() {
-    const nombreInput = document.getElementById('nuevo-pago-nombre');
-    const puntosInput = document.getElementById('nuevo-pago-puntos');
-
-    const nombre = nombreInput.value.trim();
-    const puntos = parseInt(puntosInput.value);
-
-    if (!nombre) {
-        alert("Por favor ingresa un nombre para la nueva condición.");
-        return;
-    }
-    if (isNaN(puntos) || puntos < 0 || puntos > 100) {
-        alert("Por favor ingresa un puntaje válido entre 0 y 100.");
-        return;
-    }
-
-    tablaCondicionPagoPuntos[nombre] = puntos;
-    nombreInput.value = '';
-    puntosInput.value = '';
-
-    renderizarTablaModalGestionPago();
-}
-
-async function guardarCambiosModalPago() {
-    const nuevaTabla = {};
-    const keysOriginales = Object.keys(tablaCondicionPagoPuntos);
-
-    for (let i = 0; i < keysOriginales.length; i++) {
-        const inputNombre = document.getElementById(`modal-cond-nombre-${i}`);
-        const inputPts = document.getElementById(`modal-cond-pts-${i}`);
-
-        if (inputNombre && inputPts) {
-            const nombreVal = inputNombre.value.trim();
-            const ptsVal = parseInt(inputPts.value);
-
-            if (nombreVal && !isNaN(ptsVal)) {
-                nuevaTabla[nombreVal] = Math.min(100, Math.max(0, ptsVal));
-            }
-        }
-    }
-
-    if (Object.keys(nuevaTabla).length === 0) {
-        alert("La tabla no puede estar vacía.");
-        return;
-    }
-
-    tablaCondicionPagoPuntos = nuevaTabla;
-    opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
-
-    await fetch('/api/configuraciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'tabla_condicion_pago_puntos', valor: tablaCondicionPagoPuntos })
-    });
-
-    actualizarSelectsCompras();
-    renderizarListaReglasPagoUI();
-    autoCompletarPuntajePago();
-    cerrarModalGestionPago();
-
-    alert("✅ Escala de valoración y condiciones de pago actualizadas correctamente.");
-}
-
-async function iniciarCompra(e) {
-    if (e) e.preventDefault();
-    const editIdInput = document.getElementById('compra-edit-id');
-    const editId = editIdInput ? editIdInput.value.trim() : '';
-
-    const numFormulario = document.getElementById('num-formulario-comp').value.trim();
-    const tipoOrden = document.getElementById('select-compra-tipo')?.value || 'Normal';
-    const provNum = document.getElementById('select-compra-prov').value;
-    const reqNum = document.getElementById('select-compra-req').value;
-    const cantidad = document.getElementById('compra-cantidad').value;
-    const fechaEmision = document.getElementById('compra-fecha-emision').value || new Date().toISOString().split('T')[0];
-    const fechaReq = document.getElementById('compra-fecha-req').value;
-    const condicionPago = document.getElementById('select-compra-condicion-pago').value;
-    const observaciones = document.getElementById('compra-observaciones').value.trim();
-    const pagoEval = parseInt(document.getElementById('compra-pago-eval').value) || 0;
-    const plazoEval = parseInt(document.getElementById('compra-plazo-eval').value) || 0;
-
-    const provObj = proveedores.find(p => p.num === provNum);
-    const reqObj = requisitos.find(r => r.num === reqNum);
-
-    let idOrden = editId;
-    if (!idOrden || idOrden === '') {
-        let nuevoNumero = 1001;
-        if (ordenesCompra.length > 0) {
-            const numerosExistentes = ordenesCompra.map(o => {
-                const num = parseInt(o.idOrden.replace('OC-', ''));
-                return isNaN(num) ? 0 : num;
-            });
-            nuevoNumero = Math.max(...numerosExistentes) + 1;
-        }
-        idOrden = `OC-${nuevoNumero}`;
-    }
-
-    const ordenGuardar = {
-        idOrden,
-        tipoOrden,
-        numFormulario,
-        provNum,
-        provNombre: provObj ? provObj.nombre : provNum,
-        reqNum,
-        reqNombre: reqObj ? reqObj.nombre : reqNum,
-        reqDetalle: reqObj ? reqObj.detalle : '',
-        cantidad,
-        fechaEmision,
-        fechaReq,
-        condicionPago,
-        observaciones,
-        pagoEval,
-        plazoEval,
-        estado: 'Pendiente'
-    };
-
-    await fetch('/api/compras', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ordenGuardar)
-    });
-
-    generarPDFOrden(ordenGuardar);
-    cancelarEdicionCompra();
-    await cargarTodoDesdeServidor(true);
-}
-
-function renderizarTablaCompras() {
-    const tbody = document.getElementById('tabla-compras-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    ordenesCompra.forEach(oc => {
-        const tr = document.createElement('tr');
-        const badgeClass = oc.estado === 'Pendiente' ? 'status-badge-pending' : 'status-badge-received';
-        const tipoText = oc.tipoOrden === 'Abierta' 
-            ? '<span style="background:#e8f5e9; color:#2e7d32; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">📂 Abierta</span>' 
-            : '<span style="background:#f5f5f5; color:#616161; border: 1px solid #e0e0e0; padding: 2px 6px; border-radius: 4px; font-size: 0.85em;">📌 Normal</span>';
-
-        const botonesAcciones = oc.estado === 'Pendiente' 
-            ? `<button class="btn-warning" onclick="editarOrdenCompra('${oc.idOrden}')">Editar</button>
-               <button class="btn-danger" onclick="eliminarOrdenCompra('${oc.idOrden}')">Eliminar</button>` 
-            : `<small style="color:#777;">No editable</small>`;
-
-        tr.innerHTML = `
-            <td><strong>${oc.numFormulario || ''}</strong></td>
-            <td><strong>${oc.idOrden}</strong></td>
-            <td>${tipoText}</td>
-            <td>${oc.provNombre}</td>
-            <td>${oc.reqNombre}</td>
-            <td>${oc.cantidad}</td>
-            <td><strong>${oc.condicionPago || '-'}</strong></td>
-            <td>${oc.fechaEmision ? oc.fechaEmision.split('T')[0] : ''}</td>
-            <td>${oc.fechaReq ? oc.fechaReq.split('T')[0] : ''}</td>
-            <td><span class="${badgeClass}">${oc.estado}</span></td>
-            <td>${botonesAcciones}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function editarOrdenCompra(idOrden) {
-    const oc = ordenesCompra.find(o => o.idOrden === idOrden);
-    if (!oc) return;
-
-    document.getElementById('compra-edit-id').value = oc.idOrden;
-    document.getElementById('num-formulario-comp').value = oc.numFormulario || '';
-    document.getElementById('select-compra-tipo').value = oc.tipoOrden || 'Normal';
-    document.getElementById('select-compra-prov').value = oc.provNum || '';
-    document.getElementById('select-compra-req').value = oc.reqNum || '';
-    document.getElementById('compra-cantidad').value = oc.cantidad || '';
-    
-    if (oc.fechaEmision) document.getElementById('compra-fecha-emision').value = oc.fechaEmision.split('T')[0];
-    if (oc.fechaReq) document.getElementById('compra-fecha-req').value = oc.fechaReq.split('T')[0];
-
-    document.getElementById('select-compra-condicion-pago').value = oc.condicionPago || '';
-    document.getElementById('compra-pago-eval').value = oc.pagoEval || '';
-    document.getElementById('compra-plazo-eval').value = oc.plazoEval || '';
-    document.getElementById('compra-observaciones').value = oc.observaciones || '';
-
-    document.getElementById('btn-submit-compras').innerText = `💾 Confirmar Corrección (${oc.idOrden})`;
-    document.getElementById('btn-cancel-edit-compras').style.display = 'inline-block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function cancelarEdicionCompra() {
-    document.getElementById('compra-edit-id').value = '';
-    document.getElementById('form-compras').reset();
-    document.getElementById('btn-submit-compras').innerText = '📄 Emitir y Generar PDF Orden de Compra';
-    document.getElementById('btn-cancel-edit-compras').style.display = 'none';
-}
-
-async function eliminarOrdenCompra(idOrden) {
-    if (!confirm(`¿Eliminar Orden de Compra "${idOrden}"?`)) return;
-    try {
-        const res = await fetch(`/api/compras/${idOrden}`, { method: 'DELETE' });
-        if (res.ok) {
-            await cargarTodoDesdeServidor(true);
-        } else {
-            alert("Error al intentar eliminar la Orden.");
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-function generarPDFOrden(orden) {
-    if (!window.jspdf) return;
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const esAbierta = orden.tipoOrden === 'Abierta';
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(216, 27, 96);
-    doc.text(esAbierta ? "ORDEN DE COMPRA ABIERTA" : "ORDEN DE COMPRA", 105, 20, null, null, "center");
-
-    doc.setFontSize(12);
-    doc.setTextColor(51, 51, 51);
-    doc.text(`N° Formulario: ${orden.numFormulario || ''}`, 20, 32);
-    doc.text(`N° Orden: ${orden.idOrden}`, 20, 40);
-    doc.text(`Modalidad: ${orden.tipoOrden || 'Normal'}`, 20, 48);
-    doc.text(`Fecha Emisión: ${orden.fechaEmision || new Date().toLocaleDateString()}`, 20, 56);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("DATOS DEL PROVEEDOR:", 20, 70);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Proveedor: ${orden.provNombre} (${orden.provNum})`, 20, 78);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("DETALLE DEL PEDIDO:", 20, 93);
-    doc.setFont("helvetica", "normal");
-    
-    let currentY = 101;
-    doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY); currentY += 8;
-    doc.text(`Cantidad ${esAbierta ? 'Estimada' : 'Solicitada'}: ${orden.cantidad}`, 20, currentY); currentY += 8;
-    doc.text(`Condición de Pago: ${orden.condicionPago || 'No especificada'}`, 20, currentY); currentY += 8;
-    doc.text(`Fecha ${esAbierta ? 'Límite de Vigencia' : 'Requerida de Entrega'}: ${orden.fechaReq}`, 20, currentY); currentY += 10;
-
-    if (orden.reqDetalle) {
-        const lineasReq = doc.splitTextToSize(`Especificaciones Técnicas: ${orden.reqDetalle}`, 170);
-        doc.text(lineasReq, 20, currentY);
-        currentY += (lineasReq.length * 6) + 4;
-    }
-    if (orden.observaciones) {
-        const lineasObs = doc.splitTextToSize(`Observaciones: ${orden.observaciones}`, 170);
-        doc.text(lineasObs, 20, currentY);
-        currentY += (lineasObs.length * 6) + 4;
-    }
-
-    doc.setDrawColor(216, 27, 96);
-    doc.line(20, currentY + 5, 190, currentY + 5);
-    doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
-}
-
-// --- PESTAÑA 5: RECEPCIÓN ---
-function actualizarSelectOrdenesPendientes() {
-    const select = document.getElementById('select-recepcion-orden');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Seleccione Orden Pendiente o Parcial --</option>';
-
-    const entregasPorOrden = {};
-    if (Array.isArray(recepciones)) {
-        recepciones.forEach(r => {
-            entregasPorOrden[r.idOrden] = (entregasPorOrden[r.idOrden] || 0) + (parseFloat(r.cantRecibida) || 0);
-        });
-    }
-
-    ordenesCompra.filter(oc => {
-        const totalSolicitado = parseFloat(oc.cantidad) || 0;
-        const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
-        return oc.estado !== 'Recibido' && totalEntregado < totalSolicitado;
-    }).sort((a, b) => a.provNombre.localeCompare(b.provNombre)).forEach(oc => {
-        const saldo = (parseFloat(oc.cantidad) || 0) - (entregasPorOrden[oc.idOrden] || 0);
-        const opt = document.createElement('option');
-        opt.value = oc.idOrden;
-        opt.innerText = `${oc.tipoOrden === 'Abierta' ? '[ABIERTA]' : '[NORMAL]'} ${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden}) [Saldo: ${saldo}]`;
-        select.appendChild(opt);
-    });
-}
-
-function cargarDetalleOrdenPendiente() {
-    const idOrden = document.getElementById('select-recepcion-orden').value;
-    const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
-    if (orden) {
-        const entregasPrevias = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
-        const saldoRestante = Math.max(0, (parseFloat(orden.cantidad) || 0) - entregasPrevias);
-        const campoCant = document.getElementById('rec-campo-2');
-        if (campoCant) campoCant.value = saldoRestante;
-    }
-}
-
-async function guardarRecepcion(e) {
-    if (e) e.preventDefault();
-    const idOrden = document.getElementById('select-recepcion-orden').value;
-    if (!idOrden) return;
-
-    const numFormulario = document.getElementById('num-formulario-rec').value.trim();
-    const remito = document.getElementById('rec-campo-1').value.trim();
-    const cantRecibida = parseFloat(document.getElementById('rec-campo-2').value) || 0;
-    const empaque = document.getElementById('rec-campo-3').value;
-    const calidad = document.getElementById('rec-campo-5').value;
-    const obs = document.getElementById('rec-campo-6').value.trim();
-    const fechaRecepcion = document.getElementById('rec-fecha').value || new Date().toISOString().split('T')[0];
-    
-    const usuarioNombre = usuarioActual ? usuarioActual.nombre : 'admin';
-    const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
-
-    await fetch('/api/recepciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numFormulario, idOrden, provNombre: orden ? orden.provNombre : '', remito, cantRecibida, empaque, tiempo: '', calidad, obs, fechaRecepcion, usuario: usuarioNombre })
-    });
-
-    const entregasAnteriores = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
-    if ((entregasAnteriores + cantRecibida) >= (parseFloat(orden ? orden.cantidad : 0) || 0) && orden) {
-        orden.estado = 'Recibido';
-        await fetch('/api/compras', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orden)
-        });
-    }
-
-    document.getElementById('form-recepcion').reset();
-    await cargarTodoDesdeServidor(true);
-    actualizarSelectOrdenesPendientes();
-}
-
-function renderizarTablaRecepciones() {
-    const tbody = document.getElementById('tabla-recepcion-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    recepciones.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${r.numFormulario || ''}</strong></td>
-            <td><strong>${r.idOrden}</strong></td>
-            <td>${r.provNombre}</td>
-            <td>${r.remito}</td>
-            <td>${r.cantRecibida}</td>
-            <td>${r.calidad}</td>
-            <td>${r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : ''}</td>
-            <td><strong>👤 ${r.usuario || 'admin'}</strong></td>
-            <td>${r.obs || '-'}</td>
-            <td><span class="status-badge-received">Recibido</span></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// --- PESTAÑA 6: USUARIOS ---
-async function guardarUsuario(e) {
-    if (e) e.preventDefault();
-    const nombre = document.getElementById('usr-nombre').value.trim();
-    const pass = document.getElementById('usr-pass').value;
-    const sector = document.getElementById('usr-sector').value;
-    const estado = document.getElementById('usr-estado').value;
-
-    if (!nombre) return alert("Ingrese el nombre de usuario.");
-
-    await fetch('/api/usuarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, pass, sector, estado })
-    });
-
-    document.getElementById('form-usuarios').reset();
-    await cargarTodoDesdeServidor(true);
-}
-
-function renderizarTablaUsuarios() {
-    const tbody = document.getElementById('tabla-usuarios-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    if (!usuarios || usuarios.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
-        return;
-    }
-    usuarios.forEach(u => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${u.nombre}</strong></td>
-            <td>${u.sector}</td>
-            <td>${u.estado}</td>
-            <td>
-                <button class="btn-warning" onclick="editarUsuario('${u.nombre}')">Editar</button>
-                <button class="btn-danger" onclick="eliminarUsuario('${u.nombre}')">Eliminar</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function editarUsuario(nombre) {
-    const u = usuarios.find(usr => usr.nombre === nombre);
-    if (!u) return;
-    document.getElementById('usr-nombre').value = u.nombre;
-    document.getElementById('usr-pass').value = u.pass || '';
-    document.getElementById('usr-sector').value = u.sector;
-    document.getElementById('usr-estado').value = u.estado;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function eliminarUsuario(nombre) {
-    if (!confirm(`¿Eliminar usuario "${nombre}"?`)) return;
-    await fetch(`/api/usuarios/${encodeURIComponent(nombre)}`, { method: 'DELETE' });
-    await cargarTodoDesdeServidor(true);
-}
-
-// --- MASTER PANEL ---
-function abrirModalMaster() { document.getElementById('modal-master').style.display = 'flex'; }
-function cerrarModalMaster() { document.getElementById('modal-master').style.display = 'none'; }
-
-function autenticarMaster() {
-    const usr = document.getElementById('master-user').value;
-    const pass = document.getElementById('master-pass').value;
-    if (usr === 'admin' && pass === masterPasswordActual) {
-        document.getElementById('master-auth').style.display = 'none';
-        document.getElementById('master-panel').style.display = 'block';
-        renderizarTablaSectoresMaster();
-        renderizarMatrizPermisos();
-        renderizarMatrizPermisosProveedores();
-    } else {
-        alert('Credenciales Master incorrectas.');
-    }
-}
-
-function renderizarTablaSectoresMaster() {
-    const container = document.getElementById('lista-sectores-master-container');
-    if (!container) return;
-    let html = `<table><thead><tr><th>Sector</th><th>Acciones</th></tr></thead><tbody>`;
-    listaSectoresGlobal.forEach((sec, idx) => {
-        html += `<tr>
-            <td><input type="text" id="input-sector-name-${idx}" value="${sec}" style="width:100%; padding:4px;"></td>
-            <td>
-                <button class="btn-warning" onclick="guardarNombreSectorMaster(${idx})">Guardar</button>
-                <button class="btn-danger" onclick="eliminarSectorMaster(${idx})">Eliminar</button>
-            </td>
-        </tr>`;
-    });
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-}
-
-async function agregarNuevoSectorMaster() {
-    const input = document.getElementById('nuevo-sector-nombre');
-    const val = input.value.trim();
-    if (!val || listaSectoresGlobal.includes(val)) return alert("Nombre inválido o ya existente.");
-    listaSectoresGlobal.push(val);
-    if (!permisosPorSector[val]) permisosPorSector[val] = [1];
-    await guardarSectoresBaseDatos();
-    input.value = '';
-    renderizarTablaSectoresMaster();
-    renderizarMatrizPermisos();
-    actualizarSelectSectoresUsuarios();
-}
-
-async function guardarNombreSectorMaster(index) {
-    const input = document.getElementById(`input-sector-name-${index}`);
-    const nuevo = input.value.trim();
-    const viejo = listaSectoresGlobal[index];
-    if (!nuevo) return;
-    listaSectoresGlobal[index] = nuevo;
-    if (permisosPorSector[viejo]) {
-        permisosPorSector[nuevo] = permisosPorSector[viejo];
-        delete permisosPorSector[viejo];
-    }
-    await guardarSectoresBaseDatos();
-    renderizarTablaSectoresMaster();
-    renderizarMatrizPermisos();
-    actualizarSelectSectoresUsuarios();
-}
-
-async function eliminarSectorMaster(index) {
-    if (listaSectoresGlobal.length <= 1) return alert("Debe haber al menos un sector.");
-    const sec = listaSectoresGlobal[index];
-    if (!confirm(`¿Eliminar sector "${sec}"?`)) return;
-    listaSectoresGlobal.splice(index, 1);
-    delete permisosPorSector[sec];
-    await guardarSectoresBaseDatos();
-    renderizarTablaSectoresMaster();
-    renderizarMatrizPermisos();
-    actualizarSelectSectoresUsuarios();
-}
-
-async function guardarSectoresBaseDatos() {
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'lista_sectores', valor: listaSectoresGlobal }) });
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'permisos_sectores', valor: permisosPorSector }) });
-}
-
-function renderizarMatrizPermisosProveedores() {
-    const container = document.getElementById('matriz-permisos-proveedores-container');
-    if (!container) return;
-    if (!usuarios.length || !proveedores.length) {
-        container.innerHTML = '<p style="color:#777;">Registre usuarios y proveedores primero.</p>';
-        return;
-    }
-    let html = `<table>
-        <thead>
-            <tr>
-                <th>Usuario</th>
-                <th>Contraseña</th>
-                <th>Acción</th>`;
-    
-    proveedores.forEach(p => html += `<th>${p.nombre}<br><small>(${p.num})</small></th>`);
-    html += '</tr></thead><tbody>';
-
-    usuarios.forEach((u, idx) => {
-        html += `<tr>
-            <td><strong>${u.nombre}</strong></td>
-            <td>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <input type="password" id="master-pass-input-${idx}" value="${u.pass || ''}" style="width: 100px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
-                    <button type="button" class="btn-warning" onclick="togglePasswordMaster(${idx})" style="padding: 2px 6px; font-size: 0.85em;" title="Mostrar/Ocultar">👁️</button>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Sistema de Gestión e Inspección de Compras</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <img id="login-logo" src="assets/logo.png" alt="Logo Empresa" class="login-logo" onerror="this.style.display='none'">
+            <h2 id="login-title">Sistema de Compras</h2>
+            <p>Ingrese sus credenciales para acceder</p>
+            <form id="form-login" onsubmit="iniciarSesionUsuario(event)">
+                <div class="form-group">
+                    <label>Usuario:</label>
+                    <input type="text" id="login-user" placeholder="Nombre de usuario" required>
                 </div>
-            </td>
-            <td>
-                <button type="button" class="btn-warning" onclick="guardarPasswordUsuarioMaster('${u.nombre}', ${idx})" style="padding: 2px 6px; font-size: 0.85em;">💾 Guardar</button>
-            </td>`;
-        
-        const asignados = permisosProveedoresPorUsuario[u.nombre] || [];
-        proveedores.forEach(p => {
-            html += `<td style="text-align:center;"><input type="checkbox" data-usuario-prov="${u.nombre}" data-prov-num="${p.num}" ${asignados.includes(p.num) ? 'checked' : ''}></td>`;
-        });
-        html += '</tr>';
-    });
-    
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="login-pass" placeholder="Contraseña" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1.1em;">Iniciar Sesión</button>
+            </form>
+        </div>
+    </div>
 
-function togglePasswordMaster(index) {
-    const input = document.getElementById(`master-pass-input-${index}`);
-    if (!input) return;
-    input.type = input.type === 'password' ? 'text' : 'password';
-}
+    <!-- PANTALLA PRINCIPAL -->
+    <div id="app-screen" style="display: none;">
+        <header class="app-header">
+            <div class="header-left">
+                <img id="app-logo" src="assets/logo.png" alt="Logo" class="header-logo" onerror="this.style.display='none'">
+                <h1 id="header-system-title">Sistema de Gestión e Inspección de Compras</h1>
+            </div>
+            <div class="header-right">
+                <span id="user-session-info" class="user-badge">👤 Usuario</span>
+                <button class="btn-danger" onclick="cerrarSesionUsuario()" style="padding: 6px 12px; margin-left: 10px;">Cerrar Sesión</button>
+                <button class="btn-secondary" onclick="abrirModalMaster()" style="padding: 6px 12px; margin-left: 5px;">⚙️ Master Panel</button>
+            </div>
+        </header>
 
-async function guardarPasswordUsuarioMaster(nombreUsuario, index) {
-    const input = document.getElementById(`master-pass-input-${index}`);
-    if (!input) return;
-    
-    const nuevaPass = input.value.trim();
-    const usrObj = usuarios.find(u => u.nombre === nombreUsuario);
-    
-    if (!usrObj) return alert("Usuario no encontrado.");
-    if (!nuevaPass) return alert("La contraseña no puede estar vacía.");
+        <nav class="nav-tabs">
+            <button id="btn-tab-requisitos" class="tab-btn active" onclick="showTab('tab-requisitos')">P1: Requisitos de Compra</button>
+            <button id="btn-tab-proveedores" class="tab-btn" onclick="showTab('tab-proveedores')">P2: Criterios y Alta Proveedores</button>
+            <button id="btn-tab-estadisticas" class="tab-btn" onclick="showTab('tab-estadisticas')">P3: Evaluación de Desempeño</button>
+            <button id="btn-tab-compras" class="tab-btn" onclick="showTab('tab-compras')">P4: Emisión Órdenes de Compra</button>
+            <button id="btn-tab-recepcion" class="tab-btn" onclick="showTab('tab-recepcion')">P5: Inspección de Recepción</button>
+            <button id="btn-tab-usuarios" class="tab-btn" onclick="showTab('tab-usuarios')">P6: Gestión de Usuarios</button>
+        </nav>
 
-    usrObj.pass = nuevaPass;
+        <main class="content-container">
 
-    try {
-        await fetch('/api/usuarios', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(usrObj)
-        });
-        alert(`🔐 Contraseña de "${nombreUsuario}" actualizada con éxito.`);
-        await cargarTodoDesdeServidor(true);
-    } catch (e) {
-        console.error("Error al actualizar la contraseña:", e);
-        alert("⚠️ Hubo un error al guardar la contraseña.");
-    }
-}
+            <!-- PESTAÑA 1: REQUISITOS -->
+            <section id="tab-requisitos" class="tab-content active">
+                <div class="form-card">
+                    <h2>📋 Formulario de Requisitos de Compra</h2>
+                    <form id="form-requisito" onsubmit="guardarRequisito(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>N° de Formulario:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="num-formulario-req" placeholder="Ej: F-COM-01" required>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_req', 'num-formulario-req')">💾</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Código / N° Requisito:</label>
+                                <input type="text" id="num-requisito" placeholder="Ej: REQ-001" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Nombre / Insumo Solicitado:</label>
+                                <input type="text" id="nombre-requisito" placeholder="Ej: Garrafas de Gas 45kg" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha de Solicitud:</label>
+                                <input type="date" id="fecha-requisito" required>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Detalle / Especificaciones Técnicas:</label>
+                            <textarea id="detalle-requisito" rows="3" placeholder="Detalles de calidad, marca, especificaciones..."></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 10px;">💾 Guardar Requisito</button>
+                    </form>
+                </div>
 
-async function guardarPermisosProveedoresMaster() {
-    const nuevos = {};
-    document.querySelectorAll('#matriz-permisos-proveedores-container input[type="checkbox"]').forEach(chk => {
-        if (chk.checked) {
-            const usr = chk.dataset.usuarioProv;
-            const prov = chk.dataset.provNum;
-            if (!nuevos[usr]) nuevos[usr] = [];
-            nuevos[usr].push(prov);
-        }
-    });
-    permisosProveedoresPorUsuario = nuevos;
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'permisos_proveedores_usuarios', valor: permisosProveedoresPorUsuario }) });
-    actualizarSelectsCompras();
-    alert("✅ Permisos guardados.");
-}
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3>Listado de Requisitos Registrados</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Formulario</th>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Fecha</th>
+                                <th>Especificaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-requisitos-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-function renderizarMatrizPermisos() {
-    const container = document.getElementById('matriz-permisos-container');
-    if (!container) return;
-    const pestañas = [{ id: 1, nombre: 'P1' }, { id: 2, nombre: 'P2' }, { id: 3, nombre: 'P3' }, { id: 4, nombre: 'P4' }, { id: 5, nombre: 'P5' }, { id: 6, nombre: 'P6' }];
-    let html = '<table><thead><tr><th>Sector</th>';
-    pestañas.forEach(p => html += `<th>${p.nombre}</th>`);
-    html += '</tr></thead><tbody>';
-    listaSectoresGlobal.forEach(sec => {
-        html += `<tr><td><strong>${sec}</strong></td>`;
-        const permitidas = permisosPorSector[sec] || [];
-        pestañas.forEach(p => {
-            html += `<td style="text-align:center;"><input type="checkbox" data-sector="${sec}" data-pestaña="${p.id}" ${permitidas.includes(p.id) ? 'checked' : ''}></td>`;
-        });
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
+            <!-- PESTAÑA 2: PROVEEDORES -->
+            <section id="tab-proveedores" class="tab-content">
+                <div class="form-card">
+                    <h2>🏬 Alta y Criterios de Selección de Proveedores</h2>
+                    <form id="form-proveedor" onsubmit="guardarProveedor(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>N° de Formulario:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="num-formulario-prov" placeholder="Ej: F-PROV-01" required>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_prov', 'num-formulario-prov')">💾</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>N° de Proveedor / CUIT:</label>
+                                <input type="text" id="num-proveedor" placeholder="Ej: PROV-1001" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Nombre / Razón Social:</label>
+                                <input type="text" id="nombre-proveedor" placeholder="Ej: Amarilla Gas S.A." required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha de Alta:</label>
+                                <input type="date" id="fecha-alta-proveedor" required>
+                            </div>
+                        </div>
 
-async function guardarPermisosSectores() {
-    const nuevos = {};
-    listaSectoresGlobal.forEach(s => nuevos[s] = []);
-    document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]').forEach(chk => {
-        if (chk.checked) {
-            const sec = chk.dataset.sector;
-            const pId = parseInt(chk.dataset.pestaña);
-            if (sec && !isNaN(pId)) {
-                if (!nuevos[sec].includes(pId)) nuevos[sec].push(pId);
-            }
-        }
-    });
-    permisosPorSector = nuevos;
-    await guardarSectoresBaseDatos();
-    if (usuarioActual) aplicarPermisosUsuario(usuarioActual.sector);
-    alert("✅ Permisos actualizados.");
-}
+                        <h3 style="margin-top: 20px;">Criterios de Evaluación Inicial</h3>
+                        <div class="form-grid-2col">
+                            <div class="form-group"><input type="text" id="crit-nombre-1" placeholder="Nombre Criterio 1"><input type="number" id="crit-cant-1" min="0" max="100" placeholder="Puntos (0-100)"></div>
+                            <div class="form-group"><input type="text" id="crit-nombre-2" placeholder="Nombre Criterio 2"><input type="number" id="crit-cant-2" min="0" max="100" placeholder="Puntos (0-100)"></div>
+                            <div class="form-group"><input type="text" id="crit-nombre-3" placeholder="Nombre Criterio 3"><input type="number" id="crit-cant-3" min="0" max="100" placeholder="Puntos (0-100)"></div>
+                            <div class="form-group"><input type="text" id="crit-nombre-4" placeholder="Nombre Criterio 4"><input type="number" id="crit-cant-4" min="0" max="100" placeholder="Puntos (0-100)"></div>
+                            <div class="form-group"><input type="text" id="crit-nombre-5" placeholder="Nombre Criterio 5"><input type="number" id="crit-cant-5" min="0" max="100" placeholder="Puntos (0-100)"></div>
+                            <div class="form-group"><input type="text" id="crit-nombre-6" placeholder="Nombre Criterio 6"><input type="number" id="crit-cant-6" min="0" max="100" placeholder="Puntos (0-100)"></div>
+                        </div>
 
-async function guardarNuevaPasswordMaster() {
-    const np = document.getElementById('master-new-pass').value.trim();
-    if (!np) return;
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'master_password', valor: np }) });
-    masterPasswordActual = np;
-    document.getElementById('master-new-pass').value = '';
-    alert("🔐 Contraseña Master cambiada.");
-}
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Guardar Proveedor</button>
+                    </form>
+                </div>
 
-async function guardarTituloSistema() {
-    const titulo = document.getElementById('master-system-title').value.trim();
-    if (!titulo) return;
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_title', valor: titulo }) });
-    document.getElementById('header-system-title').innerText = titulo;
-    document.getElementById('login-title').innerText = titulo;
-    document.getElementById('page-title').innerText = titulo;
-}
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3>Proveedores Registrados</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Formulario</th>
+                                <th>N° Proveedor</th>
+                                <th>Nombre</th>
+                                <th>Fecha de Alta</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-proveedores-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-async function cambiarColorBg(color, guardar = true) {
-    document.documentElement.style.setProperty('--bg-primary', color);
-    document.body.style.backgroundColor = color;
-    if (guardar) {
-        await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_bg_color', valor: color }) });
-    }
-}
+            <!-- PESTAÑA 3: EVALUACIÓN DE DESEMPEÑO -->
+            <section id="tab-estadisticas" class="tab-content">
+                <div class="form-card">
+                    <h2>📊 Evaluación Periódica de Desempeño de Proveedores</h2>
+                    
+                    <div id="info-caja-recepciones" style="display:none; background:#e8f4fd; border-left: 4px solid #2196F3; padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;"></div>
+                    <div id="info-caja-oc" style="display:none; background:#e8f8f5; border-left: 4px solid #2ecc71; padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9em;"></div>
+                    <div id="aviso-modo-historico" style="display:none; background:#fff3cd; color:#664d03; border:1px solid #ffecb5; border-left:5px solid #ff9800; padding:12px; margin-bottom:15px; border-radius:6px; font-weight:bold;">
+                        ✍️ Modo histórico manual: los campos “Condición de Pago” y “Cumplimiento de Entrega” pueden editarse manualmente porque la evaluación es anterior a agosto de 2026.
+                    </div>
 
-function subirLogoDesdePC(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = e => cambiarLogo(e.target.result, true);
-        reader.readAsDataURL(file);
-    }
-}
+                    <form id="form-estadisticas" onsubmit="calcularEstadistica(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>N° de Formulario:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="num-formulario" placeholder="Ej: F-EVAL-2026" required>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_stat', 'num-formulario')">💾</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Proveedor:</label>
+                                <select id="select-prov-estadistica" onchange="cargarCalificacionExistente()" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Año de Evaluación:</label>
+                                <select id="select-anio-estadistica" onchange="cargarCalificacionExistente()"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha de Evaluación Real:</label>
+                                <input type="date" id="fecha-evaluacion" onchange="calcularFechaProximaDesdeDias(); actualizarModoCamposAutomaticosPorFecha()" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Días Plazo Próx. Eval.:</label>
+                                <input type="number" id="dias-proxima-eval" placeholder="Ej: 180" oninput="calcularFechaProximaDesdeDias()">
+                            </div>
+                            <div class="form-group">
+                                <label>Próxima Eval. Calculada:</label>
+                                <div id="fecha-calculada-prox" class="badge-info-date">-- / -- / ----</div>
+                            </div>
+                        </div>
 
-async function cambiarLogo(src, guardar = true) {
-    if (!src) return;
-    const l1 = document.getElementById('app-logo'), l2 = document.getElementById('login-logo');
-    if (l1) { l1.src = src; l1.style.display = 'block'; }
-    if (l2) { l2.src = src; l2.style.display = 'inline-block'; }
-    if (guardar) {
-        await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_logo', valor: src }) });
-    }
-}
+                        <!-- REGLA DE CÁLCULO DE PUNTAJE DE ENTREGA REAL -->
+                        <div style="margin-top: 20px; padding: 12px; background: #fffde7; border-left: 4px solid #fbc02d; border-radius: 4px; font-size: 0.9em;">
+                            <h5 style="margin: 0 0 5px 0; color: #f57f17;">📌 Regla de Cálculo de Puntaje de Entrega Real (Evidencia Auditoría):</h5>
+                            <p style="margin: 0;">El sistema toma el desvío en días entre la <strong>Fecha Requerida (Pest. 4)</strong> y la <strong>Fecha Real de Recepción (Pest. 5)</strong>:</p>
+                            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                                <li><strong>0 días de desvío (o antes):</strong> 100 Puntos (Excelente)</li>
+                                <li><strong>1 a 3 días de demora:</strong> 80 Puntos (Aceptable)</li>
+                                <li><strong>4 a 7 días de demora:</strong> 50 Puntos (Regular)</li>
+                                <li><strong>Más de 7 días de demora:</strong> 20 Puntos (Crítico)</li>
+                            </ul>
+                        </div>
 
-async function limpiarBaseDeDatosMaster() {
-    if (!confirm("⚠️ ¿Vaciar Evaluaciones, Órdenes y Recepciones?")) return;
-    try {
-        const res = await fetch('/api/master/limpiar-bd', { method: 'POST' });
-        if (res.ok) {
-            alert("✅ Base de datos limpia.");
-            await cargarTodoDesdeServidor(true);
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
+                        <!-- CUADRO AMARILLO PRE-EVALUACIÓN -->
+                        <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
+                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno)</h4>
+                            <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes obtenidos automáticamente desde los registros del sistema.</p>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado de Pest. 4) *</label>
+                                    <input type="number" id="stat-val-3" min="0" max="100" placeholder="Puntaje automático" oninput="calcularPuntajeClase()" readonly disabled>
+                                </div>
+                                <div class="form-group">
+                                    <label style="color: #e65100; font-weight: bold;">Cumplimiento de Entrega (Autocalculado de Pest. 5) *</label>
+                                    <input type="number" id="stat-val-1" min="0" max="100" placeholder="Puntaje automático" oninput="calcularPuntajeClase()" readonly disabled>
+                                </div>
+                            </div>
+                        </div>
 
-// ==========================================
-// FUNCIONES DE GRÁFICOS PARA PESTAÑA 3
-// ==========================================
-let radarChartInstance = null;
-let pieChartInstance = null;
+                        <h3 style="margin-top: 20px;">Calificación Criterios Adicionales (0 a 100 Puntos)</h3>
+                        <div class="form-grid-2col">
+                            <div class="form-group"><input type="text" id="lbl-stat-2" value="Calidad Insumos/Servicios"><input type="number" id="stat-val-2" min="0" max="100" oninput="calcularPuntajeClase()"></div>
+                            <div class="form-group"><input type="text" id="lbl-stat-4" value="Plazo de Entrega (OC)"><input type="number" id="stat-val-4" min="0" max="100" oninput="calcularPuntajeClase()"></div>
+                            <div class="form-group"><input type="text" id="lbl-stat-5" value="Atencion"><input type="number" id="stat-val-5" min="0" max="100" oninput="calcularPuntajeClase()"></div>
+                            <div class="form-group"><input type="text" id="lbl-stat-6" value="Respuesta a Reclamos"><input type="number" id="stat-val-6" min="0" max="100" oninput="calcularPuntajeClase()"></div>
+                        </div>
 
-function renderizarGraficosPestaña3() {
-    renderizarGraficoRadar();
-    renderizarGraficoPie();
-}
+                        <div class="score-summary-box">
+                            <div>Promedio General: <strong id="stat-promedio">0 pts</strong></div>
+                            <div>Clasificación Obtendida: <span id="stat-clase" class="clase-badge badge-d">Clase D</span></div>
+                        </div>
 
-// 1. Gráfico combinado: seis criterios por año + tendencia del promedio general
-function renderizarGraficoRadar() {
-    const ctx = document.getElementById('chart-radar-proveedor');
-    if (!ctx) return;
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Guardar Evaluación de Desempeño</button>
+                    </form>
+                </div>
 
-    if (radarChartInstance) radarChartInstance.destroy();
+                <!-- SECCIÓN DE LOS DOS GRÁFICOS DE P3 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div class="form-card" style="margin: 0;">
+                        <h3>📊 Evolución Anual por Criterio y Promedio General</h3>
+                        <div style="position: relative; height: 360px; width: 100%;">
+                            <canvas id="chart-radar-proveedor"></canvas>
+                        </div>
+                        <div id="resumen-tendencia-proveedor" style="margin-top:10px; padding:10px; border-radius:6px; background:#f4f6f9; text-align:center; font-weight:bold;">
+                            Seleccione un proveedor para visualizar su evolución histórica.
+                        </div>
+                    </div>
+                    <div class="form-card" style="margin: 0;">
+                        <h3>🍩 Distribución de Clasificación de Proveedores (% A, B, C, D)</h3>
+                        <div style="position: relative; height: 300px; width: 100%;">
+                            <canvas id="chart-pie-clasificacion"></canvas>
+                        </div>
+                    </div>
+                </div>
 
-    const provNum = document.getElementById('select-prov-estadistica')?.value;
-    const provObj = proveedores.find(p => String(p.num) === String(provNum));
-    const resumen = document.getElementById('resumen-tendencia-proveedor');
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3>Histórico de Evaluaciones Registradas</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Formulario</th>
+                                <th>Año</th>
+                                <th>N° Prov.</th>
+                                <th>Proveedor</th>
+                                <th>Fecha Real</th>
+                                <th>Plazo</th>
+                                <th>Próx. Eval</th>
+                                <th>Promedio</th>
+                                <th>Clase</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-estadisticas-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-    let historial = estadisticas
-        .filter(e => String(e.provNum) === String(provNum))
-        .map(e => ({ ...e, anio: String(e.anio) }));
+            <!-- PESTAÑA 4: EMISIÓN ÓRDENES DE COMPRA -->
+            <section id="tab-compras" class="tab-content">
+                <div class="form-card">
+                    <h2>🛍️ Emisión de Órdenes de Compra</h2>
+                    <form id="form-compras" onsubmit="iniciarCompra(event)">
+                        <input type="hidden" id="compra-edit-id">
 
-    // Incorporar al gráfico la evaluación visible en el formulario, aunque
-    // todavía no se haya guardado, y reemplazar con ella el mismo año histórico.
-    const anioFormulario = document.getElementById('select-anio-estadistica')?.value;
-    const puntajesFormulario = [];
-    let hayPuntajesFormulario = false;
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>N° de Formulario:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="num-formulario-comp" placeholder="Ej: F-OC-01" required>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_comp', 'num-formulario-comp')">💾</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Orden:</label>
+                                <select id="select-compra-tipo">
+                                    <option value="Normal" selected>📌 Normal (Compra Puntual)</option>
+                                    <option value="Abierta">📂 Abierta / Recurrente (Marco de Reposición)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Proveedor:</label>
+                                <select id="select-compra-prov" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Requisito Solicitado:</label>
+                                <select id="select-compra-req" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cantidad Solicitada / Estimada:</label>
+                                <input type="number" id="compra-cantidad" placeholder="Ej: 25" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha de Emisión:</label>
+                                <input type="date" id="compra-fecha-emision" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha Requerida / Límite Vigencia:</label>
+                                <input type="date" id="compra-fecha-req" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Condición de Pago:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <select id="select-compra-condicion-pago" onchange="autoCompletarPuntajePago()" required style="flex: 1;"></select>
+                                    <button type="button" class="btn-secondary" onclick="abrirModalGestionPago()" title="Gestionar opciones y puntajes de pago">⚙️ Editar Escala</button>
+                                </div>
+                            </div>
+                        </div>
 
-    for (let i = 1; i <= 6; i++) {
-        const valorTexto = document.getElementById(`stat-val-${i}`)?.value;
-        if (valorTexto !== '' && valorTexto !== undefined) {
-            const valorNumero = Number(valorTexto);
-            puntajesFormulario.push(Number.isNaN(valorNumero) ? null : valorNumero);
-            if (!Number.isNaN(valorNumero)) hayPuntajesFormulario = true;
-        } else {
-            puntajesFormulario.push(null);
-        }
-    }
+                        <!-- CUADRO AZUL EN PESTAÑA 4 -->
+                        <div style="margin-top: 15px; padding: 12px; background: #e1f5fe; border-left: 4px solid #0288d1; border-radius: 4px; font-size: 0.9em;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h5 style="color: #01579b; margin: 0;">📌 Tabla de Valoración de Condición de Pago:</h5>
+                                <button type="button" class="btn-secondary" onclick="abrirModalGestionPago()" style="font-size: 0.8em; padding: 4px 8px;">✏️ Modificar Tabla</button>
+                            </div>
+                            <p style="margin: 5px 0 0 0;">El puntaje de Pre-Evaluación se asigna automáticamente según la condición elegida:</p>
+                            <ul id="lista-reglas-pago-ui" style="margin: 5px 0 0 20px; padding: 0;"></ul>
+                        </div>
 
-    if (provNum && anioFormulario && hayPuntajesFormulario) {
-        const valoresValidos = puntajesFormulario.filter(v => v !== null);
-        const promedioFormulario = valoresValidos.length
-            ? Math.round(valoresValidos.reduce((suma, valor) => suma + valor, 0) / valoresValidos.length)
-            : 0;
+                        <!-- PRE-EVALUACIÓN INTERNA EN PESTAÑA 4 -->
+                        <div style="margin-top: 15px; padding: 15px; background-color: #fff3e0; border-left: 5px solid #ff9800; border-radius: 6px;">
+                            <h4 style="margin: 0 0 5px 0; color: #e65100;">⭐ Pre-Evaluación de Desempeño (Uso Interno de Evaluación)</h4>
+                            <p style="margin: 0 0 10px 0; font-size: 0.85em; color: #5d4037;">Puntajes asignados automáticamente por Compras para la Pestaña 3 (No se imprimen en el PDF).</p>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado 0-100 pts) *</label>
+                                    <input type="number" id="compra-pago-eval" min="0" max="100" placeholder="Puntaje Auto" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label style="color: #e65100; font-weight: bold;">Plazo de Entrega (0 - 100 pts) *</label>
+                                    <input type="number" id="compra-plazo-eval" min="0" max="100" placeholder="Puntaje 0-100" style="border: 2px solid #ffb74d; background-color: #fff8e1;" required>
+                                </div>
+                            </div>
+                        </div>
 
-        const evaluacionFormulario = {
-            provNum: String(provNum),
-            anio: String(anioFormulario),
-            puntajes: puntajesFormulario,
-            promedio: promedioFormulario
-        };
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Observaciones de la Orden:</label>
+                            <textarea id="compra-observaciones" rows="2" placeholder="Observaciones de entrega, aclaraciones para orden abierta..."></textarea>
+                        </div>
 
-        const indiceMismoAnio = historial.findIndex(e => String(e.anio) === String(anioFormulario));
-        if (indiceMismoAnio >= 0) historial[indiceMismoAnio] = evaluacionFormulario;
-        else historial.push(evaluacionFormulario);
-    }
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button type="submit" id="btn-submit-compras" class="btn-primary">📄 Emitir y Generar PDF Orden de Compra</button>
+                            <button type="button" id="btn-cancel-edit-compras" class="btn-secondary" style="display:none;" onclick="cancelarEdicionCompra()">Cancelar Edición</button>
+                        </div>
+                    </form>
+                </div>
 
-    historial.sort((a, b) => Number(a.anio) - Number(b.anio));
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3>Órdenes de Compra Emitidas</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Formulario</th>
+                                <th>N° Orden</th>
+                                <th>Tipo</th>
+                                <th>Proveedor</th>
+                                <th>Requisito</th>
+                                <th>Cantidad</th>
+                                <th>Cond. Pago</th>
+                                <th>Emisión</th>
+                                <th>Fecha Req.</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-compras-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-    const anios = historial.map(e => e.anio);
-    const promedios = historial.map(e => Number(e.promedio) || 0);
-    const criterios = [
-        { nombre: 'Cumplimiento Entrega', indice: 0, color: '#1565C0' },
-        { nombre: 'Calidad', indice: 1, color: '#43A047' },
-        { nombre: 'Condición Pago', indice: 2, color: '#FB8C00' },
-        { nombre: 'Plazo Entrega', indice: 3, color: '#8E24AA' },
-        { nombre: 'Atención', indice: 4, color: '#00ACC1' },
-        { nombre: 'Respuesta Reclamos', indice: 5, color: '#E53935' }
-    ];
+            <!-- PESTAÑA 5: INSPECCIÓN DE RECEPCIÓN -->
+            <section id="tab-recepcion" class="tab-content">
+                <div class="form-card">
+                    <h2>📦 Inspección y Recepción de Mercadería (Remitos)</h2>
+                    <form id="form-recepcion" onsubmit="guardarRecepcion(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>N° de Formulario:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="num-formulario-rec" placeholder="Ej: F-REC-01" required>
+                                    <button type="button" class="btn-secondary" onclick="guardarNumeroFormularioDirecto('num_form_rec', 'num-formulario-rec')">💾</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Orden de Compra Pendiente:</label>
+                                <select id="select-recepcion-orden" onchange="cargarDetalleOrdenPendiente()" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>N° de Remito del Proveedor:</label>
+                                <input type="text" id="rec-campo-1" placeholder="Ej: R-0001-12345" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Cantidad Recibida en este Remito:</label>
+                                <input type="number" id="rec-campo-2" placeholder="Cantidad" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Estado del Empaque / Embalaje:</label>
+                                <select id="rec-campo-3">
+                                    <option value="Conforme">Conforme / Intacto</option>
+                                    <option value="Observado">Observado / Con detalles</option>
+                                    <option value="Rechazado">Rechazado / Dañado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Inspección de Calidad:</label>
+                                <select id="rec-campo-5">
+                                    <option value="Aprobado">Aprobado / Conforme</option>
+                                    <option value="Aprobado con Observaciones">Aprobado con Observaciones</option>
+                                    <option value="Rechazado">Rechazado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha Real de Recepción:</label>
+                                <input type="date" id="rec-fecha" required>
+                            </div>
+                        </div>
 
-    const datasetsCriterios = criterios.map(criterio => ({
-        type: 'bar',
-        label: criterio.nombre,
-        data: historial.map(e => {
-            const valor = e.puntajes?.[criterio.indice];
-            return valor === null || valor === undefined || valor === '' ? null : Number(valor);
-        }),
-        backgroundColor: criterio.color,
-        borderColor: criterio.color,
-        borderWidth: 1,
-        borderRadius: 3,
-        order: 2
-    }));
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Observaciones de Recepción / Faltantes:</label>
+                            <textarea id="rec-campo-6" rows="2" placeholder="Detalles de inspección de esta visita o entrega parcial..."></textarea>
+                        </div>
 
-    const datasetPromedio = {
-        type: 'line',
-        label: 'Promedio general',
-        data: promedios,
-        borderColor: '#212121',
-        backgroundColor: '#212121',
-        pointBackgroundColor: '#FFFFFF',
-        pointBorderColor: '#212121',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        borderWidth: 3,
-        tension: 0.25,
-        fill: false,
-        order: 1
-    };
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Registrar Recepción de Remito</button>
+                    </form>
+                </div>
 
-    if (resumen) {
-        if (!provNum) {
-            resumen.innerText = 'Seleccione un proveedor para visualizar su evolución histórica.';
-            resumen.style.color = '#374151';
-        } else if (historial.length === 0) {
-            resumen.innerText = `${provObj?.nombre || provNum}: todavía no tiene evaluaciones guardadas.`;
-            resumen.style.color = '#374151';
-        } else if (historial.length === 1) {
-            resumen.innerText = `${provObj?.nombre || provNum}: se necesita más de un año para calcular una tendencia.`;
-            resumen.style.color = '#1976D2';
-        } else {
-            const variacion = promedios[promedios.length - 1] - promedios[0];
-            const signo = variacion > 0 ? '+' : '';
-            const tendencia = variacion > 0 ? '↗ Crecimiento' : variacion < 0 ? '↘ Decrecimiento' : '→ Sin variación';
-            resumen.innerText = `${tendencia}: ${signo}${variacion} puntos entre ${anios[0]} y ${anios[anios.length - 1]}.`;
-            resumen.style.color = variacion > 0 ? '#2E7D32' : variacion < 0 ? '#C62828' : '#E65100';
-        }
-    }
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3>Histórico de Recepciones y Remitos Registrados</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Formulario</th>
+                                <th>N° Orden</th>
+                                <th>Proveedor</th>
+                                <th>N° Remito</th>
+                                <th>Cant. Recibida</th>
+                                <th>Calidad</th>
+                                <th>Fecha Recepción</th>
+                                <th>Recibido por</th>
+                                <th>Observaciones</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-recepcion-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-    radarChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: anios,
-            datasets: [...datasetsCriterios, datasetPromedio]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: { boxWidth: 14, padding: 12 }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: context => `${context.dataset.label}: ${context.parsed.y} puntos`
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    title: { display: true, text: 'Promedio (0-100)' }
-                },
-                x: { title: { display: true, text: 'Año de evaluación' } }
-            }
-        }
-    });
-}
+            <!-- PESTAÑA 6: GESTIÓN DE USUARIOS -->
+            <section id="tab-usuarios" class="tab-content">
+                <div class="form-card">
+                    <h2>👤 Alta y Gestión de Usuarios del Sistema</h2>
+                    <form id="form-usuarios">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Nombre de Usuario:</label>
+                                <input type="text" id="usr-nombre" placeholder="Nombre de usuario" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contraseña:</label>
+                                <input type="password" id="usr-pass" placeholder="Contraseña" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Sector / Área:</label>
+                                <select id="usr-sector" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Estado del Usuario:</label>
+                                <select id="usr-estado">
+                                    <option value="Activo">Activo</option>
+                                    <option value="Inactivo">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 15px;">💾 Guardar Usuario</button>
+                    </form>
+                </div>
 
-function actualizarGraficoRadar() {
-    renderizarGraficoRadar();
-}
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3>Usuarios Registrados</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Sector</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-usuarios-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-// 2. Gráfico Donut de Clasificación % (A, B, C, D)
-function renderizarGraficoPie() {
-    const ctx = document.getElementById('chart-pie-clasificacion');
-    if (!ctx) return;
+        </main>
+    </div>
 
-    if (pieChartInstance) pieChartInstance.destroy();
+    <!-- MODAL MASTER PANEL -->
+    <div id="modal-master" class="modal-overlay" style="display: none;">
+        <div class="modal-box large-modal">
+            <div class="modal-header">
+                <h2>⚙️ Panel de Administración Master</h2>
+                <button class="btn-danger" onclick="cerrarModalMaster()">✖</button>
+            </div>
+            
+            <div id="master-auth" class="modal-body">
+                <p>Ingrese las credenciales Master de Administrador:</p>
+                <input type="text" id="master-user" placeholder="Usuario Master (admin)">
+                <input type="password" id="master-pass" placeholder="Contraseña Master">
+                <button class="btn-primary" onclick="autenticarMaster()" style="margin-top: 10px;">Ingresar al Panel</button>
+            </div>
 
-    let ca = 0, cb = 0, cc = 0, cd = 0;
+            <div id="master-panel" class="modal-body" style="display: none;">
+                <h3>Matriz de Permisos por Sector (Pestañas)</h3>
+                <div id="matriz-permisos-container"></div>
+                <button class="btn-primary" onclick="guardarPermisosSectores()" style="margin-top: 10px;">💾 Guardar Permisos de Sectores</button>
 
-    if (Array.isArray(estadisticas)) {
-        estadisticas.forEach(e => {
-            if (e.clase === 'Clase A') ca++;
-            else if (e.clase === 'Clase B') cb++;
-            else if (e.clase === 'Clase C') cc++;
-            else cd++;
-        });
-    }
+                <hr style="margin: 20px 0;">
 
-    const total = (ca + cb + cc + cd) || 1;
+                <h3>Matriz de Permisos de Proveedores por Usuario</h3>
+                <div id="matriz-permisos-proveedores-container"></div>
+                <button class="btn-primary" onclick="guardarPermisosProveedoresMaster()" style="margin-top: 10px;">💾 Guardar Permisos de Proveedores</button>
 
-    pieChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Clase A', 'Clase B', 'Clase C', 'Clase D'],
-            datasets: [{
-                data: [
-                    Math.round((ca / total) * 100),
-                    Math.round((cb / total) * 100),
-                    Math.round((cc / total) * 100),
-                    Math.round((cd / total) * 100)
-                ],
-                backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#F44336']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '55%'
-        }
-    });
-}
+                <hr style="margin: 20px 0;">
+
+                <h3>Sectores / Áreas de la Empresa</h3>
+                <div id="lista-sectores-master-container"></div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="nuevo-sector-nombre" placeholder="Nombre del nuevo sector">
+                    <button class="btn-success" onclick="agregarNuevoSectorMaster()">➕ Agregar Sector</button>
+                </div>
+
+                <hr style="margin: 20px 0;">
+
+                <h3>Ajustes del Sistema</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Título del Sistema:</label>
+                        <input type="text" id="master-system-title" placeholder="Título">
+                        <button class="btn-primary" onclick="guardarTituloSistema()" style="margin-top: 5px;">Actualizar Título</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Color de Fondo del Sistema:</label>
+                        <input type="color" id="master-bg-color" onchange="cambiarColorBg(this.value, true)">
+                    </div>
+                    <div class="form-group">
+                        <label>Logo de la Empresa:</label>
+                        <input type="file" accept="image/*" onchange="subirLogoDesdePC(event)">
+                    </div>
+                    <div class="form-group">
+                        <label>Nueva Contraseña Master:</label>
+                        <input type="password" id="master-new-pass" placeholder="Nueva Contraseña">
+                        <button class="btn-warning" onclick="guardarNuevaPasswordMaster()" style="margin-top: 5px;">Cambiar Contraseña Master</button>
+                    </div>
+                </div>
+
+                <hr style="margin: 20px 0;">
+
+                <h3>Mantenimiento de Base de Datos</h3>
+                <button class="btn-danger" onclick="limpiarBaseDeDatosMaster()">🚨 Limpiar Datos de Prueba</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GESTIÓN DE CONDICIONES Y PUNTAJES DE PAGO -->
+    <div id="modal-gestion-pago" class="modal-overlay" style="display: none;">
+        <div class="modal-box" style="max-width: 600px; background:#fff; padding:20px; border-radius:8px;">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0;">⚙️ Gestión Dinámica de Condiciones de Pago</h3>
+                <button class="btn-danger" onclick="cerrarModalGestionPago()">✕</button>
+            </div>
+            <div class="modal-body" style="margin-top:15px;">
+                <p style="font-size: 0.9em; color: #555;">Puedes modificar los nombres de las condiciones existentes, ajustar sus puntajes (0 a 100) o agregar/eliminar opciones:</p>
+                
+                <div id="tabla-gestion-pago-container" style="margin-bottom: 15px; max-height: 250px; overflow-y: auto;"></div>
+
+                <div style="background: #f1f8e9; padding: 12px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 15px;">
+                    <h5 style="margin: 0 0 10px 0; color: #2e7d32;">➕ Agregar Nueva Condición de Pago:</h5>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="nuevo-pago-nombre" placeholder="Ej: Cheque 60 días" style="flex: 2; padding: 6px;">
+                        <input type="number" id="nuevo-pago-puntos" min="0" max="100" placeholder="Pts (0-100)" style="flex: 1; padding: 6px;">
+                        <button class="btn-primary" onclick="agregarNuevaCondicionDirecta()">Agregar</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button class="btn-primary" onclick="guardarCambiosModalPago()">💾 Guardar y Aplicar Cambios</button>
+                    <button class="btn-danger" onclick="cerrarModalGestionPago()">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
