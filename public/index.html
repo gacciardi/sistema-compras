@@ -222,11 +222,11 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label style="color: #e65100; font-weight: bold;">Condición de Pago (Autocalculado de Pest. 4) *</label>
-                                    <input type="number" id="stat-val-3" min="0" max="100" placeholder="Puntaje (0-100)" oninput="calcularPuntajeClase()">
+                                    <input type="number" id="stat-val-3" min="0" max="100" placeholder="Puntaje automático" oninput="calcularPuntajeClase()" readonly disabled>
                                 </div>
                                 <div class="form-group">
                                     <label style="color: #e65100; font-weight: bold;">Cumplimiento de Entrega (Autocalculado de Pest. 5) *</label>
-                                    <input type="number" id="stat-val-1" min="0" max="100" placeholder="Puntaje (0-100)" oninput="calcularPuntajeClase()">
+                                    <input type="number" id="stat-val-1" min="0" max="100" placeholder="Puntaje automático" oninput="calcularPuntajeClase()" readonly disabled>
                                 </div>
                             </div>
                         </div>
@@ -251,9 +251,12 @@
                 <!-- SECCIÓN DE LOS DOS GRÁFICOS DE P3 -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
                     <div class="form-card" style="margin: 0;">
-                        <h3>📈 Radar de Desempeño por Variables</h3>
+                        <h3>📊 Evolución Anual del Proveedor</h3>
                         <div style="position: relative; height: 300px; width: 100%;">
                             <canvas id="chart-radar-proveedor"></canvas>
+                        </div>
+                        <div id="resumen-tendencia-proveedor" style="margin-top:10px; padding:10px; border-radius:6px; background:#f4f6f9; text-align:center; font-weight:bold;">
+                            Seleccione un proveedor para visualizar su evolución histórica.
                         </div>
                     </div>
                     <div class="form-card" style="margin: 0;">
