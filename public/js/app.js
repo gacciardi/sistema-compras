@@ -412,9 +412,10 @@ async function guardarProveedor(e) {
     const numFormulario = document.getElementById('num-formulario-prov').value.trim();
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
+    const fechaAlta = document.getElementById('fecha-alta-proveedor').value;
 
-    if (!numFormulario || !num || !nombre) {
-        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, N° de Proveedor / CUIT y Razón Social.");
+    if (!numFormulario || !num || !nombre || !fechaAlta) {
+        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, N° de Proveedor / CUIT, Razón Social y Fecha de Alta.");
         return;
     }
 
@@ -434,7 +435,7 @@ async function guardarProveedor(e) {
     await fetch('/api/proveedores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numFormulario, num, nombre, criterios })
+        body: JSON.stringify({ numFormulario, num, nombre, fechaAlta, criterios })
     });
 
     document.getElementById('form-proveedor').reset();
@@ -452,6 +453,7 @@ function renderizarTablaProveedores() {
             <td><strong>${p.numFormulario || ''}</strong></td>
             <td><strong>${p.num}</strong></td>
             <td>${p.nombre}</td>
+            <td>${p.fechaAlta ? p.fechaAlta.split('T')[0] : 'Sin fecha'}</td>
             <td>
                 <button class="btn-warning" onclick="editarProveedor('${p.num}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarProveedor('${p.num}')">Eliminar</button>
@@ -467,6 +469,7 @@ function editarProveedor(num) {
     document.getElementById('num-formulario-prov').value = p.numFormulario || '';
     document.getElementById('num-proveedor').value = p.num;
     document.getElementById('nombre-proveedor').value = p.nombre;
+    document.getElementById('fecha-alta-proveedor').value = p.fechaAlta ? p.fechaAlta.split('T')[0] : '';
 
     if (p.criterios && Array.isArray(p.criterios)) {
         p.criterios.forEach((crit, index) => {
