@@ -1682,12 +1682,49 @@ function renderizarGraficoRadar() {
     if (radarChartInstance) radarChartInstance.destroy();
 
     const provNum = document.getElementById('select-prov-estadistica')?.value;
-    const provObj = proveedores.find(p => p.num === provNum);
+    const provObj = proveedores.find(p => String(p.num) === String(provNum));
     const resumen = document.getElementById('resumen-tendencia-proveedor');
 
-    const historial = estadisticas
-        .filter(e => e.provNum === provNum)
-        .sort((a, b) => Number(a.anio) - Number(b.anio));
+    let historial = estadisticas
+        .filter(e => String(e.provNum) === String(provNum))
+        .map(e => ({ ...e, anio: String(e.anio) }));
+
+    // Incorporar al gráfico la evaluación visible en el formulario, aunque
+    // todavía no se haya guardado, y reemplazar con ella el mismo año histórico.
+    const anioFormulario = document.getElementById('select-anio-estadistica')?.value;
+    const puntajesFormulario = [];
+    let hayPuntajesFormulario = false;
+
+    for (let i = 1; i <= 6; i++) {
+        const valorTexto = document.getElementById(`stat-val-${i}`)?.value;
+        if (valorTexto !== '' && valorTexto !== undefined) {
+            const valorNumero = Number(valorTexto);
+            puntajesFormulario.push(Number.isNaN(valorNumero) ? null : valorNumero);
+            if (!Number.isNaN(valorNumero)) hayPuntajesFormulario = true;
+        } else {
+            puntajesFormulario.push(null);
+        }
+    }
+
+    if (provNum && anioFormulario && hayPuntajesFormulario) {
+        const valoresValidos = puntajesFormulario.filter(v => v !== null);
+        const promedioFormulario = valoresValidos.length
+            ? Math.round(valoresValidos.reduce((suma, valor) => suma + valor, 0) / valoresValidos.length)
+            : 0;
+
+        const evaluacionFormulario = {
+            provNum: String(provNum),
+            anio: String(anioFormulario),
+            puntajes: puntajesFormulario,
+            promedio: promedioFormulario
+        };
+
+        const indiceMismoAnio = historial.findIndex(e => String(e.anio) === String(anioFormulario));
+        if (indiceMismoAnio >= 0) historial[indiceMismoAnio] = evaluacionFormulario;
+        else historial.push(evaluacionFormulario);
+    }
+
+    historial.sort((a, b) => Number(a.anio) - Number(b.anio));
 
     const anios = historial.map(e => e.anio);
     const promedios = historial.map(e => Number(e.promedio) || 0);
@@ -1703,7 +1740,10 @@ function renderizarGraficoRadar() {
     const datasetsCriterios = criterios.map(criterio => ({
         type: 'bar',
         label: criterio.nombre,
-        data: historial.map(e => Number(e.puntajes?.[criterio.indice]) || 0),
+        data: historial.map(e => {
+            const valor = e.puntajes?.[criterio.indice];
+            return valor === null || valor === undefined || valor === '' ? null : Number(valor);
+        }),
         backgroundColor: criterio.color,
         borderColor: criterio.color,
         borderWidth: 1,
