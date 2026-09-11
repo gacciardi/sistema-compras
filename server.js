@@ -37,6 +37,7 @@ async function initDB() {
                 num VARCHAR(100) PRIMARY KEY,
                 num_formulario VARCHAR(255),
                 nombre VARCHAR(255),
+                fecha_alta DATE,
                 criterios JSONB
             );
 
@@ -111,6 +112,9 @@ async function initDB() {
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recepciones' AND column_name='usuario') THEN
                     ALTER TABLE recepciones ADD COLUMN usuario VARCHAR(255);
                 END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='proveedores' AND column_name='fecha_alta') THEN
+                    ALTER TABLE proveedores ADD COLUMN fecha_alta DATE;
+                END IF;
             END $$;
         `);
 
@@ -182,7 +186,7 @@ app.delete('/api/requisitos/:num', async (req, res) => {
 // --- RUTAS PROVEEDORES ---
 app.get('/api/proveedores', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", num, nombre, criterios FROM proveedores ORDER BY num ASC');
+        const { rows } = await pool.query('SELECT num_formulario AS "numFormulario", num, nombre, fecha_alta AS "fechaAlta", criterios FROM proveedores ORDER BY num ASC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -190,11 +194,11 @@ app.get('/api/proveedores', async (req, res) => {
 });
 
 app.post('/api/proveedores', async (req, res) => {
-    const { numFormulario, num, nombre, criterios } = req.body;
+    const { numFormulario, num, nombre, fechaAlta, criterios } = req.body;
     try {
         await pool.query(
-            'INSERT INTO proveedores (num_formulario, num, nombre, criterios) VALUES ($1, $2, $3, $4) ON CONFLICT (num) DO UPDATE SET num_formulario = $1, nombre = $3, criterios = $4',
-            [numFormulario, num, nombre, JSON.stringify(criterios)]
+            'INSERT INTO proveedores (num_formulario, num, nombre, fecha_alta, criterios) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (num) DO UPDATE SET num_formulario = $1, nombre = $3, fecha_alta = $4, criterios = $5',
+            [numFormulario, num, nombre, fechaAlta || null, JSON.stringify(criterios)]
         );
         res.json({ success: true });
     } catch (err) {
