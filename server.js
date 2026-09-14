@@ -67,6 +67,8 @@ async function initDB() {
                 req_nombre VARCHAR(255),
                 req_detalle TEXT,
                 cantidad INT,
+                valor_unitario NUMERIC(14,2),
+                valor_total NUMERIC(16,2),
                 fecha_emision DATE,
                 fecha_req DATE,
                 condicion_pago VARCHAR(255),
@@ -114,6 +116,12 @@ async function initDB() {
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='proveedores' AND column_name='fecha_alta') THEN
                     ALTER TABLE proveedores ADD COLUMN fecha_alta DATE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='valor_unitario') THEN
+                    ALTER TABLE compras ADD COLUMN valor_unitario NUMERIC(14,2);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compras' AND column_name='valor_total') THEN
+                    ALTER TABLE compras ADD COLUMN valor_total NUMERIC(16,2);
                 END IF;
             END $$;
         `);
@@ -242,7 +250,7 @@ app.post('/api/estadisticas', async (req, res) => {
 // --- RUTAS COMPRAS ---
 app.get('/api/compras', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT id_orden AS "idOrden", tipo_orden AS "tipoOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
+        const { rows } = await pool.query('SELECT id_orden AS "idOrden", tipo_orden AS "tipoOrden", num_formulario AS "numFormulario", prov_num AS "provNum", prov_nombre AS "provNombre", req_num AS "reqNum", req_nombre AS "reqNombre", req_detalle AS "reqDetalle", cantidad, valor_unitario AS "valorUnitario", valor_total AS "valorTotal", fecha_emision AS "fechaEmision", fecha_req AS "fechaReq", condicion_pago AS "condicionPago", observaciones, pago_eval AS "pagoEval", plazo_eval AS "plazoEval", estado FROM compras ORDER BY id_orden DESC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -250,11 +258,11 @@ app.get('/api/compras', async (req, res) => {
 });
 
 app.post('/api/compras', async (req, res) => {
-    const { idOrden, tipoOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision, fechaReq, condicionPago, observaciones, pagoEval, plazoEval, estado } = req.body;
+    const { idOrden, tipoOrden, numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, valorUnitario, valorTotal, fechaEmision, fechaReq, condicionPago, observaciones, pagoEval, plazoEval, estado } = req.body;
     try {
         await pool.query(
-            'INSERT INTO compras (id_orden, tipo_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, fecha_emision, fecha_req, condicion_pago, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) ON CONFLICT (id_orden) DO UPDATE SET tipo_orden = $2, num_formulario = $3, prov_num = $4, prov_nombre = $5, req_num = $6, req_nombre = $7, req_detalle = $8, cantidad = $9, fecha_emision = $10, fecha_req = $11, condicion_pago = $12, observaciones = $13, pago_eval = $14, plazo_eval = $15, estado = $16',
-            [idOrden, tipoOrden || 'Normal', numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, fechaEmision || null, fechaReq || null, condicionPago, observaciones, pagoEval, plazoEval, estado]
+            'INSERT INTO compras (id_orden, tipo_orden, num_formulario, prov_num, prov_nombre, req_num, req_nombre, req_detalle, cantidad, valor_unitario, valor_total, fecha_emision, fecha_req, condicion_pago, observaciones, pago_eval, plazo_eval, estado) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) ON CONFLICT (id_orden) DO UPDATE SET tipo_orden = $2, num_formulario = $3, prov_num = $4, prov_nombre = $5, req_num = $6, req_nombre = $7, req_detalle = $8, cantidad = $9, valor_unitario = $10, valor_total = $11, fecha_emision = $12, fecha_req = $13, condicion_pago = $14, observaciones = $15, pago_eval = $16, plazo_eval = $17, estado = $18',
+            [idOrden, tipoOrden || 'Normal', numFormulario, provNum, provNombre, reqNum, reqNombre, reqDetalle, cantidad, valorUnitario, valorTotal, fechaEmision || null, fechaReq || null, condicionPago, observaciones, pagoEval, plazoEval, estado]
         );
         res.json({ success: true });
     } catch (err) {
