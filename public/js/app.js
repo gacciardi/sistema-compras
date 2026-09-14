@@ -877,6 +877,29 @@ function editarEstadistica(provNum, anio) {
 }
 
 // --- PESTAÑA 4: ÓRDENES DE COMPRA & TABLA DINÁMICA DE PAGOS ---
+function calcularTotalCompra() {
+    const cantidad = parseFloat(document.getElementById('compra-cantidad')?.value);
+    const valorUnitario = parseFloat(document.getElementById('compra-valor-unitario')?.value);
+    const inputTotal = document.getElementById('compra-valor-total');
+    if (!inputTotal) return 0;
+
+    if (!isNaN(cantidad) && !isNaN(valorUnitario)) {
+        const total = Math.round((cantidad * valorUnitario + Number.EPSILON) * 100) / 100;
+        inputTotal.value = total.toFixed(2);
+        return total;
+    }
+
+    inputTotal.value = '';
+    return 0;
+}
+
+function formatearImporteCompra(valor) {
+    if (valor === null || valor === undefined || valor === '') return '-';
+    const numero = Number(valor);
+    if (isNaN(numero)) return '-';
+    return numero.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function actualizarSelectsCompras() {
     const selectProv = document.getElementById('select-compra-prov');
     if (selectProv) {
@@ -1064,12 +1087,19 @@ async function iniciarCompra(e) {
     const provNum = document.getElementById('select-compra-prov').value;
     const reqNum = document.getElementById('select-compra-req').value;
     const cantidad = document.getElementById('compra-cantidad').value;
+    const valorUnitario = parseFloat(document.getElementById('compra-valor-unitario').value);
+    const valorTotal = calcularTotalCompra();
     const fechaEmision = document.getElementById('compra-fecha-emision').value || new Date().toISOString().split('T')[0];
     const fechaReq = document.getElementById('compra-fecha-req').value;
     const condicionPago = document.getElementById('select-compra-condicion-pago').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
     const pagoEval = parseInt(document.getElementById('compra-pago-eval').value) || 0;
     const plazoEval = parseInt(document.getElementById('compra-plazo-eval').value) || 0;
+
+    if (isNaN(valorUnitario) || valorUnitario < 0) {
+        alert('⚠️ Ingrese un valor unitario válido.');
+        return;
+    }
 
     const provObj = proveedores.find(p => p.num === provNum);
     const reqObj = requisitos.find(r => r.num === reqNum);
@@ -1097,6 +1127,8 @@ async function iniciarCompra(e) {
         reqNombre: reqObj ? reqObj.nombre : reqNum,
         reqDetalle: reqObj ? reqObj.detalle : '',
         cantidad,
+        valorUnitario,
+        valorTotal,
         fechaEmision,
         fechaReq,
         condicionPago,
@@ -1141,6 +1173,8 @@ function renderizarTablaCompras() {
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
             <td>${oc.cantidad}</td>
+            <td>${formatearImporteCompra(oc.valorUnitario)}</td>
+            <td><strong>${formatearImporteCompra(oc.valorTotal)}</strong></td>
             <td><strong>${oc.condicionPago || '-'}</strong></td>
             <td>${oc.fechaEmision ? oc.fechaEmision.split('T')[0] : ''}</td>
             <td>${oc.fechaReq ? oc.fechaReq.split('T')[0] : ''}</td>
@@ -1161,6 +1195,8 @@ function editarOrdenCompra(idOrden) {
     document.getElementById('select-compra-prov').value = oc.provNum || '';
     document.getElementById('select-compra-req').value = oc.reqNum || '';
     document.getElementById('compra-cantidad').value = oc.cantidad || '';
+    document.getElementById('compra-valor-unitario').value = oc.valorUnitario ?? '';
+    calcularTotalCompra();
     
     if (oc.fechaEmision) document.getElementById('compra-fecha-emision').value = oc.fechaEmision.split('T')[0];
     if (oc.fechaReq) document.getElementById('compra-fecha-req').value = oc.fechaReq.split('T')[0];
@@ -1178,6 +1214,7 @@ function editarOrdenCompra(idOrden) {
 function cancelarEdicionCompra() {
     document.getElementById('compra-edit-id').value = '';
     document.getElementById('form-compras').reset();
+    document.getElementById('compra-valor-total').value = '';
     document.getElementById('btn-submit-compras').innerText = '📄 Emitir y Generar PDF Orden de Compra';
     document.getElementById('btn-cancel-edit-compras').style.display = 'none';
 }
@@ -1226,6 +1263,8 @@ function generarPDFOrden(orden) {
     let currentY = 101;
     doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY); currentY += 8;
     doc.text(`Cantidad ${esAbierta ? 'Estimada' : 'Solicitada'}: ${orden.cantidad}`, 20, currentY); currentY += 8;
+    doc.text(`Valor Unitario: ${formatearImporteCompra(orden.valorUnitario)}`, 20, currentY); currentY += 8;
+    doc.text(`Valor Total: ${formatearImporteCompra(orden.valorTotal)}`, 20, currentY); currentY += 8;
     doc.text(`Condición de Pago: ${orden.condicionPago || 'No especificada'}`, 20, currentY); currentY += 8;
     doc.text(`Fecha ${esAbierta ? 'Límite de Vigencia' : 'Requerida de Entrega'}: ${orden.fechaReq}`, 20, currentY); currentY += 10;
 
