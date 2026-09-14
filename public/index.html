@@ -325,10 +325,6 @@
                                 <select id="select-compra-req" required></select>
                             </div>
                             <div class="form-group">
-                                <label>Cantidad Solicitada / Estimada:</label>
-                                <input type="number" id="compra-cantidad" placeholder="Ej: 25" min="1" required>
-                            </div>
-                            <div class="form-group">
                                 <label>Fecha de Emisión:</label>
                                 <input type="date" id="compra-fecha-emision" required>
                             </div>
@@ -342,6 +338,22 @@
                                     <select id="select-compra-condicion-pago" onchange="autoCompletarPuntajePago()" required style="flex: 1;"></select>
                                     <button type="button" class="btn-secondary" onclick="abrirModalGestionPago()" title="Gestionar opciones y puntajes de pago">⚙️ Editar Escala</button>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- CANTIDADES E IMPORTES DE LA ORDEN -->
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Cantidad Solicitada / Estimada:</label>
+                                <input type="number" id="compra-cantidad" placeholder="Ej: 25" min="1" step="1" oninput="calcularTotalCompra()" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor Unitario:</label>
+                                <input type="number" id="compra-valor-unitario" placeholder="Ej: 1500,00" min="0" step="0.01" oninput="calcularTotalCompra()" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor Total:</label>
+                                <input type="number" id="compra-valor-total" placeholder="Calculado automáticamente" step="0.01" readonly required style="background-color:#f1f3f5; font-weight:bold;">
                             </div>
                         </div>
 
@@ -395,6 +407,8 @@
                                 <th>Proveedor</th>
                                 <th>Requisito</th>
                                 <th>Cantidad</th>
+                                <th>Valor Unit.</th>
+                                <th>Valor Total</th>
                                 <th>Cond. Pago</th>
                                 <th>Emisión</th>
                                 <th>Fecha Req.</th>
