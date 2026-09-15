@@ -1,5 +1,6 @@
 let usuarioActual = null;
 let masterPasswordActual = '1234';
+let fechaImplementacionActual = '';
 
 let listaSectoresGlobal = [
     'Compras',
@@ -280,6 +281,8 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             const el4 = document.getElementById('master-system-title');
             if (el4) el4.value = config.sys_title;
         }
+
+        aplicarFechaImplementacion(config.fecha_implementacion_sistema || '');
 
         if (config.sys_bg_color) cambiarColorBg(config.sys_bg_color, false);
         if (config.sys_logo && config.sys_logo.startsWith('data:image')) {
@@ -1905,4 +1908,63 @@ function renderizarGraficoPie() {
             cutout: '55%'
         }
     });
+}
+
+function formatearFechaImplementacion(fecha) {
+    if (!fecha) return 'No definida';
+    const partes = String(fecha).split('T')[0].split('-');
+    if (partes.length !== 3) return fecha;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+function aplicarFechaImplementacion(fecha) {
+    fechaImplementacionActual = fecha ? String(fecha).split('T')[0] : '';
+
+    const visual = document.getElementById('implementation-date-display');
+    if (visual) visual.innerText = formatearFechaImplementacion(fechaImplementacionActual);
+
+    const input = document.getElementById('master-implementation-date');
+    const botonGuardar = document.getElementById('btn-save-implementation-date');
+    const botonEditar = document.getElementById('btn-edit-implementation-date');
+    const hayFecha = Boolean(fechaImplementacionActual);
+
+    if (input) {
+        input.value = fechaImplementacionActual;
+        input.disabled = hayFecha;
+    }
+    if (botonGuardar) botonGuardar.style.display = hayFecha ? 'none' : 'inline-block';
+    if (botonEditar) botonEditar.style.display = hayFecha ? 'inline-block' : 'none';
+}
+
+function habilitarEdicionFechaImplementacion() {
+    if (!confirm('La fecha de implementación normalmente no debe modificarse. ¿Desea habilitar su edición?')) return;
+    const input = document.getElementById('master-implementation-date');
+    const botonGuardar = document.getElementById('btn-save-implementation-date');
+    const botonEditar = document.getElementById('btn-edit-implementation-date');
+    if (input) {
+        input.disabled = false;
+        input.focus();
+    }
+    if (botonGuardar) botonGuardar.style.display = 'inline-block';
+    if (botonEditar) botonEditar.style.display = 'none';
+}
+
+async function guardarFechaImplementacion() {
+    const input = document.getElementById('master-implementation-date');
+    const fecha = input ? input.value : '';
+    if (!fecha) return alert('Seleccione la Fecha de implementación.');
+
+    try {
+        const respuesta = await fetch('/api/configuraciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clave: 'fecha_implementacion_sistema', valor: fecha })
+        });
+        if (!respuesta.ok) throw new Error('No se pudo guardar la fecha de implementación.');
+        aplicarFechaImplementacion(fecha);
+        alert('✅ Fecha de implementación guardada y bloqueada.');
+    } catch (error) {
+        console.error(error);
+        alert('❌ No se pudo guardar la Fecha de implementación.');
+    }
 }
