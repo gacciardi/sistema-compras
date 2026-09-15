@@ -35,7 +35,12 @@
         <header class="app-header">
             <div class="header-left">
                 <img id="app-logo" src="assets/logo.png" alt="Logo" class="header-logo" onerror="this.style.display='none'">
-                <h1 id="header-system-title">Sistema de Gestión e Inspección de Compras</h1>
+                <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+                    <h1 id="header-system-title">Sistema de Gestión e Inspección de Compras</h1>
+                    <span style="font-size: 0.85em; color: #4b5563; white-space: nowrap;">
+                        Fecha de implementación: <strong id="implementation-date-display">No definida</strong>
+                    </span>
+                </div>
             </div>
             <div class="header-right">
                 <span id="user-session-info" class="user-badge">👤 Usuario</span>
@@ -591,6 +596,15 @@
                         <label>Título del Sistema:</label>
                         <input type="text" id="master-system-title" placeholder="Título">
                         <button class="btn-primary" onclick="guardarTituloSistema()" style="margin-top: 5px;">Actualizar Título</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de implementación:</label>
+                        <input type="date" id="master-implementation-date">
+                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                            <button type="button" id="btn-save-implementation-date" class="btn-primary" onclick="guardarFechaImplementacion()">Guardar Fecha</button>
+                            <button type="button" id="btn-edit-implementation-date" class="btn-warning" onclick="habilitarEdicionFechaImplementacion()" style="display: none;">Editar Fecha</button>
+                        </div>
+                        <small style="color: #666;">Se mostrará en el encabezado de todo el sistema. Después de guardarla quedará bloqueada.</small>
                     </div>
                     <div class="form-group">
                         <label>Color de Fondo del Sistema:</label>
