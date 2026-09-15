@@ -1322,6 +1322,47 @@ function cargarDetalleOrdenPendiente() {
         const campoCant = document.getElementById('rec-campo-2');
         if (campoCant) campoCant.value = saldoRestante;
     }
+    actualizarAvisoCantidadRecepcion();
+}
+
+function actualizarAvisoCantidadRecepcion() {
+    const aviso = document.getElementById('aviso-cantidad-recepcion');
+    const selectOrden = document.getElementById('select-recepcion-orden');
+    const campoCantidad = document.getElementById('rec-campo-2');
+    if (!aviso || !selectOrden || !campoCantidad) return;
+
+    const orden = ordenesCompra.find(oc => oc.idOrden === selectOrden.value);
+    const cantidadRemito = parseFloat(campoCantidad.value);
+    if (!orden || !Number.isFinite(cantidadRemito) || cantidadRemito <= 0) {
+        aviso.style.display = 'none';
+        aviso.innerHTML = '';
+        return;
+    }
+
+    const solicitada = parseFloat(orden.cantidad) || 0;
+    const recibidaAnteriormente = recepciones
+        .filter(r => r.idOrden === orden.idOrden)
+        .reduce((total, r) => total + (parseFloat(r.cantRecibida) || 0), 0);
+    const acumulada = recibidaAnteriormente + cantidadRemito;
+    const diferencia = acumulada - solicitada;
+
+    aviso.style.display = 'block';
+    if (diferencia > 0) {
+        aviso.style.background = '#f8d7da';
+        aviso.style.color = '#842029';
+        aviso.style.border = '1px solid #f5c2c7';
+        aviso.innerHTML = `⚠️ Excedente de <strong>${diferencia}</strong> unidad(es). Solicitada: ${solicitada} · Acumulada: ${acumulada}. Se pedirá confirmación al registrar.`;
+    } else if (diferencia < 0) {
+        aviso.style.background = '#cff4fc';
+        aviso.style.color = '#055160';
+        aviso.style.border = '1px solid #b6effb';
+        aviso.innerHTML = `ℹ️ Recepción parcial. Solicitada: ${solicitada} · Acumulada: ${acumulada} · Pendiente: ${Math.abs(diferencia)}.`;
+    } else {
+        aviso.style.background = '#d1e7dd';
+        aviso.style.color = '#0f5132';
+        aviso.style.border = '1px solid #badbcc';
+        aviso.innerHTML = `✅ Cantidad exacta. Solicitada: ${solicitada} · Acumulada: ${acumulada}.`;
+    }
 }
 
 async function guardarRecepcion(e) {
@@ -1378,6 +1419,7 @@ async function guardarRecepcion(e) {
     }
 
     document.getElementById('form-recepcion').reset();
+    actualizarAvisoCantidadRecepcion();
     await cargarTodoDesdeServidor(true);
     actualizarSelectOrdenesPendientes();
 }
