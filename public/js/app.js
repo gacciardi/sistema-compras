@@ -1340,14 +1340,35 @@ async function guardarRecepcion(e) {
     const usuarioNombre = usuarioActual ? usuarioActual.nombre : 'admin';
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
 
+    if (!orden) return alert('No se encontró la Orden de Compra seleccionada.');
+    if (cantRecibida <= 0) return alert('La cantidad recibida debe ser mayor que cero.');
+
+    const cantidadSolicitada = parseFloat(orden.cantidad) || 0;
+    const entregasAnteriores = recepciones
+        .filter(r => r.idOrden === idOrden)
+        .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
+    const totalLuegoDeRecepcion = entregasAnteriores + cantRecibida;
+    const excedente = totalLuegoDeRecepcion - cantidadSolicitada;
+
+    if (cantidadSolicitada > 0 && excedente > 0) {
+        const continuar = confirm(
+            `⚠️ La cantidad recibida supera en ${excedente} unidad(es) la cantidad pendiente.\n\n` +
+            `Solicitada: ${cantidadSolicitada}\n` +
+            `Recibida anteriormente: ${entregasAnteriores}\n` +
+            `Este remito: ${cantRecibida}\n` +
+            `Total acumulado: ${totalLuegoDeRecepcion}\n\n` +
+            '¿Desea registrar la recepción con excedente?'
+        );
+        if (!continuar) return;
+    }
+
     await fetch('/api/recepciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ numFormulario, idOrden, provNombre: orden ? orden.provNombre : '', remito, cantRecibida, empaque, tiempo: '', calidad, obs, fechaRecepcion, usuario: usuarioNombre })
     });
 
-    const entregasAnteriores = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
-    if ((entregasAnteriores + cantRecibida) >= (parseFloat(orden ? orden.cantidad : 0) || 0) && orden) {
+    if (totalLuegoDeRecepcion >= cantidadSolicitada) {
         orden.estado = 'Recibido';
         await fetch('/api/compras', {
             method: 'POST',
@@ -1366,7 +1387,27 @@ function renderizarTablaRecepciones() {
     if (!tbody) return;
     tbody.innerHTML = '';
     
+    const acumuladosPorOrden = {};
     recepciones.forEach(r => {
+        acumuladosPorOrden[r.idOrden] = (acumuladosPorOrden[r.idOrden] || 0) + (parseFloat(r.cantRecibida) || 0);
+    });
+
+    recepciones.forEach(r => {
+        const orden = ordenesCompra.find(oc => oc.idOrden === r.idOrden);
+        const solicitada = parseFloat(orden ? orden.cantidad : 0) || 0;
+        const acumulada = acumuladosPorOrden[r.idOrden] || 0;
+        const diferencia = acumulada - solicitada;
+        let diferenciaTexto = '0';
+        let estadoCantidad = '<span class="status-badge-received">Exacto</span>';
+
+        if (diferencia > 0) {
+            diferenciaTexto = `+${diferencia}`;
+            estadoCantidad = '<span style="display:inline-block;background:#fff3cd;color:#856404;padding:4px 8px;border-radius:12px;font-weight:bold;">Excedente</span>';
+        } else if (diferencia < 0) {
+            diferenciaTexto = `${diferencia}`;
+            estadoCantidad = '<span style="display:inline-block;background:#dbeafe;color:#1e40af;padding:4px 8px;border-radius:12px;font-weight:bold;">Parcial</span>';
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${r.numFormulario || ''}</strong></td>
@@ -1374,11 +1415,14 @@ function renderizarTablaRecepciones() {
             <td>${r.provNombre}</td>
             <td>${r.remito}</td>
             <td>${r.cantRecibida}</td>
+            <td>${solicitada}</td>
+            <td>${acumulada}</td>
+            <td><strong>${diferenciaTexto}</strong></td>
             <td>${r.calidad}</td>
             <td>${r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : ''}</td>
             <td><strong>👤 ${r.usuario || 'admin'}</strong></td>
             <td>${r.obs || '-'}</td>
-            <td><span class="status-badge-received">Recibido</span></td>
+            <td>${estadoCantidad}</td>
         `;
         tbody.appendChild(tr);
     });
