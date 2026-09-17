@@ -35,6 +35,7 @@ let estadisticas = [];
 let ordenesCompra = [];
 let recepciones = [];
 let usuarios = [];
+let saldosExcedentes = [];
 
 let nombresCriteriosProveedores = [
     "Cumplimiento de Entrega",
@@ -234,14 +235,15 @@ async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
 
 async function cargarTodoDesdeServidor(renderCompleto = true) {
     try {
-        const [resReq, resProv, resStat, resComp, resRec, resUsr, resConfig] = await Promise.all([
+        const [resReq, resProv, resStat, resComp, resRec, resUsr, resConfig, resExcedentes] = await Promise.all([
             fetch('/api/requisitos'),
             fetch('/api/proveedores'),
             fetch('/api/estadisticas'),
             fetch('/api/compras'),
             fetch('/api/recepciones'),
             fetch('/api/usuarios'),
-            fetch('/api/configuraciones')
+            fetch('/api/configuraciones'),
+            fetch('/api/excedentes')
         ]);
 
         requisitos = await resReq.json();
@@ -250,6 +252,8 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         ordenesCompra = await resComp.json();
         recepciones = await resRec.json();
         usuarios = await resUsr.json();
+        const datosExcedentes = await resExcedentes.json();
+        saldosExcedentes = Array.isArray(datosExcedentes) ? datosExcedentes : [];
 
         const config = await resConfig.json();
         const activeEl = document.activeElement;
@@ -880,8 +884,48 @@ function editarEstadistica(provNum, anio) {
 }
 
 // --- PESTAÑA 4: ÓRDENES DE COMPRA & TABLA DINÁMICA DE PAGOS ---
+function obtenerSaldoExcedenteSeleccionado() {
+    const provNum = document.getElementById('select-compra-prov')?.value;
+    const reqNum = document.getElementById('select-compra-req')?.value;
+    const saldo = saldosExcedentes.find(s => s.provNum === provNum && s.reqNum === reqNum);
+    return saldo ? (parseFloat(saldo.cantidadDisponible) || 0) : 0;
+}
+
+function actualizarSaldoExcedenteCompra() {
+    const caja = document.getElementById('saldo-excedente-compra');
+    const textoDisponible = document.getElementById('compra-saldo-disponible');
+    const inputAplicar = document.getElementById('compra-saldo-aplicar');
+    if (!caja || !textoDisponible || !inputAplicar) {
+        calcularTotalCompra();
+        return;
+    }
+
+    const disponible = obtenerSaldoExcedenteSeleccionado();
+    textoDisponible.innerText = disponible;
+    caja.style.display = disponible > 0 ? 'block' : 'none';
+    inputAplicar.max = disponible;
+    if (disponible <= 0) inputAplicar.value = 0;
+    if ((parseFloat(inputAplicar.value) || 0) > disponible) inputAplicar.value = disponible;
+    actualizarCantidadFinalCompra();
+}
+
+function actualizarCantidadFinalCompra() {
+    const necesidad = parseFloat(document.getElementById('compra-cantidad')?.value) || 0;
+    const disponible = obtenerSaldoExcedenteSeleccionado();
+    const inputAplicar = document.getElementById('compra-saldo-aplicar');
+    const inputFinal = document.getElementById('compra-cantidad-final');
+    let aplicar = parseFloat(inputAplicar?.value) || 0;
+    aplicar = Math.max(0, Math.min(aplicar, disponible, necesidad));
+    if (inputAplicar) inputAplicar.value = aplicar;
+    if (inputFinal) inputFinal.value = Math.max(0, necesidad - aplicar);
+    calcularTotalCompra();
+}
+
 function calcularTotalCompra() {
-    const cantidad = parseFloat(document.getElementById('compra-cantidad')?.value);
+    const cantidadFinal = document.getElementById('compra-cantidad-final');
+    const cantidad = cantidadFinal && cantidadFinal.value !== ''
+        ? parseFloat(cantidadFinal.value)
+        : parseFloat(document.getElementById('compra-cantidad')?.value);
     const valorUnitario = parseFloat(document.getElementById('compra-valor-unitario')?.value);
     const inputTotal = document.getElementById('compra-valor-total');
     if (!inputTotal) return 0;
@@ -1089,7 +1133,13 @@ async function iniciarCompra(e) {
     const tipoOrden = document.getElementById('select-compra-tipo')?.value || 'Normal';
     const provNum = document.getElementById('select-compra-prov').value;
     const reqNum = document.getElementById('select-compra-req').value;
-    const cantidad = document.getElementById('compra-cantidad').value;
+    const cantidadNecesaria = parseFloat(document.getElementById('compra-cantidad').value) || 0;
+    let saldoAplicado = parseFloat(document.getElementById('compra-saldo-aplicar')?.value) || 0;
+    if (editId) {
+        const ordenExistente = ordenesCompra.find(o => o.idOrden === editId);
+        saldoAplicado = parseFloat(ordenExistente?.saldoAplicado) || 0;
+    }
+    const cantidad = Math.max(0, cantidadNecesaria - saldoAplicado);
     const valorUnitario = parseFloat(document.getElementById('compra-valor-unitario').value);
     const valorTotal = calcularTotalCompra();
     const fechaEmision = document.getElementById('compra-fecha-emision').value || new Date().toISOString().split('T')[0];
@@ -1102,6 +1152,13 @@ async function iniciarCompra(e) {
     if (isNaN(valorUnitario) || valorUnitario < 0) {
         alert('⚠️ Ingrese un valor unitario válido.');
         return;
+    }
+    if (cantidadNecesaria <= 0) return alert('⚠️ Ingrese una necesidad total válida.');
+    if (!editId && (saldoAplicado > obtenerSaldoExcedenteSeleccionado() || saldoAplicado > cantidadNecesaria)) {
+        return alert('⚠️ El saldo a aplicar no es válido. Recargue los datos e intente nuevamente.');
+    }
+    if (cantidad <= 0) {
+        return alert('ℹ️ La necesidad queda totalmente cubierta por el saldo a favor. No es necesario emitir una nueva orden de compra.');
     }
 
     const provObj = proveedores.find(p => p.num === provNum);
@@ -1130,6 +1187,8 @@ async function iniciarCompra(e) {
         reqNombre: reqObj ? reqObj.nombre : reqNum,
         reqDetalle: reqObj ? reqObj.detalle : '',
         cantidad,
+        cantidadNecesaria,
+        saldoAplicado,
         valorUnitario,
         valorTotal,
         fechaEmision,
@@ -1141,11 +1200,28 @@ async function iniciarCompra(e) {
         estado: 'Pendiente'
     };
 
-    await fetch('/api/compras', {
+    const respuestaCompra = await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ordenGuardar)
     });
+
+    if (!respuestaCompra.ok) {
+        const error = await respuestaCompra.json().catch(() => ({}));
+        return alert(`❌ No se pudo guardar la orden: ${error.error || 'Error desconocido'}`);
+    }
+
+    if (!editId && saldoAplicado > 0) {
+        const respuestaSaldo = await fetch('/api/excedentes/aplicar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idOrden, provNum, reqNum, cantidad: saldoAplicado })
+        });
+        if (!respuestaSaldo.ok) {
+            const error = await respuestaSaldo.json().catch(() => ({}));
+            alert(`⚠️ La orden se guardó, pero no se pudo aplicar el saldo: ${error.error || 'Error desconocido'}`);
+        }
+    }
 
     generarPDFOrden(ordenGuardar);
     cancelarEdicionCompra();
@@ -1175,6 +1251,8 @@ function renderizarTablaCompras() {
             <td>${tipoText}</td>
             <td>${oc.provNombre}</td>
             <td>${oc.reqNombre}</td>
+            <td>${oc.cantidadNecesaria || oc.cantidad}</td>
+            <td>${oc.saldoAplicado || 0}</td>
             <td>${oc.cantidad}</td>
             <td>${formatearImporteCompra(oc.valorUnitario)}</td>
             <td><strong>${formatearImporteCompra(oc.valorTotal)}</strong></td>
@@ -1197,7 +1275,14 @@ function editarOrdenCompra(idOrden) {
     document.getElementById('select-compra-tipo').value = oc.tipoOrden || 'Normal';
     document.getElementById('select-compra-prov').value = oc.provNum || '';
     document.getElementById('select-compra-req').value = oc.reqNum || '';
-    document.getElementById('compra-cantidad').value = oc.cantidad || '';
+    document.getElementById('compra-cantidad').value = oc.cantidadNecesaria || oc.cantidad || '';
+    actualizarSaldoExcedenteCompra();
+    const inputSaldoAplicar = document.getElementById('compra-saldo-aplicar');
+    if (inputSaldoAplicar) {
+        inputSaldoAplicar.value = oc.saldoAplicado || 0;
+        inputSaldoAplicar.disabled = true;
+    }
+    actualizarCantidadFinalCompra();
     document.getElementById('compra-valor-unitario').value = oc.valorUnitario ?? '';
     calcularTotalCompra();
     
@@ -1218,6 +1303,12 @@ function cancelarEdicionCompra() {
     document.getElementById('compra-edit-id').value = '';
     document.getElementById('form-compras').reset();
     document.getElementById('compra-valor-total').value = '';
+    const inputSaldoAplicar = document.getElementById('compra-saldo-aplicar');
+    if (inputSaldoAplicar) {
+        inputSaldoAplicar.disabled = false;
+        inputSaldoAplicar.value = 0;
+    }
+    actualizarSaldoExcedenteCompra();
     document.getElementById('btn-submit-compras').innerText = '📄 Emitir y Generar PDF Orden de Compra';
     document.getElementById('btn-cancel-edit-compras').style.display = 'none';
 }
@@ -1296,14 +1387,15 @@ function actualizarSelectOrdenesPendientes() {
     const entregasPorOrden = {};
     if (Array.isArray(recepciones)) {
         recepciones.forEach(r => {
-            entregasPorOrden[r.idOrden] = (entregasPorOrden[r.idOrden] || 0) + (parseFloat(r.cantRecibida) || 0);
+            const aplicada = r.cantAplicada !== undefined ? r.cantAplicada : r.cantRecibida;
+            entregasPorOrden[r.idOrden] = (entregasPorOrden[r.idOrden] || 0) + (parseFloat(aplicada) || 0);
         });
     }
 
     ordenesCompra.filter(oc => {
         const totalSolicitado = parseFloat(oc.cantidad) || 0;
         const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
-        return oc.estado !== 'Recibido' && totalEntregado < totalSolicitado;
+        return !String(oc.estado || '').startsWith('Recibido') && totalEntregado < totalSolicitado;
     }).sort((a, b) => a.provNombre.localeCompare(b.provNombre)).forEach(oc => {
         const saldo = (parseFloat(oc.cantidad) || 0) - (entregasPorOrden[oc.idOrden] || 0);
         const opt = document.createElement('option');
@@ -1317,7 +1409,7 @@ function cargarDetalleOrdenPendiente() {
     const idOrden = document.getElementById('select-recepcion-orden').value;
     const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
     if (orden) {
-        const entregasPrevias = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
+        const entregasPrevias = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantAplicada ?? curr.cantRecibida) || 0), 0);
         const saldoRestante = Math.max(0, (parseFloat(orden.cantidad) || 0) - entregasPrevias);
         const campoCant = document.getElementById('rec-campo-2');
         if (campoCant) campoCant.value = saldoRestante;
@@ -1329,6 +1421,9 @@ function actualizarAvisoCantidadRecepcion() {
     const aviso = document.getElementById('aviso-cantidad-recepcion');
     const selectOrden = document.getElementById('select-recepcion-orden');
     const campoCantidad = document.getElementById('rec-campo-2');
+    const campoAplicada = document.getElementById('rec-cantidad-aplicada');
+    const campoExcedente = document.getElementById('rec-cantidad-excedente');
+    const grupoTratamiento = document.getElementById('grupo-tratamiento-excedente');
     if (!aviso || !selectOrden || !campoCantidad) return;
 
     const orden = ordenesCompra.find(oc => oc.idOrden === selectOrden.value);
@@ -1336,32 +1431,41 @@ function actualizarAvisoCantidadRecepcion() {
     if (!orden || !Number.isFinite(cantidadRemito) || cantidadRemito <= 0) {
         aviso.style.display = 'none';
         aviso.innerHTML = '';
+        if (campoAplicada) campoAplicada.value = '';
+        if (campoExcedente) campoExcedente.value = '';
+        if (grupoTratamiento) grupoTratamiento.style.display = 'none';
         return;
     }
 
     const solicitada = parseFloat(orden.cantidad) || 0;
     const recibidaAnteriormente = recepciones
         .filter(r => r.idOrden === orden.idOrden)
-        .reduce((total, r) => total + (parseFloat(r.cantRecibida) || 0), 0);
-    const acumulada = recibidaAnteriormente + cantidadRemito;
-    const diferencia = acumulada - solicitada;
+        .reduce((total, r) => total + (parseFloat(r.cantAplicada ?? r.cantRecibida) || 0), 0);
+    const pendiente = Math.max(0, solicitada - recibidaAnteriormente);
+    const aplicada = Math.min(cantidadRemito, pendiente);
+    const excedente = Math.max(0, cantidadRemito - aplicada);
+    const acumuladaAplicada = recibidaAnteriormente + aplicada;
+
+    if (campoAplicada) campoAplicada.value = aplicada;
+    if (campoExcedente) campoExcedente.value = excedente;
+    if (grupoTratamiento) grupoTratamiento.style.display = excedente > 0 ? 'block' : 'none';
 
     aviso.style.display = 'block';
-    if (diferencia > 0) {
+    if (excedente > 0) {
         aviso.style.background = '#f8d7da';
         aviso.style.color = '#842029';
         aviso.style.border = '1px solid #f5c2c7';
-        aviso.innerHTML = `⚠️ Excedente de <strong>${diferencia}</strong> unidad(es). Solicitada: ${solicitada} · Acumulada: ${acumulada}. Se pedirá confirmación al registrar.`;
-    } else if (diferencia < 0) {
+        aviso.innerHTML = `⚠️ Se aplicarán <strong>${aplicada}</strong> unidad(es) a la orden y <strong>${excedente}</strong> quedarán como excedente. Seleccione su tratamiento.`;
+    } else if (acumuladaAplicada < solicitada) {
         aviso.style.background = '#cff4fc';
         aviso.style.color = '#055160';
         aviso.style.border = '1px solid #b6effb';
-        aviso.innerHTML = `ℹ️ Recepción parcial. Solicitada: ${solicitada} · Acumulada: ${acumulada} · Pendiente: ${Math.abs(diferencia)}.`;
+        aviso.innerHTML = `ℹ️ Recepción parcial. Aplicada a la orden: ${aplicada} · Acumulada: ${acumuladaAplicada} · Pendiente: ${solicitada - acumuladaAplicada}.`;
     } else {
         aviso.style.background = '#d1e7dd';
         aviso.style.color = '#0f5132';
         aviso.style.border = '1px solid #badbcc';
-        aviso.innerHTML = `✅ Cantidad exacta. Solicitada: ${solicitada} · Acumulada: ${acumulada}.`;
+        aviso.innerHTML = `✅ Cantidad exacta. Se aplicarán ${aplicada} unidad(es) y la orden quedará completa.`;
     }
 }
 
@@ -1376,6 +1480,7 @@ async function guardarRecepcion(e) {
     const empaque = document.getElementById('rec-campo-3').value;
     const calidad = document.getElementById('rec-campo-5').value;
     const obs = document.getElementById('rec-campo-6').value.trim();
+    const tratamientoExcedente = document.getElementById('rec-tratamiento-excedente')?.value || 'Saldo a favor';
     const fechaRecepcion = document.getElementById('rec-fecha').value || new Date().toISOString().split('T')[0];
     
     const usuarioNombre = usuarioActual ? usuarioActual.nombre : 'admin';
@@ -1387,35 +1492,31 @@ async function guardarRecepcion(e) {
     const cantidadSolicitada = parseFloat(orden.cantidad) || 0;
     const entregasAnteriores = recepciones
         .filter(r => r.idOrden === idOrden)
-        .reduce((acc, curr) => acc + (parseFloat(curr.cantRecibida) || 0), 0);
-    const totalLuegoDeRecepcion = entregasAnteriores + cantRecibida;
-    const excedente = totalLuegoDeRecepcion - cantidadSolicitada;
+        .reduce((acc, curr) => acc + (parseFloat(curr.cantAplicada ?? curr.cantRecibida) || 0), 0);
+    const pendiente = Math.max(0, cantidadSolicitada - entregasAnteriores);
+    const cantidadAplicada = Math.min(cantRecibida, pendiente);
+    const excedente = Math.max(0, cantRecibida - cantidadAplicada);
 
-    if (cantidadSolicitada > 0 && excedente > 0) {
+    if (excedente > 0) {
         const continuar = confirm(
-            `⚠️ La cantidad recibida supera en ${excedente} unidad(es) la cantidad pendiente.\n\n` +
-            `Solicitada: ${cantidadSolicitada}\n` +
-            `Recibida anteriormente: ${entregasAnteriores}\n` +
-            `Este remito: ${cantRecibida}\n` +
-            `Total acumulado: ${totalLuegoDeRecepcion}\n\n` +
-            '¿Desea registrar la recepción con excedente?'
+            `⚠️ Esta recepción contiene ${excedente} unidad(es) excedentes.\n\n` +
+            `Aplicadas a la orden: ${cantidadAplicada}\n` +
+            `Excedentes: ${excedente}\n` +
+            `Tratamiento: ${tratamientoExcedente}\n\n` +
+            '¿Desea registrar la recepción?'
         );
         if (!continuar) return;
     }
 
-    await fetch('/api/recepciones', {
+    const respuestaRecepcion = await fetch('/api/recepciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numFormulario, idOrden, provNombre: orden ? orden.provNombre : '', remito, cantRecibida, empaque, tiempo: '', calidad, obs, fechaRecepcion, usuario: usuarioNombre })
+        body: JSON.stringify({ numFormulario, idOrden, remito, cantRecibida, tratamientoExcedente, empaque, tiempo: '', calidad, obs, fechaRecepcion, usuario: usuarioNombre })
     });
 
-    if (totalLuegoDeRecepcion >= cantidadSolicitada) {
-        orden.estado = 'Recibido';
-        await fetch('/api/compras', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orden)
-        });
+    if (!respuestaRecepcion.ok) {
+        const error = await respuestaRecepcion.json().catch(() => ({}));
+        return alert(`❌ No se pudo registrar la recepción: ${error.error || 'Error desconocido'}`);
     }
 
     document.getElementById('form-recepcion').reset();
@@ -1429,26 +1530,15 @@ function renderizarTablaRecepciones() {
     if (!tbody) return;
     tbody.innerHTML = '';
     
-    const acumuladosPorOrden = {};
-    recepciones.forEach(r => {
-        acumuladosPorOrden[r.idOrden] = (acumuladosPorOrden[r.idOrden] || 0) + (parseFloat(r.cantRecibida) || 0);
-    });
-
     recepciones.forEach(r => {
         const orden = ordenesCompra.find(oc => oc.idOrden === r.idOrden);
-        const solicitada = parseFloat(orden ? orden.cantidad : 0) || 0;
-        const acumulada = acumuladosPorOrden[r.idOrden] || 0;
-        const diferencia = acumulada - solicitada;
-        let diferenciaTexto = '0';
-        let estadoCantidad = '<span class="status-badge-received">Exacto</span>';
-
-        if (diferencia > 0) {
-            diferenciaTexto = `+${diferencia}`;
-            estadoCantidad = '<span style="display:inline-block;background:#fff3cd;color:#856404;padding:4px 8px;border-radius:12px;font-weight:bold;">Excedente</span>';
-        } else if (diferencia < 0) {
-            diferenciaTexto = `${diferencia}`;
-            estadoCantidad = '<span style="display:inline-block;background:#dbeafe;color:#1e40af;padding:4px 8px;border-radius:12px;font-weight:bold;">Parcial</span>';
-        }
+        const aplicada = parseFloat(r.cantAplicada ?? r.cantRecibida) || 0;
+        const excedente = parseFloat(r.cantExcedente) || 0;
+        const tratamiento = r.tratamientoExcedente || (excedente > 0 ? 'Sin definir' : 'Sin excedente');
+        const estadoOrden = orden?.estado || (excedente > 0 ? 'Recibido con excedente' : 'Recibido');
+        const estadoCantidad = excedente > 0
+            ? '<span style="display:inline-block;background:#fff3cd;color:#856404;padding:4px 8px;border-radius:12px;font-weight:bold;">Excedente</span>'
+            : `<span class="status-badge-received">${estadoOrden === 'Parcial' ? 'Parcial' : 'Exacto'}</span>`;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -1457,9 +1547,9 @@ function renderizarTablaRecepciones() {
             <td>${r.provNombre}</td>
             <td>${r.remito}</td>
             <td>${r.cantRecibida}</td>
-            <td>${solicitada}</td>
-            <td>${acumulada}</td>
-            <td><strong>${diferenciaTexto}</strong></td>
+            <td>${aplicada}</td>
+            <td><strong>${excedente}</strong></td>
+            <td>${tratamiento}</td>
             <td>${r.calidad}</td>
             <td>${r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : ''}</td>
             <td><strong>👤 ${r.usuario || 'admin'}</strong></td>
