@@ -323,11 +323,11 @@
                             </div>
                             <div class="form-group">
                                 <label>Proveedor:</label>
-                                <select id="select-compra-prov" required></select>
+                                <select id="select-compra-prov" onchange="actualizarSaldoExcedenteCompra()" required></select>
                             </div>
                             <div class="form-group">
                                 <label>Requisito Solicitado:</label>
-                                <select id="select-compra-req" required></select>
+                                <select id="select-compra-req" onchange="actualizarSaldoExcedenteCompra()" required></select>
                             </div>
                             <div class="form-group">
                                 <label>Fecha de Emisión:</label>
@@ -349,8 +349,8 @@
                         <!-- CANTIDADES E IMPORTES DE LA ORDEN -->
                         <div class="form-grid" style="margin-top: 15px;">
                             <div class="form-group">
-                                <label>Cantidad Solicitada / Estimada:</label>
-                                <input type="number" id="compra-cantidad" placeholder="Ej: 25" min="1" step="1" oninput="calcularTotalCompra()" required>
+                                <label>Necesidad Total:</label>
+                                <input type="number" id="compra-cantidad" placeholder="Ej: 25" min="1" step="1" oninput="actualizarSaldoExcedenteCompra()" required>
                             </div>
                             <div class="form-group">
                                 <label>Valor Unitario:</label>
@@ -360,6 +360,21 @@
                                 <label>Valor Total:</label>
                                 <input type="number" id="compra-valor-total" placeholder="Calculado automáticamente" step="0.01" readonly required style="background-color:#f1f3f5; font-weight:bold;">
                             </div>
+                        </div>
+
+                        <div id="saldo-excedente-compra" style="display:none; margin-top:15px; padding:12px; background:#e8f5e9; border-left:4px solid #2e7d32; border-radius:6px;">
+                            <strong>📦 Saldo a favor disponible:</strong> <span id="compra-saldo-disponible">0</span> unidad(es)
+                            <div class="form-grid" style="margin-top:10px;">
+                                <div class="form-group">
+                                    <label>Saldo a favor a aplicar:</label>
+                                    <input type="number" id="compra-saldo-aplicar" min="0" step="1" value="0" oninput="actualizarCantidadFinalCompra()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Cantidad final a comprar:</label>
+                                    <input type="number" id="compra-cantidad-final" readonly style="background:#f1f3f5; font-weight:bold;">
+                                </div>
+                            </div>
+                            <small>El saldo corresponde al mismo proveedor y producto. Puede aplicarlo total o parcialmente.</small>
                         </div>
 
                         <!-- CUADRO AZUL EN PESTAÑA 4 -->
@@ -411,7 +426,9 @@
                                 <th>Tipo</th>
                                 <th>Proveedor</th>
                                 <th>Requisito</th>
-                                <th>Cantidad</th>
+                                <th>Necesidad</th>
+                                <th>Saldo Aplicado</th>
+                                <th>Cantidad Comprada</th>
                                 <th>Valor Unit.</th>
                                 <th>Valor Total</th>
                                 <th>Cond. Pago</th>
@@ -451,6 +468,23 @@
                                 <label>Cantidad Recibida en este Remito:</label>
                                 <input type="number" id="rec-campo-2" placeholder="Cantidad" min="1" oninput="actualizarAvisoCantidadRecepcion()" required>
                                 <div id="aviso-cantidad-recepcion" role="status" aria-live="polite" style="display: none; margin-top: 7px; padding: 9px 11px; border-radius: 6px; font-size: 0.9em; font-weight: 600;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Cantidad aplicada a la orden:</label>
+                                <input type="number" id="rec-cantidad-aplicada" readonly style="background:#f1f3f5; font-weight:bold;">
+                            </div>
+                            <div class="form-group">
+                                <label>Cantidad excedente:</label>
+                                <input type="number" id="rec-cantidad-excedente" readonly style="background:#fff3cd; font-weight:bold;">
+                            </div>
+                            <div class="form-group" id="grupo-tratamiento-excedente" style="display:none;">
+                                <label>Tratamiento del excedente:</label>
+                                <select id="rec-tratamiento-excedente">
+                                    <option value="Saldo a favor" selected>Saldo a favor para futuras compras</option>
+                                    <option value="Bonificación">Bonificación</option>
+                                    <option value="Pendiente de regularización">Pendiente de regularización</option>
+                                    <option value="Devolver/Rechazar">Devolver / Rechazar</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Estado del Empaque / Embalaje:</label>
@@ -493,9 +527,9 @@
                                 <th>Proveedor</th>
                                 <th>N° Remito</th>
                                 <th>Cant. Remito</th>
-                                <th>Cant. Solicitada</th>
-                                <th>Recibida Acumulada</th>
-                                <th>Diferencia</th>
+                                <th>Aplicada a OC</th>
+                                <th>Excedente</th>
+                                <th>Tratamiento</th>
                                 <th>Calidad</th>
                                 <th>Fecha Recepción</th>
                                 <th>Recibido por</th>
