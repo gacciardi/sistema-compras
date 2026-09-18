@@ -666,11 +666,12 @@ function esEvaluacionHistorica() {
 function actualizarModoCamposAutomaticosPorFecha() {
     const inputEntregaAuto = document.getElementById('stat-val-1');
     const inputPagoAuto = document.getElementById('stat-val-3');
+    const inputPlazoAuto = document.getElementById('stat-val-4');
     const avisoModoHistorico = document.getElementById('aviso-modo-historico');
 
     if (esEvaluacionHistorica()) {
         if (avisoModoHistorico) avisoModoHistorico.style.display = 'block';
-        [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
+        [inputEntregaAuto, inputPagoAuto, inputPlazoAuto].forEach(inputEl => {
             if (!inputEl) return;
             inputEl.readOnly = false;
             inputEl.disabled = false;
@@ -691,7 +692,7 @@ function actualizarModoCamposAutomaticosPorFecha() {
 
     // El bloqueo se aplica antes de buscar datos para que los campos tampoco
     // puedan editarse mientras aún no se seleccionó un proveedor.
-    [inputEntregaAuto, inputPagoAuto].forEach(inputEl => {
+    [inputEntregaAuto, inputPagoAuto, inputPlazoAuto].forEach(inputEl => {
         if (!inputEl) return;
         inputEl.readOnly = true;
         inputEl.disabled = true;
@@ -712,6 +713,7 @@ function actualizarModoCamposAutomaticosPorFecha() {
 
     if (inputEntregaAuto) inputEntregaAuto.value = puntajeEntrega !== null ? puntajeEntrega : '';
     if (inputPagoAuto) inputPagoAuto.value = promediosOC.pago !== null ? promediosOC.pago : '';
+    if (inputPlazoAuto) inputPlazoAuto.value = promediosOC.plazo !== null ? promediosOC.plazo : '';
 }
 
 function cargarCalificacionExistente() {
@@ -1004,6 +1006,13 @@ function autoCompletarPuntajePago() {
     }
 }
 
+function autoCompletarPuntajePlazo() {
+    const selectPlazo = document.getElementById('select-compra-plazo-valoracion');
+    const inputPlazoEval = document.getElementById('compra-plazo-eval');
+    if (!selectPlazo || !inputPlazoEval) return;
+    inputPlazoEval.value = selectPlazo.value;
+}
+
 function renderizarListaReglasPagoUI() {
     const ul = document.getElementById('lista-reglas-pago-ui');
     if (!ul) return;
@@ -1147,7 +1156,12 @@ async function iniciarCompra(e) {
     const condicionPago = document.getElementById('select-compra-condicion-pago').value;
     const observaciones = document.getElementById('compra-observaciones').value.trim();
     const pagoEval = parseInt(document.getElementById('compra-pago-eval').value) || 0;
-    const plazoEval = parseInt(document.getElementById('compra-plazo-eval').value) || 0;
+    const plazoSeleccionado = document.getElementById('select-compra-plazo-valoracion')?.value ?? '';
+    if (plazoSeleccionado === '') {
+        alert('⚠️ Seleccione la valoración de conveniencia del plazo ofrecido.');
+        return;
+    }
+    const plazoEval = parseInt(plazoSeleccionado, 10);
 
     if (isNaN(valorUnitario) || valorUnitario < 0) {
         alert('⚠️ Ingrese un valor unitario válido.');
@@ -1291,7 +1305,9 @@ function editarOrdenCompra(idOrden) {
 
     document.getElementById('select-compra-condicion-pago').value = oc.condicionPago || '';
     document.getElementById('compra-pago-eval').value = oc.pagoEval || '';
-    document.getElementById('compra-plazo-eval').value = oc.plazoEval || '';
+    document.getElementById('compra-plazo-eval').value = oc.plazoEval ?? '';
+    const selectPlazo = document.getElementById('select-compra-plazo-valoracion');
+    if (selectPlazo) selectPlazo.value = oc.plazoEval ?? '';
     document.getElementById('compra-observaciones').value = oc.observaciones || '';
 
     document.getElementById('btn-submit-compras').innerText = `💾 Confirmar Corrección (${oc.idOrden})`;
@@ -1303,6 +1319,8 @@ function cancelarEdicionCompra() {
     document.getElementById('compra-edit-id').value = '';
     document.getElementById('form-compras').reset();
     document.getElementById('compra-valor-total').value = '';
+    const selectPlazo = document.getElementById('select-compra-plazo-valoracion');
+    if (selectPlazo) selectPlazo.value = '';
     const inputSaldoAplicar = document.getElementById('compra-saldo-aplicar');
     if (inputSaldoAplicar) {
         inputSaldoAplicar.disabled = false;
