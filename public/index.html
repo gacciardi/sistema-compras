@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -56,6 +57,7 @@
             <button id="btn-tab-compras" class="tab-btn" onclick="showTab('tab-compras')">P4: Emisión Órdenes de Compra</button>
             <button id="btn-tab-recepcion" class="tab-btn" onclick="showTab('tab-recepcion')">P5: Inspección de Recepción</button>
             <button id="btn-tab-usuarios" class="tab-btn" onclick="showTab('tab-usuarios')">P6: Gestión de Usuarios</button>
+            <button id="btn-tab-historial-proveedores" class="tab-btn" onclick="showTab('tab-historial-proveedores')">P7: Historial de Proveedores</button>
         </nav>
 
         <main class="content-container">
@@ -600,6 +602,91 @@
                         </thead>
                         <tbody id="tabla-usuarios-body"></tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- PESTAÑA 7: HISTORIAL DE PROVEEDORES -->
+            <section id="tab-historial-proveedores" class="tab-content">
+                <div class="form-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <div>
+                            <h2 style="margin-bottom:5px;">📚 Historial de Proveedores y Compras</h2>
+                            <p style="margin:0; color:#666;">Consulte las órdenes registradas y analice cantidades e importes por proveedor, fecha y producto.</p>
+                        </div>
+                        <button type="button" class="btn-success" onclick="exportarHistorialProveedoresExcel()">📊 Exportar a Excel</button>
+                    </div>
+
+                    <div class="form-grid" style="margin-top:20px;">
+                        <div class="form-group">
+                            <label>Proveedor:</label>
+                            <select id="historial-filtro-proveedor" onchange="renderizarHistorialProveedores()">
+                                <option value="">Todos los proveedores</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha desde:</label>
+                            <input type="date" id="historial-filtro-desde" onchange="renderizarHistorialProveedores()">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha hasta:</label>
+                            <input type="date" id="historial-filtro-hasta" onchange="renderizarHistorialProveedores()">
+                        </div>
+                        <div class="form-group">
+                            <label>Producto / Requisito:</label>
+                            <select id="historial-filtro-producto" onchange="renderizarHistorialProveedores()">
+                                <option value="">Todos los productos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Estado:</label>
+                            <select id="historial-filtro-estado" onchange="renderizarHistorialProveedores()">
+                                <option value="">Todos los estados</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="justify-content:flex-end;">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn-secondary" onclick="limpiarFiltrosHistorialProveedores()">Limpiar filtros</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-card" style="margin-top:20px;">
+                    <div class="form-grid">
+                        <div style="padding:15px; background:#e3f2fd; border-left:5px solid #1976d2; border-radius:6px;">
+                            <small style="color:#455a64;">Órdenes encontradas</small>
+                            <div id="historial-total-ordenes" style="font-size:1.6em; font-weight:bold; color:#0d47a1;">0</div>
+                        </div>
+                        <div style="padding:15px; background:#e8f5e9; border-left:5px solid #43a047; border-radius:6px;">
+                            <small style="color:#455a64;">Unidades compradas</small>
+                            <div id="historial-total-unidades" style="font-size:1.6em; font-weight:bold; color:#1b5e20;">0</div>
+                        </div>
+                        <div style="padding:15px; background:#fff3e0; border-left:5px solid #fb8c00; border-radius:6px;">
+                            <small style="color:#455a64;">Importe total ordenado</small>
+                            <div id="historial-total-importe" style="font-size:1.6em; font-weight:bold; color:#e65100;">$ 0,00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card" style="margin-top:20px; overflow-x:auto;">
+                    <h3>Detalle de compras</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>N° Orden</th>
+                                <th>Proveedor</th>
+                                <th>Producto / Requisito</th>
+                                <th>Cantidad</th>
+                                <th>Valor unitario</th>
+                                <th>Valor total</th>
+                                <th>Condición de pago</th>
+                                <th>Fecha requerida</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-historial-proveedores-body"></tbody>
+                    </table>
+                    <p id="historial-sin-resultados" style="display:none; text-align:center; padding:20px; color:#777;">No hay compras que coincidan con los filtros seleccionados.</p>
                 </div>
             </section>
 
