@@ -20,11 +20,11 @@ let tablaCondicionPagoPuntos = {
 let opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
 
 let permisosPorSector = {
-    'Compras': [1, 2, 3, 4, 5],
+    'Compras': [1, 2, 3, 4, 5, 7],
     'Almacén / Depósito': [1, 5],
     'Calidad': [1, 3, 5],
     'Expedición': [1, 5],
-    'Administración': [1, 2, 3, 4, 5, 6]
+    'Administración': [1, 2, 3, 4, 5, 6, 7]
 };
 
 let permisosProveedoresPorUsuario = {};
@@ -172,11 +172,12 @@ function aplicarPermisosUsuario(sectorUsuario) {
         3: { id: 'tab-estadisticas', btn: 'btn-tab-estadisticas' },
         4: { id: 'tab-compras', btn: 'btn-tab-compras' },
         5: { id: 'tab-recepcion', btn: 'btn-tab-recepcion' },
-        6: { id: 'tab-usuarios', btn: 'btn-tab-usuarios' }
+        6: { id: 'tab-usuarios', btn: 'btn-tab-usuarios' },
+        7: { id: 'tab-historial-proveedores', btn: 'btn-tab-historial-proveedores' }
     };
 
     let primeraDisponible = null;
-    for (let num = 1; num <= 6; num++) {
+    for (let num = 1; num <= 7; num++) {
         const p = mapaPestañas[num];
         const btnEl = document.getElementById(p.btn);
         if (pestañasPermitidas.includes(num)) {
@@ -213,6 +214,7 @@ function showTab(tabId) {
     if (tabId === 'tab-compras') actualizarSelectsCompras();
     if (tabId === 'tab-recepcion') actualizarSelectOrdenesPendientes();
     if (tabId === 'tab-usuarios') actualizarSelectSectoresUsuarios();
+    if (tabId === 'tab-historial-proveedores') prepararHistorialProveedores();
 }
 
 async function guardarNumeroFormularioDirecto(claveConfig, idInput) {
@@ -275,6 +277,15 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) nombresCriteriosEstadisticas = config.crit_stat_labels;
         if (config.permisos_sectores) permisosPorSector = config.permisos_sectores;
 
+        // Habilitar inicialmente la nueva P7 para Compras y Administración.
+        // Luego puede administrarse normalmente desde la matriz del Master Panel.
+        Object.keys(permisosPorSector).forEach(sector => {
+            const sectorNormalizado = sector.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            if ((sectorNormalizado.includes('compras') || sectorNormalizado.includes('administracion')) && !permisosPorSector[sector].includes(7)) {
+                permisosPorSector[sector].push(7);
+            }
+        });
+
         if (config.sys_title) {
             const hTitle = document.getElementById('header-system-title');
             if (hTitle) hTitle.innerText = config.sys_title;
@@ -307,6 +318,7 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
             renderizarTablaCompras();
             renderizarTablaRecepciones();
             renderizarTablaUsuarios();
+            prepararHistorialProveedores();
             
             renderizarGraficosPestaña3();
         }
@@ -1280,6 +1292,212 @@ function renderizarTablaCompras() {
     });
 }
 
+function prepararHistorialProveedores() {
+    const selectProveedor = document.getElementById('historial-filtro-proveedor');
+    const selectProducto = document.getElementById('historial-filtro-producto');
+    const selectEstado = document.getElementById('historial-filtro-estado');
+    if (!selectProveedor || !selectProducto || !selectEstado) return;
+
+    const proveedorActual = selectProveedor.value;
+    const productoActual = selectProducto.value;
+    const estadoActual = selectEstado.value;
+
+    const proveedoresConCompras = new Map();
+    const productosConCompras = new Map();
+    const estadosConCompras = new Set();
+
+    ordenesCompra.forEach(oc => {
+        if (oc.provNum) proveedoresConCompras.set(String(oc.provNum), oc.provNombre || oc.provNum);
+        const claveProducto = String(oc.reqNum || oc.reqNombre || '');
+        if (claveProducto) productosConCompras.set(claveProducto, oc.reqNombre || oc.reqNum);
+        if (oc.estado) estadosConCompras.add(String(oc.estado));
+    });
+
+    selectProveedor.innerHTML = '<option value="">Todos los proveedores</option>';
+    [...proveedoresConCompras.entries()]
+        .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es'))
+        .forEach(([numero, nombre]) => {
+            const option = document.createElement('option');
+            option.value = numero;
+            option.textContent = `${nombre} (${numero})`;
+            selectProveedor.appendChild(option);
+        });
+
+    selectProducto.innerHTML = '<option value="">Todos los productos</option>';
+    [...productosConCompras.entries()]
+        .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es'))
+        .forEach(([codigo, nombre]) => {
+            const option = document.createElement('option');
+            option.value = codigo;
+            option.textContent = nombre;
+            selectProducto.appendChild(option);
+        });
+
+    selectEstado.innerHTML = '<option value="">Todos los estados</option>';
+    [...estadosConCompras]
+        .sort((a, b) => a.localeCompare(b, 'es'))
+        .forEach(estado => {
+            const option = document.createElement('option');
+            option.value = estado;
+            option.textContent = estado;
+            selectEstado.appendChild(option);
+        });
+
+    if ([...selectProveedor.options].some(opt => opt.value === proveedorActual)) selectProveedor.value = proveedorActual;
+    if ([...selectProducto.options].some(opt => opt.value === productoActual)) selectProducto.value = productoActual;
+    if ([...selectEstado.options].some(opt => opt.value === estadoActual)) selectEstado.value = estadoActual;
+
+    renderizarHistorialProveedores();
+}
+
+function obtenerComprasFiltradasHistorial() {
+    const proveedor = document.getElementById('historial-filtro-proveedor')?.value || '';
+    const desde = document.getElementById('historial-filtro-desde')?.value || '';
+    const hasta = document.getElementById('historial-filtro-hasta')?.value || '';
+    const producto = document.getElementById('historial-filtro-producto')?.value || '';
+    const estado = document.getElementById('historial-filtro-estado')?.value || '';
+
+    return ordenesCompra
+        .filter(oc => {
+            const fecha = oc.fechaEmision ? String(oc.fechaEmision).split('T')[0] : '';
+            const claveProducto = String(oc.reqNum || oc.reqNombre || '');
+            if (proveedor && String(oc.provNum) !== proveedor) return false;
+            if (desde && (!fecha || fecha < desde)) return false;
+            if (hasta && (!fecha || fecha > hasta)) return false;
+            if (producto && claveProducto !== producto) return false;
+            if (estado && String(oc.estado || '') !== estado) return false;
+            return true;
+        })
+        .sort((a, b) => {
+            const fechaA = a.fechaEmision ? String(a.fechaEmision).split('T')[0] : '';
+            const fechaB = b.fechaEmision ? String(b.fechaEmision).split('T')[0] : '';
+            return fechaB.localeCompare(fechaA) || String(b.idOrden || '').localeCompare(String(a.idOrden || ''));
+        });
+}
+
+function escaparHtmlHistorial(valor) {
+    return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function formatearCantidadHistorial(valor) {
+    const numero = Number(valor) || 0;
+    return numero.toLocaleString('es-AR', { maximumFractionDigits: 2 });
+}
+
+function renderizarHistorialProveedores() {
+    const tbody = document.getElementById('tabla-historial-proveedores-body');
+    if (!tbody) return;
+
+    const compras = obtenerComprasFiltradasHistorial();
+    tbody.innerHTML = '';
+
+    let totalUnidades = 0;
+    let totalImporte = 0;
+
+    compras.forEach(oc => {
+        const cantidad = Number(oc.cantidad) || 0;
+        const valorUnitario = Number(oc.valorUnitario) || 0;
+        const valorTotal = Number(oc.valorTotal) || (cantidad * valorUnitario);
+        totalUnidades += cantidad;
+        totalImporte += valorTotal;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${escaparHtmlHistorial(oc.fechaEmision ? String(oc.fechaEmision).split('T')[0] : '')}</td>
+            <td><strong>${escaparHtmlHistorial(oc.idOrden || '')}</strong></td>
+            <td>${escaparHtmlHistorial(oc.provNombre || oc.provNum || '')}</td>
+            <td>${escaparHtmlHistorial(oc.reqNombre || oc.reqNum || '')}</td>
+            <td style="text-align:right;">${formatearCantidadHistorial(cantidad)}</td>
+            <td style="text-align:right;">${formatearImporteCompra(valorUnitario)}</td>
+            <td style="text-align:right;"><strong>${formatearImporteCompra(valorTotal)}</strong></td>
+            <td>${escaparHtmlHistorial(oc.condicionPago || '-')}</td>
+            <td>${escaparHtmlHistorial(oc.fechaReq ? String(oc.fechaReq).split('T')[0] : '')}</td>
+            <td>${escaparHtmlHistorial(oc.estado || '-')}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const totalOrdenesEl = document.getElementById('historial-total-ordenes');
+    const totalUnidadesEl = document.getElementById('historial-total-unidades');
+    const totalImporteEl = document.getElementById('historial-total-importe');
+    const sinResultadosEl = document.getElementById('historial-sin-resultados');
+    if (totalOrdenesEl) totalOrdenesEl.textContent = compras.length.toLocaleString('es-AR');
+    if (totalUnidadesEl) totalUnidadesEl.textContent = formatearCantidadHistorial(totalUnidades);
+    if (totalImporteEl) totalImporteEl.textContent = formatearImporteCompra(totalImporte);
+    if (sinResultadosEl) sinResultadosEl.style.display = compras.length === 0 ? 'block' : 'none';
+}
+
+function limpiarFiltrosHistorialProveedores() {
+    ['historial-filtro-proveedor', 'historial-filtro-desde', 'historial-filtro-hasta', 'historial-filtro-producto', 'historial-filtro-estado']
+        .forEach(id => {
+            const elemento = document.getElementById(id);
+            if (elemento) elemento.value = '';
+        });
+    renderizarHistorialProveedores();
+}
+
+function obtenerFilasExportacionHistorial() {
+    return obtenerComprasFiltradasHistorial().map(oc => {
+        const cantidad = Number(oc.cantidad) || 0;
+        const valorUnitario = Number(oc.valorUnitario) || 0;
+        const valorTotal = Number(oc.valorTotal) || (cantidad * valorUnitario);
+        return {
+            'Fecha de emisión': oc.fechaEmision ? String(oc.fechaEmision).split('T')[0] : '',
+            'N° Orden': oc.idOrden || '',
+            'N° Proveedor': oc.provNum || '',
+            'Proveedor': oc.provNombre || '',
+            'Código producto': oc.reqNum || '',
+            'Producto / Requisito': oc.reqNombre || '',
+            'Cantidad': cantidad,
+            'Valor unitario': valorUnitario,
+            'Valor total': valorTotal,
+            'Condición de pago': oc.condicionPago || '',
+            'Fecha requerida': oc.fechaReq ? String(oc.fechaReq).split('T')[0] : '',
+            'Estado': oc.estado || ''
+        };
+    });
+}
+
+function exportarHistorialProveedoresExcel() {
+    const filas = obtenerFilasExportacionHistorial();
+    if (filas.length === 0) {
+        alert('⚠️ No hay compras para exportar con los filtros seleccionados.');
+        return;
+    }
+
+    const nombreArchivo = `Historial_Proveedores_${new Date().toISOString().split('T')[0]}.xlsx`;
+    if (typeof XLSX !== 'undefined') {
+        const hoja = XLSX.utils.json_to_sheet(filas);
+        hoja['!cols'] = [
+            { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 28 },
+            { wch: 18 }, { wch: 30 }, { wch: 12 }, { wch: 16 },
+            { wch: 16 }, { wch: 22 }, { wch: 16 }, { wch: 14 }
+        ];
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, 'Historial de compras');
+        XLSX.writeFile(libro, nombreArchivo);
+        return;
+    }
+
+    // Respaldo compatible con Excel si la biblioteca externa no estuviera disponible.
+    const encabezados = Object.keys(filas[0]);
+    const escaparCsv = valor => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+    const contenido = [encabezados.map(escaparCsv).join(';')]
+        .concat(filas.map(fila => encabezados.map(campo => escaparCsv(fila[campo])).join(';')))
+        .join('\r\n');
+    const blob = new Blob(['\ufeff' + contenido], { type: 'text/csv;charset=utf-8;' });
+    const enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = nombreArchivo.replace('.xlsx', '.csv');
+    enlace.click();
+    URL.revokeObjectURL(enlace.href);
+}
+
 function editarOrdenCompra(idOrden) {
     const oc = ordenesCompra.find(o => o.idOrden === idOrden);
     if (!oc) return;
@@ -1810,7 +2028,7 @@ async function guardarPermisosProveedoresMaster() {
 function renderizarMatrizPermisos() {
     const container = document.getElementById('matriz-permisos-container');
     if (!container) return;
-    const pestañas = [{ id: 1, nombre: 'P1' }, { id: 2, nombre: 'P2' }, { id: 3, nombre: 'P3' }, { id: 4, nombre: 'P4' }, { id: 5, nombre: 'P5' }, { id: 6, nombre: 'P6' }];
+    const pestañas = [{ id: 1, nombre: 'P1' }, { id: 2, nombre: 'P2' }, { id: 3, nombre: 'P3' }, { id: 4, nombre: 'P4' }, { id: 5, nombre: 'P5' }, { id: 6, nombre: 'P6' }, { id: 7, nombre: 'P7' }];
     let html = '<table><thead><tr><th>Sector</th>';
     pestañas.forEach(p => html += `<th>${p.nombre}</th>`);
     html += '</tr></thead><tbody>';
