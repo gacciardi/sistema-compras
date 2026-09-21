@@ -21,9 +21,9 @@ let opcionesCondicionPago = Object.keys(tablaCondicionPagoPuntos);
 
 let permisosPorSector = {
     'Compras': [1, 2, 3, 4, 5, 7],
-    'Almacén / Depósito': [1, 5],
-    'Calidad': [1, 3, 5],
-    'Expedición': [1, 5],
+    'Almacén / Depósito': [1, 5, 7],
+    'Calidad': [1, 3, 5, 7],
+    'Expedición': [1, 5, 7],
     'Administración': [1, 2, 3, 4, 5, 6, 7]
 };
 
@@ -277,11 +277,10 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) nombresCriteriosEstadisticas = config.crit_stat_labels;
         if (config.permisos_sectores) permisosPorSector = config.permisos_sectores;
 
-        // Habilitar inicialmente la nueva P7 para Compras y Administración.
+        // Habilitar inicialmente la nueva P7 para todos los sectores existentes.
         // Luego puede administrarse normalmente desde la matriz del Master Panel.
         Object.keys(permisosPorSector).forEach(sector => {
-            const sectorNormalizado = sector.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-            if ((sectorNormalizado.includes('compras') || sectorNormalizado.includes('administracion')) && !permisosPorSector[sector].includes(7)) {
+            if (Array.isArray(permisosPorSector[sector]) && !permisosPorSector[sector].includes(7)) {
                 permisosPorSector[sector].push(7);
             }
         });
