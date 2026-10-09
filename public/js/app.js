@@ -1562,12 +1562,41 @@ async function eliminarOrdenCompra(idOrden) {
     }
 }
 
+function agregarLogoEmpresaAlPDF(doc) {
+    const logo = document.getElementById('app-logo') || document.getElementById('login-logo');
+    if (!logo || !logo.complete || !logo.naturalWidth || !logo.naturalHeight) return false;
+
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = logo.naturalWidth;
+        canvas.height = logo.naturalHeight;
+        const contexto = canvas.getContext('2d');
+        if (!contexto) return false;
+
+        contexto.drawImage(logo, 0, 0);
+        const imagenPng = canvas.toDataURL('image/png');
+
+        const anchoMaximo = 38;
+        const altoMaximo = 18;
+        const escala = Math.min(anchoMaximo / logo.naturalWidth, altoMaximo / logo.naturalHeight);
+        const anchoLogo = logo.naturalWidth * escala;
+        const altoLogo = logo.naturalHeight * escala;
+
+        doc.addImage(imagenPng, 'PNG', 20, 8, anchoLogo, altoLogo, undefined, 'FAST');
+        return true;
+    } catch (error) {
+        console.warn('No se pudo incorporar el logo al PDF:', error);
+        return false;
+    }
+}
+
 function generarPDFOrden(orden) {
     if (!window.jspdf) return;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
     const esAbierta = orden.tipoOrden === 'Abierta';
+    agregarLogoEmpresaAlPDF(doc);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.setTextColor(216, 27, 96);
