@@ -87,7 +87,6 @@ function poblarSelectAnios() {
         select.value = String(anioActual);
     }
 
-    // Vincular evento de cambio para que ejecute la carga automáticamente al cambiar el año
     select.onchange = cargarCalificacionExistente;
 }
 
@@ -277,8 +276,6 @@ async function cargarTodoDesdeServidor(renderCompleto = true) {
         if (config.crit_stat_labels && Array.isArray(config.crit_stat_labels)) nombresCriteriosEstadisticas = config.crit_stat_labels;
         if (config.permisos_sectores) permisosPorSector = config.permisos_sectores;
 
-        // Habilitar inicialmente la nueva P7 para todos los sectores existentes.
-        // Luego puede administrarse normalmente desde la matriz del Master Panel.
         Object.keys(permisosPorSector).forEach(sector => {
             if (Array.isArray(permisosPorSector[sector]) && !permisosPorSector[sector].includes(7)) {
                 permisosPorSector[sector].push(7);
@@ -430,10 +427,11 @@ async function guardarProveedor(e) {
     const numFormulario = document.getElementById('num-formulario-prov').value.trim();
     const num = document.getElementById('num-proveedor').value.trim();
     const nombre = document.getElementById('nombre-proveedor').value.trim();
-    const fechaAlta = document.getElementById('fecha-alta-proveedor').value;
+    const fechaAltaInput = document.getElementById('fecha-alta-proveedor');
+    const fechaAlta = (fechaAltaInput && fechaAltaInput.value) ? fechaAltaInput.value : new Date().toISOString().split('T')[0];
 
-    if (!numFormulario || !num || !nombre || !fechaAlta) {
-        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, N° de Proveedor / CUIT, Razón Social y Fecha de Alta.");
+    if (!numFormulario || !num || !nombre) {
+        alert("⚠️ Por favor complete los campos obligatorios: N° de Formulario, N° de Proveedor / CUIT y Razón Social.");
         return;
     }
 
@@ -467,11 +465,12 @@ function renderizarTablaProveedores() {
     tbody.innerHTML = '';
     proveedores.forEach((p) => {
         const tr = document.createElement('tr');
+        const fAlta = p.fechaAlta ? p.fechaAlta.split('T')[0] : '-';
         tr.innerHTML = `
             <td><strong>${p.numFormulario || ''}</strong></td>
             <td><strong>${p.num}</strong></td>
             <td>${p.nombre}</td>
-            <td>${p.fechaAlta ? p.fechaAlta.split('T')[0] : 'Sin fecha'}</td>
+            <td>${fAlta}</td>
             <td>
                 <button class="btn-warning" onclick="editarProveedor('${p.num}')">Editar</button>
                 <button class="btn-danger" onclick="eliminarProveedor('${p.num}')">Eliminar</button>
@@ -487,7 +486,8 @@ function editarProveedor(num) {
     document.getElementById('num-formulario-prov').value = p.numFormulario || '';
     document.getElementById('num-proveedor').value = p.num;
     document.getElementById('nombre-proveedor').value = p.nombre;
-    document.getElementById('fecha-alta-proveedor').value = p.fechaAlta ? p.fechaAlta.split('T')[0] : '';
+    const fAltaEl = document.getElementById('fecha-alta-proveedor');
+    if (fAltaEl && p.fechaAlta) fAltaEl.value = p.fechaAlta.split('T')[0];
 
     if (p.criterios && Array.isArray(p.criterios)) {
         p.criterios.forEach((crit, index) => {
@@ -502,6 +502,7 @@ function editarProveedor(num) {
 }
 
 async function eliminarProveedor(num) {
+    if (!confirm(`¿Eliminar proveedor "${num}"?`)) return;
     await fetch(`/api/proveedores/${num}`, { method: 'DELETE' });
     await cargarTodoDesdeServidor(true);
 }
@@ -534,7 +535,7 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const infoCajaRec = document.getElementById('info-caja-recepciones');
     if (infoCajaRec) {
         if (recepcionesProv.length > 0) {
-            infoCajaRec.innerHTML = `📦 <b>Recepciones evaluadas:</b> ${recepcionesProv.length} remito(s) encontrados para ${nombreProv}.`;
+            infoCajaRec.innerHTML = `📦 <b>Recepciones evaluadas:</b> ${recepcionesProv.length} remito(s) encontrados para${nombreProv}.`;
             infoCajaRec.style.display = 'block';
         } else {
             infoCajaRec.innerHTML = `⚠️ <b>Aviso:</b> No se registran remitos de recepción (Pest. 5) para este proveedor.`;
@@ -630,7 +631,6 @@ function actualizarSelectProveedoresEstadisticas() {
     if (!select) return;
     select.innerHTML = '<option value="">-- Seleccione un Proveedor --</option>';
     
-    // Asignar función al evento onchange del selector de proveedores
     select.onchange = cargarCalificacionExistente;
 
     [...proveedores].sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(p => {
@@ -662,8 +662,6 @@ function habilitarCampoManual(inputEl, esAutomatico, valorAuto) {
     }
 }
 
-// Las evaluaciones anteriores a agosto de 2026 son registros históricos.
-// En esos casos, los puntajes automáticos de las pestañas 4 y 5 son editables.
 function esEvaluacionHistorica() {
     const anioSeleccionado = parseInt(document.getElementById('select-anio-estadistica')?.value, 10);
     const fechaEval = document.getElementById('fecha-evaluacion')?.value;
@@ -701,8 +699,6 @@ function actualizarModoCamposAutomaticosPorFecha() {
     const provNum = document.getElementById('select-prov-estadistica')?.value;
     const anio = document.getElementById('select-anio-estadistica')?.value;
 
-    // El bloqueo se aplica antes de buscar datos para que los campos tampoco
-    // puedan editarse mientras aún no se seleccionó un proveedor.
     [inputEntregaAuto, inputPagoAuto, inputPlazoAuto].forEach(inputEl => {
         if (!inputEl) return;
         inputEl.readOnly = true;
@@ -717,8 +713,6 @@ function actualizarModoCamposAutomaticosPorFecha() {
 
     if (!provNum || !anio) return;
 
-    // Desde el 01/08/2026 se reemplaza cualquier valor guardado por el valor
-    // vigente calculado desde las pestañas 4 y 5.
     const puntajeEntrega = calcularPuntajeTiemposReales(provNum, anio);
     const promediosOC = calcularPromediosPreEvaluacionOC(provNum, anio);
 
@@ -788,10 +782,7 @@ function cargarCalificacionExistente() {
         }
     }
 
-    // Debe ejecutarse al final para que el modo histórico prevalezca sobre
-    // cualquier bloqueo automático aplicado durante la carga.
     actualizarModoCamposAutomaticosPorFecha();
-
     calcularPuntajeClase();
     renderizarGraficosPestaña3();
 }
@@ -1031,7 +1022,7 @@ function renderizarListaReglasPagoUI() {
     Object.keys(tablaCondicionPagoPuntos).forEach(cond => {
         const pts = tablaCondicionPagoPuntos[cond];
         const li = document.createElement('li');
-        li.innerHTML = `<strong>${cond}:</strong> ${pts} Puntos`;
+        li.innerHTML = `<strong>${cond}:</strong>${pts} Puntos`;
         ul.appendChild(li);
     });
 }
@@ -1483,7 +1474,6 @@ function exportarHistorialProveedoresExcel() {
         return;
     }
 
-    // Respaldo compatible con Excel si la biblioteca externa no estuviera disponible.
     const encabezados = Object.keys(filas[0]);
     const escaparCsv = valor => `"${String(valor ?? '').replace(/"/g, '""')}"`;
     const contenido = [encabezados.map(escaparCsv).join(';')]
@@ -1607,804 +1597,4 @@ function generarPDFOrden(orden) {
     doc.text(`N° Formulario: ${orden.numFormulario || ''}`, 20, 32);
     doc.text(`N° Orden: ${orden.idOrden}`, 20, 40);
     doc.text(`Modalidad: ${orden.tipoOrden || 'Normal'}`, 20, 48);
-    doc.text(`Fecha Emisión: ${orden.fechaEmision || new Date().toLocaleDateString()}`, 20, 56);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("DATOS DEL PROVEEDOR:", 20, 70);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Proveedor: ${orden.provNombre} (${orden.provNum})`, 20, 78);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("DETALLE DEL PEDIDO:", 20, 93);
-    doc.setFont("helvetica", "normal");
-    
-    let currentY = 101;
-    doc.text(`Producto/Requisito: ${orden.reqNombre} (${orden.reqNum})`, 20, currentY); currentY += 8;
-    doc.text(`Cantidad ${esAbierta ? 'Estimada' : 'Solicitada'}: ${orden.cantidad}`, 20, currentY); currentY += 8;
-    doc.text(`Valor Unitario: ${formatearImporteCompra(orden.valorUnitario)}`, 20, currentY); currentY += 8;
-    doc.text(`Valor Total: ${formatearImporteCompra(orden.valorTotal)}`, 20, currentY); currentY += 8;
-    doc.text(`Condición de Pago: ${orden.condicionPago || 'No especificada'}`, 20, currentY); currentY += 8;
-    doc.text(`Fecha ${esAbierta ? 'Límite de Vigencia' : 'Requerida de Entrega'}: ${orden.fechaReq}`, 20, currentY); currentY += 10;
-
-    if (orden.reqDetalle) {
-        const lineasReq = doc.splitTextToSize(`Especificaciones Técnicas: ${orden.reqDetalle}`, 170);
-        doc.text(lineasReq, 20, currentY);
-        currentY += (lineasReq.length * 6) + 4;
-    }
-    if (orden.observaciones) {
-        const lineasObs = doc.splitTextToSize(`Observaciones: ${orden.observaciones}`, 170);
-        doc.text(lineasObs, 20, currentY);
-        currentY += (lineasObs.length * 6) + 4;
-    }
-
-    doc.setDrawColor(216, 27, 96);
-    doc.line(20, currentY + 5, 190, currentY + 5);
-    doc.save(`Orden_Compra_${orden.idOrden}.pdf`);
-}
-
-// --- PESTAÑA 5: RECEPCIÓN ---
-function actualizarSelectOrdenesPendientes() {
-    const select = document.getElementById('select-recepcion-orden');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Seleccione Orden Pendiente o Parcial --</option>';
-
-    const entregasPorOrden = {};
-    if (Array.isArray(recepciones)) {
-        recepciones.forEach(r => {
-            const aplicada = r.cantAplicada !== undefined ? r.cantAplicada : r.cantRecibida;
-            entregasPorOrden[r.idOrden] = (entregasPorOrden[r.idOrden] || 0) + (parseFloat(aplicada) || 0);
-        });
-    }
-
-    ordenesCompra.filter(oc => {
-        const totalSolicitado = parseFloat(oc.cantidad) || 0;
-        const totalEntregado = entregasPorOrden[oc.idOrden] || 0;
-        return !String(oc.estado || '').startsWith('Recibido') && totalEntregado < totalSolicitado;
-    }).sort((a, b) => a.provNombre.localeCompare(b.provNombre)).forEach(oc => {
-        const saldo = (parseFloat(oc.cantidad) || 0) - (entregasPorOrden[oc.idOrden] || 0);
-        const opt = document.createElement('option');
-        opt.value = oc.idOrden;
-        opt.innerText = `${oc.tipoOrden === 'Abierta' ? '[ABIERTA]' : '[NORMAL]'} ${oc.provNombre} - ${oc.reqNombre} (${oc.idOrden}) [Saldo: ${saldo}]`;
-        select.appendChild(opt);
-    });
-}
-
-function cargarDetalleOrdenPendiente() {
-    const idOrden = document.getElementById('select-recepcion-orden').value;
-    const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
-    if (orden) {
-        const entregasPrevias = recepciones.filter(r => r.idOrden === idOrden).reduce((acc, curr) => acc + (parseFloat(curr.cantAplicada ?? curr.cantRecibida) || 0), 0);
-        const saldoRestante = Math.max(0, (parseFloat(orden.cantidad) || 0) - entregasPrevias);
-        const campoCant = document.getElementById('rec-campo-2');
-        if (campoCant) campoCant.value = saldoRestante;
-    }
-    actualizarAvisoCantidadRecepcion();
-}
-
-function actualizarAvisoCantidadRecepcion() {
-    const aviso = document.getElementById('aviso-cantidad-recepcion');
-    const selectOrden = document.getElementById('select-recepcion-orden');
-    const campoCantidad = document.getElementById('rec-campo-2');
-    const campoAplicada = document.getElementById('rec-cantidad-aplicada');
-    const campoExcedente = document.getElementById('rec-cantidad-excedente');
-    const grupoTratamiento = document.getElementById('grupo-tratamiento-excedente');
-    if (!aviso || !selectOrden || !campoCantidad) return;
-
-    const orden = ordenesCompra.find(oc => oc.idOrden === selectOrden.value);
-    const cantidadRemito = parseFloat(campoCantidad.value);
-    if (!orden || !Number.isFinite(cantidadRemito) || cantidadRemito <= 0) {
-        aviso.style.display = 'none';
-        aviso.innerHTML = '';
-        if (campoAplicada) campoAplicada.value = '';
-        if (campoExcedente) campoExcedente.value = '';
-        if (grupoTratamiento) grupoTratamiento.style.display = 'none';
-        return;
-    }
-
-    const solicitada = parseFloat(orden.cantidad) || 0;
-    const recibidaAnteriormente = recepciones
-        .filter(r => r.idOrden === orden.idOrden)
-        .reduce((total, r) => total + (parseFloat(r.cantAplicada ?? r.cantRecibida) || 0), 0);
-    const pendiente = Math.max(0, solicitada - recibidaAnteriormente);
-    const aplicada = Math.min(cantidadRemito, pendiente);
-    const excedente = Math.max(0, cantidadRemito - aplicada);
-    const acumuladaAplicada = recibidaAnteriormente + aplicada;
-
-    if (campoAplicada) campoAplicada.value = aplicada;
-    if (campoExcedente) campoExcedente.value = excedente;
-    if (grupoTratamiento) grupoTratamiento.style.display = excedente > 0 ? 'block' : 'none';
-
-    aviso.style.display = 'block';
-    if (excedente > 0) {
-        aviso.style.background = '#f8d7da';
-        aviso.style.color = '#842029';
-        aviso.style.border = '1px solid #f5c2c7';
-        aviso.innerHTML = `⚠️ Se aplicarán <strong>${aplicada}</strong> unidad(es) a la orden y <strong>${excedente}</strong> quedarán como excedente. Seleccione su tratamiento.`;
-    } else if (acumuladaAplicada < solicitada) {
-        aviso.style.background = '#cff4fc';
-        aviso.style.color = '#055160';
-        aviso.style.border = '1px solid #b6effb';
-        aviso.innerHTML = `ℹ️ Recepción parcial. Aplicada a la orden: ${aplicada} · Acumulada: ${acumuladaAplicada} · Pendiente: ${solicitada - acumuladaAplicada}.`;
-    } else {
-        aviso.style.background = '#d1e7dd';
-        aviso.style.color = '#0f5132';
-        aviso.style.border = '1px solid #badbcc';
-        aviso.innerHTML = `✅ Cantidad exacta. Se aplicarán ${aplicada} unidad(es) y la orden quedará completa.`;
-    }
-}
-
-async function guardarRecepcion(e) {
-    if (e) e.preventDefault();
-    const idOrden = document.getElementById('select-recepcion-orden').value;
-    if (!idOrden) return;
-
-    const numFormulario = document.getElementById('num-formulario-rec').value.trim();
-    const remito = document.getElementById('rec-campo-1').value.trim();
-    const cantRecibida = parseFloat(document.getElementById('rec-campo-2').value) || 0;
-    const empaque = document.getElementById('rec-campo-3').value;
-    const calidad = document.getElementById('rec-campo-5').value;
-    const obs = document.getElementById('rec-campo-6').value.trim();
-    const tratamientoExcedente = document.getElementById('rec-tratamiento-excedente')?.value || 'Saldo a favor';
-    const fechaRecepcion = document.getElementById('rec-fecha').value || new Date().toISOString().split('T')[0];
-    
-    const usuarioNombre = usuarioActual ? usuarioActual.nombre : 'admin';
-    const orden = ordenesCompra.find(oc => oc.idOrden === idOrden);
-
-    if (!orden) return alert('No se encontró la Orden de Compra seleccionada.');
-    if (cantRecibida <= 0) return alert('La cantidad recibida debe ser mayor que cero.');
-
-    const cantidadSolicitada = parseFloat(orden.cantidad) || 0;
-    const entregasAnteriores = recepciones
-        .filter(r => r.idOrden === idOrden)
-        .reduce((acc, curr) => acc + (parseFloat(curr.cantAplicada ?? curr.cantRecibida) || 0), 0);
-    const pendiente = Math.max(0, cantidadSolicitada - entregasAnteriores);
-    const cantidadAplicada = Math.min(cantRecibida, pendiente);
-    const excedente = Math.max(0, cantRecibida - cantidadAplicada);
-
-    if (excedente > 0) {
-        const continuar = confirm(
-            `⚠️ Esta recepción contiene ${excedente} unidad(es) excedentes.\n\n` +
-            `Aplicadas a la orden: ${cantidadAplicada}\n` +
-            `Excedentes: ${excedente}\n` +
-            `Tratamiento: ${tratamientoExcedente}\n\n` +
-            '¿Desea registrar la recepción?'
-        );
-        if (!continuar) return;
-    }
-
-    const respuestaRecepcion = await fetch('/api/recepciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numFormulario, idOrden, remito, cantRecibida, tratamientoExcedente, empaque, tiempo: '', calidad, obs, fechaRecepcion, usuario: usuarioNombre })
-    });
-
-    if (!respuestaRecepcion.ok) {
-        const error = await respuestaRecepcion.json().catch(() => ({}));
-        return alert(`❌ No se pudo registrar la recepción: ${error.error || 'Error desconocido'}`);
-    }
-
-    document.getElementById('form-recepcion').reset();
-    actualizarAvisoCantidadRecepcion();
-    await cargarTodoDesdeServidor(true);
-    actualizarSelectOrdenesPendientes();
-}
-
-function renderizarTablaRecepciones() {
-    const tbody = document.getElementById('tabla-recepcion-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    
-    recepciones.forEach(r => {
-        const orden = ordenesCompra.find(oc => oc.idOrden === r.idOrden);
-        const aplicada = parseFloat(r.cantAplicada ?? r.cantRecibida) || 0;
-        const excedente = parseFloat(r.cantExcedente) || 0;
-        const tratamiento = r.tratamientoExcedente || (excedente > 0 ? 'Sin definir' : 'Sin excedente');
-        const estadoOrden = orden?.estado || (excedente > 0 ? 'Recibido con excedente' : 'Recibido');
-        const estadoCantidad = excedente > 0
-            ? '<span style="display:inline-block;background:#fff3cd;color:#856404;padding:4px 8px;border-radius:12px;font-weight:bold;">Excedente</span>'
-            : `<span class="status-badge-received">${estadoOrden === 'Parcial' ? 'Parcial' : 'Exacto'}</span>`;
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${r.numFormulario || ''}</strong></td>
-            <td><strong>${r.idOrden}</strong></td>
-            <td>${r.provNombre}</td>
-            <td>${r.remito}</td>
-            <td>${r.cantRecibida}</td>
-            <td>${aplicada}</td>
-            <td><strong>${excedente}</strong></td>
-            <td>${tratamiento}</td>
-            <td>${r.calidad}</td>
-            <td>${r.fechaRecepcion ? r.fechaRecepcion.split('T')[0] : ''}</td>
-            <td><strong>👤 ${r.usuario || 'admin'}</strong></td>
-            <td>${r.obs || '-'}</td>
-            <td>${estadoCantidad}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// --- PESTAÑA 6: USUARIOS ---
-async function guardarUsuario(e) {
-    if (e) e.preventDefault();
-    const nombre = document.getElementById('usr-nombre').value.trim();
-    const pass = document.getElementById('usr-pass').value;
-    const sector = document.getElementById('usr-sector').value;
-    const estado = document.getElementById('usr-estado').value;
-
-    if (!nombre) return alert("Ingrese el nombre de usuario.");
-
-    await fetch('/api/usuarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, pass, sector, estado })
-    });
-
-    document.getElementById('form-usuarios').reset();
-    await cargarTodoDesdeServidor(true);
-}
-
-function renderizarTablaUsuarios() {
-    const tbody = document.getElementById('tabla-usuarios-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    if (!usuarios || usuarios.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay usuarios registrados</td></tr>';
-        return;
-    }
-    usuarios.forEach(u => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${u.nombre}</strong></td>
-            <td>${u.sector}</td>
-            <td>${u.estado}</td>
-            <td>
-                <button class="btn-warning" onclick="editarUsuario('${u.nombre}')">Editar</button>
-                <button class="btn-danger" onclick="eliminarUsuario('${u.nombre}')">Eliminar</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function editarUsuario(nombre) {
-    const u = usuarios.find(usr => usr.nombre === nombre);
-    if (!u) return;
-    document.getElementById('usr-nombre').value = u.nombre;
-    document.getElementById('usr-pass').value = u.pass || '';
-    document.getElementById('usr-sector').value = u.sector;
-    document.getElementById('usr-estado').value = u.estado;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function eliminarUsuario(nombre) {
-    if (!confirm(`¿Eliminar usuario "${nombre}"?`)) return;
-    await fetch(`/api/usuarios/${encodeURIComponent(nombre)}`, { method: 'DELETE' });
-    await cargarTodoDesdeServidor(true);
-}
-
-// --- MASTER PANEL ---
-function abrirModalMaster() { document.getElementById('modal-master').style.display = 'flex'; }
-function cerrarModalMaster() { document.getElementById('modal-master').style.display = 'none'; }
-
-function autenticarMaster() {
-    const usr = document.getElementById('master-user').value;
-    const pass = document.getElementById('master-pass').value;
-    if (usr === 'admin' && pass === masterPasswordActual) {
-        document.getElementById('master-auth').style.display = 'none';
-        document.getElementById('master-panel').style.display = 'block';
-        renderizarTablaSectoresMaster();
-        renderizarMatrizPermisos();
-        renderizarMatrizPermisosProveedores();
-    } else {
-        alert('Credenciales Master incorrectas.');
-    }
-}
-
-function renderizarTablaSectoresMaster() {
-    const container = document.getElementById('lista-sectores-master-container');
-    if (!container) return;
-    let html = `<table><thead><tr><th>Sector</th><th>Acciones</th></tr></thead><tbody>`;
-    listaSectoresGlobal.forEach((sec, idx) => {
-        html += `<tr>
-            <td><input type="text" id="input-sector-name-${idx}" value="${sec}" style="width:100%; padding:4px;"></td>
-            <td>
-                <button class="btn-warning" onclick="guardarNombreSectorMaster(${idx})">Guardar</button>
-                <button class="btn-danger" onclick="eliminarSectorMaster(${idx})">Eliminar</button>
-            </td>
-        </tr>`;
-    });
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-}
-
-async function agregarNuevoSectorMaster() {
-    const input = document.getElementById('nuevo-sector-nombre');
-    const val = input.value.trim();
-    if (!val || listaSectoresGlobal.includes(val)) return alert("Nombre inválido o ya existente.");
-    listaSectoresGlobal.push(val);
-    if (!permisosPorSector[val]) permisosPorSector[val] = [1];
-    await guardarSectoresBaseDatos();
-    input.value = '';
-    renderizarTablaSectoresMaster();
-    renderizarMatrizPermisos();
-    actualizarSelectSectoresUsuarios();
-}
-
-async function guardarNombreSectorMaster(index) {
-    const input = document.getElementById(`input-sector-name-${index}`);
-    const nuevo = input.value.trim();
-    const viejo = listaSectoresGlobal[index];
-    if (!nuevo) return;
-    listaSectoresGlobal[index] = nuevo;
-    if (permisosPorSector[viejo]) {
-        permisosPorSector[nuevo] = permisosPorSector[viejo];
-        delete permisosPorSector[viejo];
-    }
-    await guardarSectoresBaseDatos();
-    renderizarTablaSectoresMaster();
-    renderizarMatrizPermisos();
-    actualizarSelectSectoresUsuarios();
-}
-
-async function eliminarSectorMaster(index) {
-    if (listaSectoresGlobal.length <= 1) return alert("Debe haber al menos un sector.");
-    const sec = listaSectoresGlobal[index];
-    if (!confirm(`¿Eliminar sector "${sec}"?`)) return;
-    listaSectoresGlobal.splice(index, 1);
-    delete permisosPorSector[sec];
-    await guardarSectoresBaseDatos();
-    renderizarTablaSectoresMaster();
-    renderizarMatrizPermisos();
-    actualizarSelectSectoresUsuarios();
-}
-
-async function guardarSectoresBaseDatos() {
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'lista_sectores', valor: listaSectoresGlobal }) });
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'permisos_sectores', valor: permisosPorSector }) });
-}
-
-function renderizarMatrizPermisosProveedores() {
-    const container = document.getElementById('matriz-permisos-proveedores-container');
-    if (!container) return;
-    if (!usuarios.length || !proveedores.length) {
-        container.innerHTML = '<p style="color:#777;">Registre usuarios y proveedores primero.</p>';
-        return;
-    }
-    let html = `<table>
-        <thead>
-            <tr>
-                <th>Usuario</th>
-                <th>Contraseña</th>
-                <th>Acción</th>`;
-    
-    proveedores.forEach(p => html += `<th>${p.nombre}<br><small>(${p.num})</small></th>`);
-    html += '</tr></thead><tbody>';
-
-    usuarios.forEach((u, idx) => {
-        html += `<tr>
-            <td><strong>${u.nombre}</strong></td>
-            <td>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <input type="password" id="master-pass-input-${idx}" value="${u.pass || ''}" style="width: 100px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
-                    <button type="button" class="btn-warning" onclick="togglePasswordMaster(${idx})" style="padding: 2px 6px; font-size: 0.85em;" title="Mostrar/Ocultar">👁️</button>
-                </div>
-            </td>
-            <td>
-                <button type="button" class="btn-warning" onclick="guardarPasswordUsuarioMaster('${u.nombre}', ${idx})" style="padding: 2px 6px; font-size: 0.85em;">💾 Guardar</button>
-            </td>`;
-        
-        const asignados = permisosProveedoresPorUsuario[u.nombre] || [];
-        proveedores.forEach(p => {
-            html += `<td style="text-align:center;"><input type="checkbox" data-usuario-prov="${u.nombre}" data-prov-num="${p.num}" ${asignados.includes(p.num) ? 'checked' : ''}></td>`;
-        });
-        html += '</tr>';
-    });
-    
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-function togglePasswordMaster(index) {
-    const input = document.getElementById(`master-pass-input-${index}`);
-    if (!input) return;
-    input.type = input.type === 'password' ? 'text' : 'password';
-}
-
-async function guardarPasswordUsuarioMaster(nombreUsuario, index) {
-    const input = document.getElementById(`master-pass-input-${index}`);
-    if (!input) return;
-    
-    const nuevaPass = input.value.trim();
-    const usrObj = usuarios.find(u => u.nombre === nombreUsuario);
-    
-    if (!usrObj) return alert("Usuario no encontrado.");
-    if (!nuevaPass) return alert("La contraseña no puede estar vacía.");
-
-    usrObj.pass = nuevaPass;
-
-    try {
-        await fetch('/api/usuarios', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(usrObj)
-        });
-        alert(`🔐 Contraseña de "${nombreUsuario}" actualizada con éxito.`);
-        await cargarTodoDesdeServidor(true);
-    } catch (e) {
-        console.error("Error al actualizar la contraseña:", e);
-        alert("⚠️ Hubo un error al guardar la contraseña.");
-    }
-}
-
-async function guardarPermisosProveedoresMaster() {
-    const nuevos = {};
-    document.querySelectorAll('#matriz-permisos-proveedores-container input[type="checkbox"]').forEach(chk => {
-        if (chk.checked) {
-            const usr = chk.dataset.usuarioProv;
-            const prov = chk.dataset.provNum;
-            if (!nuevos[usr]) nuevos[usr] = [];
-            nuevos[usr].push(prov);
-        }
-    });
-    permisosProveedoresPorUsuario = nuevos;
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'permisos_proveedores_usuarios', valor: permisosProveedoresPorUsuario }) });
-    actualizarSelectsCompras();
-    alert("✅ Permisos guardados.");
-}
-
-function renderizarMatrizPermisos() {
-    const container = document.getElementById('matriz-permisos-container');
-    if (!container) return;
-    const pestañas = [{ id: 1, nombre: 'P1' }, { id: 2, nombre: 'P2' }, { id: 3, nombre: 'P3' }, { id: 4, nombre: 'P4' }, { id: 5, nombre: 'P5' }, { id: 6, nombre: 'P6' }, { id: 7, nombre: 'P7' }];
-    let html = '<table><thead><tr><th>Sector</th>';
-    pestañas.forEach(p => html += `<th>${p.nombre}</th>`);
-    html += '</tr></thead><tbody>';
-    listaSectoresGlobal.forEach(sec => {
-        html += `<tr><td><strong>${sec}</strong></td>`;
-        const permitidas = permisosPorSector[sec] || [];
-        pestañas.forEach(p => {
-            html += `<td style="text-align:center;"><input type="checkbox" data-sector="${sec}" data-pestaña="${p.id}" ${permitidas.includes(p.id) ? 'checked' : ''}></td>`;
-        });
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-async function guardarPermisosSectores() {
-    const nuevos = {};
-    listaSectoresGlobal.forEach(s => nuevos[s] = []);
-    document.querySelectorAll('#matriz-permisos-container input[type="checkbox"]').forEach(chk => {
-        if (chk.checked) {
-            const sec = chk.dataset.sector;
-            const pId = parseInt(chk.dataset.pestaña);
-            if (sec && !isNaN(pId)) {
-                if (!nuevos[sec].includes(pId)) nuevos[sec].push(pId);
-            }
-        }
-    });
-    permisosPorSector = nuevos;
-    await guardarSectoresBaseDatos();
-    if (usuarioActual) aplicarPermisosUsuario(usuarioActual.sector);
-    alert("✅ Permisos actualizados.");
-}
-
-async function guardarNuevaPasswordMaster() {
-    const np = document.getElementById('master-new-pass').value.trim();
-    if (!np) return;
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'master_password', valor: np }) });
-    masterPasswordActual = np;
-    document.getElementById('master-new-pass').value = '';
-    alert("🔐 Contraseña Master cambiada.");
-}
-
-async function guardarTituloSistema() {
-    const titulo = document.getElementById('master-system-title').value.trim();
-    if (!titulo) return;
-    await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_title', valor: titulo }) });
-    document.getElementById('header-system-title').innerText = titulo;
-    document.getElementById('login-title').innerText = titulo;
-    document.getElementById('page-title').innerText = titulo;
-}
-
-async function cambiarColorBg(color, guardar = true) {
-    document.documentElement.style.setProperty('--bg-primary', color);
-    document.body.style.backgroundColor = color;
-    if (guardar) {
-        await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_bg_color', valor: color }) });
-    }
-}
-
-function subirLogoDesdePC(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = e => cambiarLogo(e.target.result, true);
-        reader.readAsDataURL(file);
-    }
-}
-
-async function cambiarLogo(src, guardar = true) {
-    if (!src) return;
-    const l1 = document.getElementById('app-logo'), l2 = document.getElementById('login-logo');
-    if (l1) { l1.src = src; l1.style.display = 'block'; }
-    if (l2) { l2.src = src; l2.style.display = 'inline-block'; }
-    if (guardar) {
-        await fetch('/api/configuraciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'sys_logo', valor: src }) });
-    }
-}
-
-async function limpiarBaseDeDatosMaster() {
-    if (!confirm("⚠️ ¿Vaciar Evaluaciones, Órdenes y Recepciones?")) return;
-    try {
-        const res = await fetch('/api/master/limpiar-bd', { method: 'POST' });
-        if (res.ok) {
-            alert("✅ Base de datos limpia.");
-            await cargarTodoDesdeServidor(true);
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-// ==========================================
-// FUNCIONES DE GRÁFICOS PARA PESTAÑA 3
-// ==========================================
-let radarChartInstance = null;
-let pieChartInstance = null;
-
-function renderizarGraficosPestaña3() {
-    renderizarGraficoRadar();
-    renderizarGraficoPie();
-}
-
-// 1. Gráfico combinado: seis criterios por año + tendencia del promedio general
-function renderizarGraficoRadar() {
-    const ctx = document.getElementById('chart-radar-proveedor');
-    if (!ctx) return;
-
-    if (radarChartInstance) radarChartInstance.destroy();
-
-    const provNum = document.getElementById('select-prov-estadistica')?.value;
-    const provObj = proveedores.find(p => String(p.num) === String(provNum));
-    const resumen = document.getElementById('resumen-tendencia-proveedor');
-
-    let historial = estadisticas
-        .filter(e => String(e.provNum) === String(provNum))
-        .map(e => ({ ...e, anio: String(e.anio) }));
-
-    // Incorporar al gráfico la evaluación visible en el formulario, aunque
-    // todavía no se haya guardado, y reemplazar con ella el mismo año histórico.
-    const anioFormulario = document.getElementById('select-anio-estadistica')?.value;
-    const puntajesFormulario = [];
-    let hayPuntajesFormulario = false;
-
-    for (let i = 1; i <= 6; i++) {
-        const valorTexto = document.getElementById(`stat-val-${i}`)?.value;
-        if (valorTexto !== '' && valorTexto !== undefined) {
-            const valorNumero = Number(valorTexto);
-            puntajesFormulario.push(Number.isNaN(valorNumero) ? null : valorNumero);
-            if (!Number.isNaN(valorNumero)) hayPuntajesFormulario = true;
-        } else {
-            puntajesFormulario.push(null);
-        }
-    }
-
-    if (provNum && anioFormulario && hayPuntajesFormulario) {
-        const valoresValidos = puntajesFormulario.filter(v => v !== null);
-        const promedioFormulario = valoresValidos.length
-            ? Math.round(valoresValidos.reduce((suma, valor) => suma + valor, 0) / valoresValidos.length)
-            : 0;
-
-        const evaluacionFormulario = {
-            provNum: String(provNum),
-            anio: String(anioFormulario),
-            puntajes: puntajesFormulario,
-            promedio: promedioFormulario
-        };
-
-        const indiceMismoAnio = historial.findIndex(e => String(e.anio) === String(anioFormulario));
-        if (indiceMismoAnio >= 0) historial[indiceMismoAnio] = evaluacionFormulario;
-        else historial.push(evaluacionFormulario);
-    }
-
-    historial.sort((a, b) => Number(a.anio) - Number(b.anio));
-
-    const anios = historial.map(e => e.anio);
-    const promedios = historial.map(e => Number(e.promedio) || 0);
-    const criterios = [
-        { nombre: 'Cumplimiento Entrega', indice: 0, color: '#1565C0' },
-        { nombre: 'Calidad', indice: 1, color: '#43A047' },
-        { nombre: 'Condición Pago', indice: 2, color: '#FB8C00' },
-        { nombre: 'Plazo Entrega', indice: 3, color: '#8E24AA' },
-        { nombre: 'Atención', indice: 4, color: '#00ACC1' },
-        { nombre: 'Respuesta Reclamos', indice: 5, color: '#E53935' }
-    ];
-
-    const datasetsCriterios = criterios.map(criterio => ({
-        type: 'bar',
-        label: criterio.nombre,
-        data: historial.map(e => {
-            const valor = e.puntajes?.[criterio.indice];
-            return valor === null || valor === undefined || valor === '' ? null : Number(valor);
-        }),
-        backgroundColor: criterio.color,
-        borderColor: criterio.color,
-        borderWidth: 1,
-        borderRadius: 3,
-        order: 2
-    }));
-
-    const datasetPromedio = {
-        type: 'line',
-        label: 'Promedio general',
-        data: promedios,
-        borderColor: '#212121',
-        backgroundColor: '#212121',
-        pointBackgroundColor: '#FFFFFF',
-        pointBorderColor: '#212121',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        borderWidth: 3,
-        tension: 0.25,
-        fill: false,
-        order: 1
-    };
-
-    if (resumen) {
-        if (!provNum) {
-            resumen.innerText = 'Seleccione un proveedor para visualizar su evolución histórica.';
-            resumen.style.color = '#374151';
-        } else if (historial.length === 0) {
-            resumen.innerText = `${provObj?.nombre || provNum}: todavía no tiene evaluaciones guardadas.`;
-            resumen.style.color = '#374151';
-        } else if (historial.length === 1) {
-            resumen.innerText = `${provObj?.nombre || provNum}: se necesita más de un año para calcular una tendencia.`;
-            resumen.style.color = '#1976D2';
-        } else {
-            const variacion = promedios[promedios.length - 1] - promedios[0];
-            const signo = variacion > 0 ? '+' : '';
-            const tendencia = variacion > 0 ? '↗ Crecimiento' : variacion < 0 ? '↘ Decrecimiento' : '→ Sin variación';
-            resumen.innerText = `${tendencia}: ${signo}${variacion} puntos entre ${anios[0]} y ${anios[anios.length - 1]}.`;
-            resumen.style.color = variacion > 0 ? '#2E7D32' : variacion < 0 ? '#C62828' : '#E65100';
-        }
-    }
-
-    radarChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: anios,
-            datasets: [...datasetsCriterios, datasetPromedio]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: { boxWidth: 14, padding: 12 }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: context => `${context.dataset.label}: ${context.parsed.y} puntos`
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    title: { display: true, text: 'Promedio (0-100)' }
-                },
-                x: { title: { display: true, text: 'Año de evaluación' } }
-            }
-        }
-    });
-}
-
-function actualizarGraficoRadar() {
-    renderizarGraficoRadar();
-}
-
-// 2. Gráfico Donut de Clasificación % (A, B, C, D)
-function renderizarGraficoPie() {
-    const ctx = document.getElementById('chart-pie-clasificacion');
-    if (!ctx) return;
-
-    if (pieChartInstance) pieChartInstance.destroy();
-
-    let ca = 0, cb = 0, cc = 0, cd = 0;
-
-    if (Array.isArray(estadisticas)) {
-        estadisticas.forEach(e => {
-            if (e.clase === 'Clase A') ca++;
-            else if (e.clase === 'Clase B') cb++;
-            else if (e.clase === 'Clase C') cc++;
-            else cd++;
-        });
-    }
-
-    const total = (ca + cb + cc + cd) || 1;
-
-    pieChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Clase A', 'Clase B', 'Clase C', 'Clase D'],
-            datasets: [{
-                data: [
-                    Math.round((ca / total) * 100),
-                    Math.round((cb / total) * 100),
-                    Math.round((cc / total) * 100),
-                    Math.round((cd / total) * 100)
-                ],
-                backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#F44336']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '55%'
-        }
-    });
-}
-
-function formatearFechaImplementacion(fecha) {
-    if (!fecha) return 'No definida';
-    const partes = String(fecha).split('T')[0].split('-');
-    if (partes.length !== 3) return fecha;
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
-}
-
-function aplicarFechaImplementacion(fecha) {
-    fechaImplementacionActual = fecha ? String(fecha).split('T')[0] : '';
-
-    const visual = document.getElementById('implementation-date-display');
-    if (visual) visual.innerText = formatearFechaImplementacion(fechaImplementacionActual);
-
-    const input = document.getElementById('master-implementation-date');
-    const botonGuardar = document.getElementById('btn-save-implementation-date');
-    const botonEditar = document.getElementById('btn-edit-implementation-date');
-    const hayFecha = Boolean(fechaImplementacionActual);
-
-    if (input) {
-        input.value = fechaImplementacionActual;
-        input.disabled = hayFecha;
-    }
-    if (botonGuardar) botonGuardar.style.display = hayFecha ? 'none' : 'inline-block';
-    if (botonEditar) botonEditar.style.display = hayFecha ? 'inline-block' : 'none';
-}
-
-function habilitarEdicionFechaImplementacion() {
-    if (!confirm('La fecha de implementación normalmente no debe modificarse. ¿Desea habilitar su edición?')) return;
-    const input = document.getElementById('master-implementation-date');
-    const botonGuardar = document.getElementById('btn-save-implementation-date');
-    const botonEditar = document.getElementById('btn-edit-implementation-date');
-    if (input) {
-        input.disabled = false;
-        input.focus();
-    }
-    if (botonGuardar) botonGuardar.style.display = 'inline-block';
-    if (botonEditar) botonEditar.style.display = 'none';
-}
-
-async function guardarFechaImplementacion() {
-    const input = document.getElementById('master-implementation-date');
-    const fecha = input ? input.value : '';
-    if (!fecha) return alert('Seleccione la Fecha de implementación.');
-
-    try {
-        const respuesta = await fetch('/api/configuraciones', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clave: 'fecha_implementacion_sistema', valor: fecha })
-        });
-        if (!respuesta.ok) throw new Error('No se pudo guardar la fecha de implementación.');
-        aplicarFechaImplementacion(fecha);
-        alert('✅ Fecha de implementación guardada y bloqueada.');
-    } catch (error) {
-        console.error(error);
-        alert('❌ No se pudo guardar la Fecha de implementación.');
-    }
-}
+    doc.text(`Fecha Emisión: ${orden.fechaEmision || new Date
