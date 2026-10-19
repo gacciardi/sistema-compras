@@ -90,23 +90,22 @@ function poblarSelectAnios() {
     select.onchange = cargarCalificacionExistente;
 }
 
+// INICIO DE SESIÓN DIRECTO (SIN REQUERIR CONTRASEÑA)
 async function iniciarSesionUsuario(e) {
     if (e) e.preventDefault();
 
     const usrInput = document.getElementById('login-user');
-    const passInput = document.getElementById('login-pass');
-    if (!usrInput || !passInput) return;
+    if (!usrInput) return;
 
     const usrName = usrInput.value.trim();
-    const pass = passInput.value.trim();
 
-    if (!usrName || !pass) {
-        alert("Por favor ingrese usuario y contraseña.");
+    if (!usrName) {
+        alert("Por favor ingrese o seleccione un nombre de usuario.");
         return;
     }
 
-    // 1. Verificación del usuario Admin Master
-    if (usrName.toLowerCase() === 'admin' && String(pass).trim() === String(masterPasswordActual).trim()) {
+    // 1. Acceso directo como Admin
+    if (usrName.toLowerCase() === 'admin') {
         usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').style.display = 'block';
@@ -115,19 +114,16 @@ async function iniciarSesionUsuario(e) {
         return;
     }
 
-    // 2. Carga preventiva si no hay usuarios cargados aún
+    // 2. Cargar lista de usuarios si no está en memoria
     if (!usuarios || usuarios.length === 0) {
         await cargarTodoDesdeServidor(false);
     }
 
-    // 3. Búsqueda y comparación flexible convirtiendo ambos a String
-    const usrObj = usuarios.find(u => 
-        u.nombre.trim().toLowerCase() === usrName.toLowerCase() && 
-        String(u.pass).trim() === String(pass).trim()
-    );
+    // 3. Buscar usuario solo por nombre (sin validar clave)
+    const usrObj = usuarios.find(u => u.nombre.trim().toLowerCase() === usrName.toLowerCase());
 
     if (!usrObj) {
-        alert("Usuario o contraseña incorrectos.");
+        alert(`El usuario "${usrName}" no existe en el sistema.`);
         return;
     }
 
@@ -538,7 +534,7 @@ function calcularPuntajeTiemposReales(provNum, anioTarget) {
     const infoCajaRec = document.getElementById('info-caja-recepciones');
     if (infoCajaRec) {
         if (recepcionesProv.length > 0) {
-            infoCajaRec.innerHTML = `📦 <b>Recepciones evaluadas:</b> ${recepcionesProv.length} remito(s) encontrados para ${nombreProv}.`;
+            infoCajaRec.innerHTML = `📦 <b>Recepciones evaluadas:</b> ${recepcionesProv.length} remito(s) encontrados para${nombreProv}.`;
             infoCajaRec.style.display = 'block';
         } else {
             infoCajaRec.innerHTML = `⚠️ <b>Aviso:</b> No se registran remitos de recepción (Pest. 5) para este proveedor.`;
@@ -577,4 +573,4 @@ function calcularPromediosPreEvaluacionOC(provNum, anioTarget) {
     const infoCajaOC = document.getElementById('info-caja-oc');
     if (infoCajaOC) {
         if (ordenesProv.length > 0) {
-            infoCajaOC.innerHTML =
+            infoCajaOC.innerHTML = `📋 <b>Órdenes
