@@ -1,5 +1,5 @@
 let usuarioActual = null;
-let masterPasswordActual = '1234';
+let masterPasswordActual = '4567';
 let fechaImplementacionActual = '';
 
 let listaSectoresGlobal = [
