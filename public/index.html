@@ -106,15 +106,11 @@
         <div class="login-box">
             <img id="login-logo" src="assets/logo.png" alt="Logo Empresa" class="login-logo" onerror="this.style.display='none'">
             <h2 id="login-title">Sistema de Compras</h2>
-            <p>Ingrese sus credenciales para acceder</p>
-            <form id="form-login" onsubmit="iniciarSesionUsuario(event)">
+            <p>Ingrese su nombre de usuario para acceder</p>
+            <form id="form-login" onsubmit="ingresarSoloConUsuario(event)">
                 <div class="form-group">
                     <label>Usuario:</label>
                     <input type="text" id="login-user" placeholder="Nombre de usuario" required>
-                </div>
-                <div class="form-group">
-                    <label>Contraseña:</label>
-                    <input type="password" id="login-pass" placeholder="Contraseña" required>
                 </div>
                 <button type="submit" class="btn-primary" style="width: 100%; padding: 10px; font-size: 1.1em;">Iniciar Sesión</button>
             </form>
@@ -889,5 +885,56 @@
     </div>
 
     <script src="js/app.js" onerror="this.onerror=null; this.src='app.js';"></script>
+    <script>
+async function ingresarSoloConUsuario(e) {
+    if (e) e.preventDefault();
+
+    const usrInput = document.getElementById('login-user');
+    if (!usrInput) return;
+
+    const usrName = usrInput.value.trim();
+
+    if (!usrName) {
+        alert("Por favor ingrese o seleccione un nombre de usuario.");
+        return;
+    }
+
+    // 1. Acceso directo como Admin
+    if (usrName.toLowerCase() === 'admin') {
+        usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'block';
+        document.getElementById('user-session-info').innerText = `👤 admin (Administración)`;
+        aplicarPermisosUsuario('Administración');
+        return;
+    }
+
+    // 2. Cargar lista de usuarios si no está en memoria
+    if (!usuarios || usuarios.length === 0) {
+        await cargarTodoDesdeServidor(false);
+    }
+
+    // 3. Buscar usuario solo por nombre (sin validar clave)
+    const usrObj = usuarios.find(u => u.nombre.trim().toLowerCase() === usrName.toLowerCase());
+
+    if (!usrObj) {
+        alert(`El usuario "${usrName}" no existe en el sistema.`);
+        return;
+    }
+
+    if (usrObj.estado !== 'Activo') {
+        alert("Su usuario está Inactivo. Consulte con el Administrador.");
+        return;
+    }
+
+    usuarioActual = usrObj;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('user-session-info').innerText = `👤 ${usrObj.nombre} (${usrObj.sector})`;
+
+    aplicarPermisosUsuario(usrObj.sector);
+}
+
+    </script>
 </body>
 </html>
