@@ -56,6 +56,7 @@ let nombresCriteriosEstadisticas = [
 ];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    prepararAccesoUsuarios();
     await cargarTodoDesdeServidor();
 
     const formUsuarios = document.getElementById('form-usuarios');
@@ -91,55 +92,72 @@ function poblarSelectAnios() {
     select.onchange = cargarCalificacionExistente;
 }
 
+function prepararAccesoUsuarios() {
+    const nombre = document.getElementById('login-user');
+    const clave = document.getElementById('login-pass');
+    const grupo = document.getElementById('login-admin-password');
+    if (!nombre || !clave || !grupo) return;
+    const actualizar = () => {
+        const esAdmin = nombre.value.trim().toLowerCase() === 'admin';
+        grupo.hidden = !esAdmin;
+        grupo.style.display = esAdmin ? '' : 'none';
+        clave.disabled = !esAdmin;
+        clave.required = esAdmin;
+        if (!esAdmin) clave.value = '';
+    };
+    nombre.addEventListener('input', actualizar);
+    document.getElementById('form-login')?.addEventListener('reset', () => {
+        grupo.hidden = true;
+        grupo.style.display = 'none';
+        clave.disabled = true;
+        clave.required = false;
+    });
+    actualizar();
+}
+
 async function iniciarSesionUsuario(e) {
     if (e) e.preventDefault();
-
     const usrInput = document.getElementById('login-user');
-    const passInput = document.getElementById('login-pass');
-    if (!usrInput || !passInput) return;
-
-    const usrName = usrInput.value.trim();
-    const pass = passInput.value.trim();
-
-    if (!usrName || !pass) {
-        alert("Por favor ingrese usuario y contraseña.");
-        return;
+    if (!usrInput) return;
+    const nombreIngresado = usrInput.value.trim();
+    if (!nombreIngresado) return alert('Ingrese su nombre de usuario.');
+    const normalizarNombre = valor => String(valor ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+    let usuario;
+    if (normalizarNombre(nombreIngresado) === 'admin') {
+        const pass = document.getElementById('login-pass')?.value.trim();
+        if (!pass || pass !== masterPasswordActual) {
+            alert('Ingrese la contraseña de administrador.');
+            return;
+        }
+        usuario = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
+    } else {
+        try {
+            const respuesta = await fetch('/api/usuarios', { cache: 'no-store' });
+            if (!respuesta.ok) throw new Error('No se pudo consultar la lista de usuarios.');
+            const datos = await respuesta.json();
+            if (!Array.isArray(datos)) throw new Error('La lista de usuarios no es válida.');
+            usuarios = datos;
+        } catch (error) {
+            console.error('Error al consultar usuarios:', error);
+            alert('No se pudo cargar la lista de usuarios. Intente nuevamente.');
+            return;
+        }
+        const coincidencias = usuarios.filter(u => u && normalizarNombre(u.nombre) === normalizarNombre(nombreIngresado));
+        if (coincidencias.length !== 1) {
+            alert(coincidencias.length ? 'Hay nombres de usuario duplicados. Consulte al administrador.' : 'El usuario ingresado no está registrado. Use el nombre completo que figura en Usuarios.');
+            return;
+        }
+        usuario = coincidencias[0];
+        if (normalizarNombre(usuario.estado) !== 'activo') {
+            alert('Su usuario está inactivo. Consulte al administrador.');
+            return;
+        }
     }
-
-    if (usrName.toLowerCase() === 'admin' && pass === masterPasswordActual) {
-        usuarioActual = { nombre: 'admin', sector: 'Administración', estado: 'Activo' };
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app-screen').style.display = 'block';
-        document.getElementById('user-session-info').innerText = `👤 admin (Administración)`;
-        aplicarPermisosUsuario('Administración');
-        return;
-    }
-
-    if (!usuarios || usuarios.length === 0) {
-        await cargarTodoDesdeServidor(false);
-    }
-
-    const usrObj = usuarios.find(u => 
-        u.nombre.toLowerCase() === usrName.toLowerCase() && 
-        String(u.pass).trim() === pass
-    );
-
-    if (!usrObj) {
-        alert("Usuario o contraseña incorrectos.");
-        return;
-    }
-
-    if (usrObj.estado !== 'Activo') {
-        alert("Su usuario está Inactivo. Consulte con el Administrador.");
-        return;
-    }
-
-    usuarioActual = usrObj;
+    usuarioActual = usuario;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
-    document.getElementById('user-session-info').innerText = `👤 ${usrObj.nombre} (${usrObj.sector})`;
-
-    aplicarPermisosUsuario(usrObj.sector);
+    document.getElementById('user-session-info').innerText = `👤 ${usuario.nombre} (${usuario.sector})`;
+    aplicarPermisosUsuario(usuario.sector);
 }
 
 function cerrarSesionUsuario() {
